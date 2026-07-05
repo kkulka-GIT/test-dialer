@@ -1,0 +1,21 @@
+# Pomysły
+
+- historia wykonanych testów,
+- zestawy numerów testowych i szybki wybór kontaktu,
+- konfigurowalne scenariusze testowe voice/SMS/data,
+- automatyczny pomiar czasu zestawienia połączenia,
+- sprawdzanie aktywnej karty SIM w urządzeniach dual-SIM,
+- wybór karty SIM dla połączenia lub SMS,
+- test pobierania i wysyłania danych,
+- pomiar opóźnienia, utraty pakietów i przepustowości,
+- eksport raportu do JSON lub CSV,
+- oznaczanie testów jako zaliczone lub niezaliczone,
+- notatki operatora do wyniku testu,
+- tryb ciemny,
+- możliwość powtarzania ostatniego testu,
+- ekran diagnostyczny z informacjami o sieci i urządzeniu,
+- udostępnianie raportu przez mechanizm systemowy,
+- lokalne przechowywanie wyników bez konta użytkownika,
+- ostrzeganie o braku wymaganych uprawnień lub usług,
+- test działania w roamingu,
+- obsługa kodów USSD, jeśli ograniczenia platformy na to pozwolą.

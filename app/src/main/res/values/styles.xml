@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.TestDialer" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorAccent">#1565C0</item>
+    </style>
+</resources>
