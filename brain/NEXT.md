@@ -1,11 +1,10 @@
 # Co robimy teraz
 
-Dokończyć weryfikację po recovery po decyzji nadzorcy:
-- rozstrzygnąć błąd referencyjnego buildu GitHub Actions `29164885219` dla commita `1f723fe0cdcc942c20f795fa840bf02fc3461a82`,
-- uzyskać poprawny artefakt APK z referencyjnego workflow,
-- pobrać APK poza repo i obliczyć SHA-256,
-- na podłączonym urządzeniu sprawdzić instalację i UI Status/Test/Rejestr,
+Na fizycznie podłączonym telefonie dokończyć ręczną weryfikację po recovery, używając APK z referencyjnego runu GitHub Actions `29165568019` dla commita aplikacji `e191f66a68647ed1ce5eba152e03d64a89a36758`:
+- zainstalować pobrany `app-debug.apk` o SHA-256 `f9998cef45dfc0512855f7badc3ac0c8f238f393ef1a3ca745b8232ebb97de65`,
+- sprawdzić uruchomienie i UI Status/Test/Rejestr,
 - sprawdzić Voice i otwarcie systemowego dialera bez automatycznego połączenia,
-- ręcznie sprawdzić reakcje paska Wi-Fi/Dane/SIM na zmiany stanów.
+- ręcznie sprawdzić reakcje paska Wi-Fi/Dane/SIM na zmiany stanów,
+- zapisać rzeczywiste wyniki PASS/FAIL/BLOCKED i dowody.
 
-Kontrola czystości i zgodności repo oraz braku śledzonych plików build/cache została zaliczona. Nie naprawiać błędu bez decyzji nadzorcy.
+Kontrola repo i brak śledzonych build/cache są zaliczone. Referencyjny build i artefakt APK są zaliczone. Nie przypisywać PASS testom telefonu bez ich faktycznego wykonania.
