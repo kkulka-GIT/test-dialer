@@ -206,7 +206,7 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dimen(20), dimen(18), dimen(20), dimen(28))
-            layoutParams = ScrollView.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
@@ -267,7 +267,7 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dimen(20), dimen(18), dimen(20), dimen(28))
-            layoutParams = ScrollView.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
@@ -305,7 +305,7 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dimen(20), dimen(18), dimen(20), dimen(28))
-            layoutParams = ScrollView.LayoutParams(
+            layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
@@ -677,6 +677,7 @@ class MainActivity : Activity() {
         const val background = 0xFFF4F7FB.toInt()
         const val surface = 0xFFFFFFFF.toInt()
         const val accent = 0xFF1565C0.toInt()
+        const val button = 0xFFE8EEF5.toInt()
         const val border = 0xFFD7E1EE.toInt()
         const val textPrimary = 0xFF102A43.toInt()
         const val textSecondary = 0xFF52606D.toInt()
