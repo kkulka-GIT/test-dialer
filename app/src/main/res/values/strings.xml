@@ -7,7 +7,10 @@
     <string name="status_description">Lekki podgląd gotowości do testów i miejsca na przyszłe podsumowania.</string>
     <string name="status_dashboard_title">Dashboard</string>
     <string name="status_dashboard_body">Tu pojawi się zbiorczy widok gotowości i wyników testów.</string>
-    <string name="status_summary_placeholder">placeholder</string>
+    <string name="status_summary_placeholder">brak wyników</string>
+    <string name="status_voice_no_results">Brak wyników</string>
+    <string name="status_voice_latest">%1$s\n%2$s</string>
+    <string name="status_voice_summary_accessibility">Ostatni wynik Voice: %1$s</string>
     <string name="voice_type">Voice</string>
     <string name="sms_type">SMS</string>
     <string name="data_type">Data</string>

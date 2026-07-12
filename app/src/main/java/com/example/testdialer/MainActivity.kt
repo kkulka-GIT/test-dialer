@@ -54,6 +54,7 @@ class MainActivity : Activity() {
     private lateinit var voiceStatusText: TextView
     private lateinit var voicePhoneInput: EditText
     private lateinit var voiceNameInput: EditText
+    private lateinit var voiceSummaryText: TextView
     private var networkCallbackRegistered = false
     private var currentSection = Section.STATUS
     private var currentTestType = TestType.VOICE
@@ -95,6 +96,10 @@ class MainActivity : Activity() {
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
         awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
         resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
+        currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
+            ?.let { saved -> Section.entries.firstOrNull { it.name == saved } } ?: Section.STATUS
+        currentTestType = savedInstanceState?.getString(STATE_CURRENT_TEST_TYPE)
+            ?.let { saved -> TestType.entries.firstOrNull { it.name == saved } } ?: TestType.VOICE
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -125,7 +130,7 @@ class MainActivity : Activity() {
         root.addView(createBottomNavigation())
         setContentView(root)
 
-        showSection(Section.STATUS)
+        showSection(currentSection)
     }
 
     override fun onStart() {
@@ -136,9 +141,12 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (awaitingVoiceOutcome && currentTestType == TestType.VOICE && ::testScenarioHost.isInitialized) {
-            renderScenario(TestType.VOICE)
-        }
+        refreshVoiceScenarioAfterResume()
+    }
+
+    private fun refreshVoiceScenarioAfterResume() {
+        if (!awaitingVoiceOutcome || currentTestType != TestType.VOICE || !::testScenarioHost.isInitialized) return
+        renderScenario(TestType.VOICE)
     }
 
     override fun onPause() {
@@ -155,6 +163,8 @@ class MainActivity : Activity() {
         outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
         outState.putBoolean(STATE_AWAITING_OUTCOME, awaitingVoiceOutcome)
         outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
+        outState.putString(STATE_CURRENT_SECTION, currentSection.name)
+        outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
         super.onSaveInstanceState(outState)
     }
 
@@ -198,7 +208,9 @@ class MainActivity : Activity() {
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
         }
 
-        if (section == Section.TEST) {
+        if (section == Section.STATUS) {
+            refreshVoiceSummary()
+        } else if (section == Section.TEST) {
             refreshVoiceStatusBar()
         } else if (section == Section.REGISTER) {
             renderRegister()
@@ -282,12 +294,42 @@ class MainActivity : Activity() {
             )
         }
 
-        row.addView(createSummaryTile(getString(R.string.voice_type), getString(R.string.status_summary_placeholder)))
+        row.addView(createVoiceSummaryTile())
         row.addView(spaceHorizontal(dimen(8)))
         row.addView(createSummaryTile(getString(R.string.sms_type), getString(R.string.status_summary_placeholder)))
         row.addView(spaceHorizontal(dimen(8)))
         row.addView(createSummaryTile(getString(R.string.data_type), getString(R.string.status_summary_placeholder)))
         return row
+    }
+
+    private fun createVoiceSummaryTile(): View {
+        return createCard {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
+            addView(createTinyLabel(getString(R.string.voice_type)))
+            addView(spaceVertical(dimen(6)))
+            voiceSummaryText = createMicroText(getString(R.string.status_voice_no_results))
+            addView(voiceSummaryText)
+            refreshVoiceSummary()
+        }
+    }
+
+    private fun refreshVoiceSummary() {
+        if (!::voiceSummaryText.isInitialized) return
+        val latest = voiceResultStore.loadAll().firstOrNull()
+        voiceSummaryText.text = if (latest == null) {
+            getString(R.string.status_voice_no_results)
+        } else {
+            val outcome = when (latest.outcome) {
+                VoiceTestResult.Outcome.SUCCESS -> getString(R.string.outcome_success)
+                VoiceTestResult.Outcome.FAILURE -> getString(R.string.outcome_failure)
+                VoiceTestResult.Outcome.NOT_CHECKED -> getString(R.string.outcome_not_checked)
+            }
+            val date = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
+                .format(Date(latest.timestampMillis))
+            getString(R.string.status_voice_latest, outcome, date)
+        }
+        voiceSummaryText.contentDescription = getString(R.string.status_voice_summary_accessibility, voiceSummaryText.text)
     }
 
     private fun createSummaryTile(title: String, body: String): View {
@@ -558,6 +600,7 @@ class MainActivity : Activity() {
         awaitingVoiceOutcome = false
         resultSaved = true
         renderRegister()
+        refreshVoiceSummary()
         Toast.makeText(this, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)
     }
@@ -870,6 +913,8 @@ class MainActivity : Activity() {
         const val STATE_DIALER_OPENED = "dialerOpened"
         const val STATE_AWAITING_OUTCOME = "awaitingOutcome"
         const val STATE_RESULT_SAVED = "resultSaved"
+        const val STATE_CURRENT_SECTION = "currentSection"
+        const val STATE_CURRENT_TEST_TYPE = "currentTestType"
     }
 
     private object ColorPalette {
