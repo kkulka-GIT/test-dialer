@@ -22,6 +22,9 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class MainActivity : Activity() {
@@ -43,6 +46,7 @@ class MainActivity : Activity() {
     private lateinit var statusSection: View
     private lateinit var testSection: View
     private lateinit var registerSection: View
+    private lateinit var registerListHost: LinearLayout
     private lateinit var wifiBadge: LinearLayout
     private lateinit var cellularBadge: LinearLayout
     private lateinit var simBadge: LinearLayout
@@ -196,6 +200,8 @@ class MainActivity : Activity() {
 
         if (section == Section.TEST) {
             refreshVoiceStatusBar()
+        } else if (section == Section.REGISTER) {
+            renderRegister()
         }
     }
 
@@ -354,16 +360,69 @@ class MainActivity : Activity() {
             getString(R.string.register_description),
         ))
         content.addView(spaceVertical(dimen(16)))
-        content.addView(createCard {
-            addView(createCardTitle(getString(R.string.register_placeholder_title)))
-            addView(spaceVertical(dimen(8)))
-            addView(createBodyText(getString(R.string.register_placeholder_body)))
-            addView(spaceVertical(dimen(12)))
-            addView(createTag(getString(R.string.register_placeholder_tag)))
-        })
+        registerListHost = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        content.addView(registerListHost)
+        renderRegister()
 
         scroll.addView(content)
         return scroll
+    }
+
+    private fun renderRegister() {
+        if (!::registerListHost.isInitialized) return
+        registerListHost.removeAllViews()
+        val results = voiceResultStore.loadAll()
+        if (results.isEmpty()) {
+            registerListHost.addView(createCard {
+                addView(createCardTitle(getString(R.string.register_empty_title)))
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.register_empty_body)))
+            })
+            return
+        }
+        results.forEachIndexed { index, result ->
+            if (index > 0) registerListHost.addView(spaceVertical(dimen(12)))
+            registerListHost.addView(createVoiceResultCard(result))
+        }
+    }
+
+    private fun createVoiceResultCard(result: VoiceTestResult): View {
+        val outcomeLabel = when (result.outcome) {
+            VoiceTestResult.Outcome.SUCCESS -> getString(R.string.outcome_success)
+            VoiceTestResult.Outcome.FAILURE -> getString(R.string.outcome_failure)
+            VoiceTestResult.Outcome.NOT_CHECKED -> getString(R.string.outcome_not_checked)
+        }
+        val outcomeColor = when (result.outcome) {
+            VoiceTestResult.Outcome.SUCCESS -> ColorPalette.ok
+            VoiceTestResult.Outcome.FAILURE -> ColorPalette.bad
+            VoiceTestResult.Outcome.NOT_CHECKED -> ColorPalette.neutral
+        }
+        val formattedDate = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
+            .format(Date(result.timestampMillis))
+        return createCard {
+            contentDescription = buildString {
+                append(getString(R.string.result_accessibility, outcomeLabel, formattedDate, result.phoneNumber))
+                result.testName?.let { append(getString(R.string.result_accessibility_name, it)) }
+            }
+            addView(TextView(this).apply {
+                text = outcomeLabel
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(ColorPalette.onAccent)
+                setPadding(dimen(12), dimen(8), dimen(12), dimen(8))
+                background = pillBackground(outcomeColor)
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCardTitle(result.testName ?: getString(R.string.result_unnamed)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.result_type_value)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.result_phone_value, result.phoneNumber)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.result_date_value, formattedDate)))
+        }
     }
 
     private fun createTestTypeSelectorCard(): View {
@@ -498,6 +557,7 @@ class MainActivity : Activity() {
         )
         awaitingVoiceOutcome = false
         resultSaved = true
+        renderRegister()
         Toast.makeText(this, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)
     }

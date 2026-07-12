@@ -32,7 +32,7 @@
     <string name="opening_dialer">Otwieranie dialera...</string>
     <string name="dialer_unavailable">Nie znaleziono aplikacji dialera.</string>
     <string name="voice_outcome_title">Jaki był wynik testu?</string>
-    <string name="voice_outcome_description">Wskaż ręcznie wynik testu numeru %1. Test Dialer nie sprawdza technicznie połączenia.</string>
+    <string name="voice_outcome_description">Wskaż ręcznie wynik testu numeru %1$s. Test Dialer nie sprawdza technicznie połączenia.</string>
     <string name="voice_outcome_accessibility_announcement">Wrócono z dialera. Wybierz ręcznie wynik testu Voice.</string>
     <string name="outcome_success">Udało się</string>
     <string name="outcome_failure">Nie udało się</string>
@@ -48,8 +48,14 @@
     <string name="data_placeholder_body">Scenariusz Data jest przygotowany wizualnie i będzie rozwijany później.</string>
     <string name="data_placeholder_tag">wkrótce</string>
     <string name="register_title">Rejestr</string>
-    <string name="register_description">Miejsce na historię testów i podsumowania wyników.</string>
-    <string name="register_placeholder_title">Rejestr testów</string>
-    <string name="register_placeholder_body">Historia testów pojawi się później w lekkim, czytelnym widoku.</string>
-    <string name="register_placeholder_tag">wkrótce</string>
+    <string name="register_description">Lokalna historia ręcznie zadeklarowanych wyników Voice. Najnowsze są na górze.</string>
+    <string name="register_empty_title">Brak zapisanych wyników</string>
+    <string name="register_empty_body">Wykonaj test Voice i po powrocie z dialera wskaż jego wynik.</string>
+    <string name="result_unnamed">Test Voice</string>
+    <string name="result_type_value">Typ: Voice</string>
+    <string name="result_phone_value">Numer: %1$s</string>
+    <string name="result_date_value">Data: %1$s</string>
+    <string name="result_date_pattern">dd.MM.yyyy, HH:mm</string>
+    <string name="result_accessibility">Wynik %1$s. Data %2$s. Numer %3$s.</string>
+    <string name="result_accessibility_name"> Nazwa testu: %1$s.</string>
 </resources>
