@@ -1,27 +1,22 @@
 # Test Dialer
 
-## Opis aplikacji
+## Aktualny stan aplikacji
 
-Test Dialer to lekka aplikacja Android do ręcznego testowania usług mobilnych. Obecny działający zakres obejmuje Voice; SMS i Data pozostają nieaktywne i są przewidziane na później.
+Test Dialer to lekka aplikacja Android do ręcznego testowania usług mobilnych. W obecnym kodzie aktywny jest tylko przepływ Voice, a SMS i Data są pokazane jako placeholdery.
 
-## Działający przepływ Voice
+## Zaimplementowane elementy
 
-1. W sekcji Test użytkownik opcjonalnie podaje nazwę i obowiązkowo numer telefonu.
-2. Aplikacja otwiera systemowy dialer przez `ACTION_DIAL` i nie rozpoczyna połączenia.
-3. Po powrocie aplikacja prosi użytkownika o ręczny wybór: Udało się, Nie udało się albo Nie sprawdziłem.
-4. Deklaracja jest zapisywana lokalnie wraz z datą, numerem i opcjonalną nazwą.
-5. Potwierdzenie pozwala szybko przejść do Rejestru.
+- Trzy główne sekcje aplikacji: `Status`, `Test`, `Rejestr`.
+- W `Test` dostępny jest wybór `Voice`, `SMS`, `Data`.
+- `Voice` otwiera systemowy dialer przez `ACTION_DIAL` i nie rozpoczyna połączenia automatycznie.
+- Po powrocie z dialera użytkownik ręcznie wybiera wynik: `Udało się`, `Nie udało się` albo `Nie sprawdziłem`.
+- Wynik Voice jest zapisywany lokalnie wraz z datą, numerem i opcjonalną nazwą.
+- `Rejestr` pokazuje lokalną historię wyników Voice, najnowsze wpisy na górze.
+- `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
 
-## Aktualna struktura
+## Założenia bieżące
 
-- Status — gotowość Wi-Fi/Dane/SIM oraz ostatni wynik Voice,
-- Test — aktywny scenariusz Voice i nieaktywne makiety SMS/Data,
-- Rejestr — trwała historia wyników Voice, od najnowszego wpisu.
-
-## Założenia
-
-- brak backendu, kont i synchronizacji,
-- zapis lokalny odpowiedni dla lekkiego MVP,
-- wynik jest deklaracją użytkownika, nie automatycznym pomiarem,
-- Android Views bez migracji do Compose,
-- `/brain` jest źródłem prawdy projektu.
+- Brak backendu, kont i synchronizacji.
+- Dane wyników są przechowywane lokalnie.
+- UI jest budowane programowo w Android Views.
+- `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.

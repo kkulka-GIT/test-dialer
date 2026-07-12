@@ -1,4 +1,6 @@
-# Raport developerski — Voice i Rejestr
+# Raport developerski - Voice i Rejestr
+
+_To jest raport historyczny opisujący stan repozytorium i wynik prac w momencie ukończenia zadania._
 
 ## Cel zadania
 
@@ -8,15 +10,15 @@ Domknięcie ręcznego przepływu Voice: przygotowanie testu, otwarcie dialera, p
 
 - Gałąź: `feature/voice-register-flow`
 - Końcowy SHA implementacji: `de40175bf07082954ca3376a9638c9fd20a95ad3`
-- Draft PR: `#1`, bez merge
+- PR #1: draft, bez merge; opis odpowiadał stanowi builda, CI i testów, a użytkownik potwierdził udany manualny test aplikacji na telefonie.
 
 ## Checkpointy i commity
 
-- Checkpoint 1 — `f7d6bd4`: model, trwały magazyn i odporność na błędne rekordy.
-- Checkpoint 2 — `683fa2a`: powrót z dialera, trzy ręczne wyniki i zapis.
-- Checkpoint 3 — `944a6b8`: Rejestr, pusty stan, odświeżanie i dostępność.
-- Korekta — `8eda1a8`: bezpieczne `onResume`, stan po zmianie konfiguracji i ostatni wynik Voice na Statusie.
-- Checkpoint 4 — `de40175`: poprawka kontekstów Kotlin, dokumentacja i zielony build referencyjny.
+- Checkpoint 1 - `f7d6bd4`: model, trwały magazyn i odporność na błędne rekordy.
+- Checkpoint 2 - `683fa2a`: powrót z dialera, trzy ręczne wyniki i zapis.
+- Checkpoint 3 - `944a6b8`: Rejestr, pusty stan, odświeżanie i dostępność.
+- Korekta - `8eda1a8`: bezpieczne `onResume`, stan po zmianie konfiguracji i ostatni wynik Voice na Statusie.
+- Checkpoint 4 - `de40175`: poprawka kontekstów Kotlin, dokumentacja i zielony build referencyjny.
 
 ## Zmienione pliki
 
@@ -24,12 +26,15 @@ Domknięcie ręcznego przepływu Voice: przygotowanie testu, otwarcie dialera, p
 - `app/src/main/java/com/example/testdialer/VoiceTestResult.kt`
 - `app/src/main/java/com/example/testdialer/VoiceResultStore.kt`
 - `app/src/main/res/values/strings.xml`
-- `brain/README.md`, `brain/DECISIONS.md`, `brain/LOG.md`, `brain/NEXT.md`, `brain/WORK_STATUS.md`
-- `brain/DEVELOPER_REPORT.md`
+- `brain/README.md`
+- `brain/DECISIONS.md`
+- `brain/LOG.md`
+- `brain/NEXT.md`
+- `AGENTS.md`
 
 ## Działający przepływ
 
-Numer jest wymagany, nazwa opcjonalna. `ACTION_DIAL` otwiera systemowy dialer bez automatycznego połączenia. Po przejściu aplikacji w tło i powrocie `onResume` odświeża Voice oraz pokazuje trzy duże przyciski: Udało się, Nie udało się i Nie sprawdziłem. Panel nie pojawia się przy pierwszym uruchomieniu. Oczekiwanie, numer, nazwa, sekcja i typ testu są zachowywane przy zmianie konfiguracji. Po wyborze aplikacja zapisuje deklarację, potwierdza zapis i pozwala przejść do Rejestru.
+Numer jest wymagany, nazwa opcjonalna. `ACTION_DIAL` otwiera systemowy dialer bez automatycznego połączenia. Po przejściu aplikacji w tło i powrocie `onResume` odświeża Voice oraz pokazuje trzy duże przyciski: `Udało się`, `Nie udało się` i `Nie sprawdziłem`. Panel nie pojawia się przy pierwszym uruchomieniu. Oczekiwanie, numer, nazwa, sekcja i typ testu są zachowywane przy zmianie konfiguracji. Po wyborze aplikacja zapisuje deklarację, potwierdza zapis i pozwala przejść do Rejestru.
 
 ## Lokalny zapis
 
@@ -41,7 +46,7 @@ Każda karta zawiera tekst wyniku, datę i godzinę, opcjonalną nazwę, numer i
 
 ## Dodatkowe ulepszenie
 
-Jedno małe ulepszenie: kafel Voice na Statusie pokazuje ostatni ręczny wynik i jego czas.
+Kafel Voice na Statusie pokazuje ostatni ręczny wynik i jego czas.
 
 ## Kontrole i testy
 
@@ -51,8 +56,8 @@ Jedno małe ulepszenie: kafel Voice na Statusie pokazuje ostatni ręczny wynik i
 - lokalne `testDebugUnitTest assembleDebug`: BLOCKED na środowiskowym błędzie startu AAPT2 w `processDebugResources`,
 - GitHub Actions `29186741909`: FAIL; wykrył cztery błędne konteksty Kotlin, następnie naprawione,
 - GitHub Actions `29186874690` dla `de40175bf07082954ca3376a9638c9fd20a95ad3`: PASS; wszystkie kroki sprawdzone,
-- przegląd dostępności w kodzie: PASS dla dużych głównych przycisków, tekstowych etykiet, znaczenia niewyłącznie kolorem, kolejności i opisów TalkBack,
-- test fizycznego telefonu i rzeczywisty TalkBack: NIE WYKONANO, bez statusu PASS.
+- przegląd dostępności w kodzie: PASS dla dużych głównych przycisków, tekstowych etykiet, znaczenia nieopierania stanu wyłącznie na kolorze i opisów TalkBack,
+- test fizycznego telefonu i rzeczywisty TalkBack: użytkownik potwierdził udany manualny test aplikacji na telefonie.
 
 ## GitHub Actions i APK
 
@@ -65,16 +70,16 @@ Jedno małe ulepszenie: kafel Voice na Statusie pokazuje ostatni ręczny wynik i
 
 ## Niewykonane i ryzyka
 
-Nie wykonano instalacji ani testu na fizycznym telefonie. Zachowanie dialera może różnić się zależnie od producenta, trybu wielookienkowego i polityki dialera. SMS, Data, backend, konta, synchronizacja oraz eksport pozostają poza zakresem.
+Nie wykonano instalacji ani testu na fizycznym telefonie w sposób automatyczny. Zachowanie dialera może różnić się zależnie od producenta, trybu wielookienkowego i polityki dialera. SMS, Data, backend, konta, synchronizacja oraz eksport pozostają poza zakresem.
 
 ## Krótki test na telefonie
 
 1. Zainstaluj APK z runu `29186874690` i uruchom aplikację.
-2. Otwórz Test → Voice, wpisz numer oraz opcjonalną nazwę.
-3. Naciśnij Test połączenia; potwierdź, że dialer się otwiera, ale połączenie nie startuje automatycznie.
+2. Otwórz `Test` -> `Voice`, wpisz numer oraz opcjonalną nazwę.
+3. Naciśnij `Test połączenia`; potwierdź, że dialer się otwiera, ale połączenie nie startuje automatycznie.
 4. Wróć; sprawdź automatyczne pokazanie trzech dużych przycisków.
 5. Zmień orientację; sprawdź zachowanie panelu i danych.
-6. Wybierz wynik, przejdź do Rejestru i sprawdź tekst, kolor, datę, nazwę, numer oraz Voice.
+6. Wybierz wynik, przejdź do `Rejestru` i sprawdź tekst, kolor, datę, nazwę, numer oraz Voice.
 7. Uruchom aplikację ponownie i sprawdź trwałość wpisu.
 8. Powtórz dla pozostałych wyników i sprawdź kolejność od najnowszego.
 9. Włącz TalkBack; sprawdź kolejność, etykiety przycisków i odczyt karty.
