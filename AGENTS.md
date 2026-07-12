@@ -10,6 +10,8 @@ Agent pracuje w pętli `propose -> wait -> execute`.
 
 Jeżeli zakres nie jest jasny, agent nie zgaduje. Najpierw proponuje możliwe warianty i czeka na wybór.
 
+Po zaakceptowaniu całego zadania agent może działać autonomicznie w obrębie uzgodnionego zakresu aż do ukończenia ścieżki albo wystąpienia blokady.
+
 ## Modele pracy
 
 - `batch` - kilka spójnych zmian realizowanych w jednym kroku, gdy zakres jest już uzgodniony.
@@ -25,6 +27,8 @@ Przy pracy incrementalnej agent planuje logiczne checkpointy, które:
 - mają jasny zakres,
 - nie mieszają zmian produktowych z porządkowaniem dokumentacji,
 - umożliwiają zatrzymanie się przed kolejną decyzją.
+
+W autonomicznym trybie incrementalnym checkpoint oznacza logiczny, weryfikowalny etap. Agent nie zatrzymuje się po każdym checkpointcie na osobną akceptację, tylko kończy etap, wykonuje weryfikację, robi commit i push na branch roboczy, a następnie przechodzi do następnego etapu w ramach tego samego zadania.
 
 ## Struktura zadania
 
@@ -47,6 +51,9 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 - Agent nie rozszerza zakresu bez nowej decyzji.
 - Agent nie startuje nowych funkcji, jeśli zadanie dotyczy tylko porządkowania, synchronizacji albo dokumentacji.
 - Agent nie zmienia architektury, gdy nie jest to częścią zaakceptowanego planu.
+- Agent nie pracuje bezpośrednio na `main`.
+- Agent nie wykonuje samodzielnie merge do `main`.
+- Historia commitów służy nadzorcy do bieżącego śledzenia pracy.
 
 ## Zasady prawdy o projekcie
 
@@ -58,6 +65,7 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 ## Raportowanie
 
 - Po każdym wykonanym kroku agent aktualizuje odpowiednie pliki repozytorium, jeśli zadanie tego wymaga.
+- Raport końcowy powstaje po zakończeniu całej ścieżki zadania.
 - Raport zapisuje się w miejscu wskazanym przez zadanie.
-- Jeśli zadanie wymaga także kopii zewnętrznej, agent zapisuje ją dokładnie w wskazanej ścieżce.
+- Jeśli zadanie wymaga także kopii zewnętrznej, agent zapisuje ją dokładnie w wskazanej ścieżce podanej w zadaniu.
 - Raport ma odzwierciedlać rzeczywisty stan repozytorium, builda i testów bez zgadywania.
