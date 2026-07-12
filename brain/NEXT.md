@@ -1,6 +1,6 @@
 # Co robimy teraz
 
-Zainstalować końcowy debug APK z zielonego GitHub Actions dla gałęzi `feature/voice-register-flow` na fizycznym telefonie i wykonać krótki test:
+Zainstalować końcowy debug APK z zielonego GitHub Actions `29186874690` dla `de40175bf07082954ca3376a9638c9fd20a95ad3` na fizycznym telefonie i wykonać krótki test:
 
 - uruchomić aplikację i sprawdzić czytelność Status/Test/Rejestr,
 - wprowadzić numer i opcjonalną nazwę testu Voice,
