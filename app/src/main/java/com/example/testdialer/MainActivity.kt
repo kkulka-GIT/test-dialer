@@ -22,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.util.UUID
 
 class MainActivity : Activity() {
     private enum class Section {
@@ -52,6 +53,12 @@ class MainActivity : Activity() {
     private var networkCallbackRegistered = false
     private var currentSection = Section.STATUS
     private var currentTestType = TestType.VOICE
+    private lateinit var voiceResultStore: VoiceResultStore
+    private var pendingPhoneNumber: String? = null
+    private var pendingTestName: String? = null
+    private var dialerWasOpened = false
+    private var awaitingVoiceOutcome = false
+    private var resultSaved = false
 
     private val connectivityManager by lazy {
         getSystemService(ConnectivityManager::class.java)
@@ -77,6 +84,13 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        voiceResultStore = VoiceResultStore(this)
+        pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
+        pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
+        dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
+        awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
+        resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -114,6 +128,30 @@ class MainActivity : Activity() {
         super.onStart()
         registerNetworkCallback()
         refreshVoiceStatusBar()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (awaitingVoiceOutcome && currentTestType == TestType.VOICE && ::testScenarioHost.isInitialized) {
+            renderScenario(TestType.VOICE)
+        }
+    }
+
+    override fun onPause() {
+        if (dialerWasOpened) {
+            dialerWasOpened = false
+            awaitingVoiceOutcome = true
+        }
+        super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_PENDING_PHONE, pendingPhoneNumber)
+        outState.putString(STATE_PENDING_NAME, pendingTestName)
+        outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
+        outState.putBoolean(STATE_AWAITING_OUTCOME, awaitingVoiceOutcome)
+        outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStop() {
@@ -389,6 +427,8 @@ class MainActivity : Activity() {
     }
 
     private fun createVoiceScenario(): View {
+        if (awaitingVoiceOutcome) return createVoiceOutcomePanel()
+        if (resultSaved) return createVoiceSavedPanel()
         return createCard {
             addView(createCardTitle(getString(R.string.voice_card_title)))
             addView(spaceVertical(dimen(8)))
@@ -411,6 +451,85 @@ class MainActivity : Activity() {
                     if (s.isNullOrBlank()) {
                         voiceStatusText.setText(R.string.enter_phone_number)
                     }
+                }
+            })
+        }
+    }
+
+    private fun createVoiceOutcomePanel(): View {
+        val phoneNumber = pendingPhoneNumber.orEmpty()
+        return createCard {
+            announceForAccessibility(getString(R.string.voice_outcome_accessibility_announcement))
+            addView(createCardTitle(getString(R.string.voice_outcome_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.voice_outcome_description, phoneNumber)))
+            addView(spaceVertical(dimen(18)))
+            addView(createOutcomeButton(R.string.outcome_success, VoiceTestResult.Outcome.SUCCESS, ColorPalette.ok))
+            addView(spaceVertical(dimen(12)))
+            addView(createOutcomeButton(R.string.outcome_failure, VoiceTestResult.Outcome.FAILURE, ColorPalette.bad))
+            addView(spaceVertical(dimen(12)))
+            addView(createOutcomeButton(R.string.outcome_not_checked, VoiceTestResult.Outcome.NOT_CHECKED, ColorPalette.neutral))
+        }
+    }
+
+    private fun createOutcomeButton(labelRes: Int, outcome: VoiceTestResult.Outcome, color: Int): Button {
+        return Button(this).apply {
+            setText(labelRes)
+            isAllCaps = false
+            textSize = 18f
+            minHeight = dimen(58)
+            background = pillBackground(color)
+            setTextColor(ColorPalette.onAccent)
+            contentDescription = getString(R.string.outcome_button_description, getString(labelRes))
+            setOnClickListener { saveVoiceOutcome(outcome) }
+        }
+    }
+
+    private fun saveVoiceOutcome(outcome: VoiceTestResult.Outcome) {
+        val phoneNumber = pendingPhoneNumber ?: return
+        voiceResultStore.save(
+            VoiceTestResult(
+                id = UUID.randomUUID().toString(),
+                outcome = outcome,
+                timestampMillis = System.currentTimeMillis(),
+                phoneNumber = phoneNumber,
+                testName = pendingTestName,
+            ),
+        )
+        awaitingVoiceOutcome = false
+        resultSaved = true
+        Toast.makeText(this, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
+        renderScenario(TestType.VOICE)
+    }
+
+    private fun createVoiceSavedPanel(): View {
+        return createCard {
+            addView(createCardTitle(getString(R.string.voice_result_saved_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.voice_result_saved_description)))
+            addView(spaceVertical(dimen(16)))
+            addView(Button(this).apply {
+                setText(R.string.go_to_register)
+                isAllCaps = false
+                textSize = 17f
+                minHeight = dimen(52)
+                background = pillBackground(ColorPalette.accent)
+                setTextColor(ColorPalette.onAccent)
+                setOnClickListener { showSection(Section.REGISTER) }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(Button(this).apply {
+                setText(R.string.start_another_voice_test)
+                isAllCaps = false
+                textSize = 16f
+                minHeight = dimen(50)
+                background = pillBackground(ColorPalette.button)
+                setTextColor(ColorPalette.textPrimary)
+                setOnClickListener {
+                    resultSaved = false
+                    pendingPhoneNumber = null
+                    pendingTestName = null
+                    renderScenario(TestType.VOICE)
                 }
             })
         }
@@ -441,7 +560,19 @@ class MainActivity : Activity() {
                     Toast.makeText(this@MainActivity, R.string.enter_phone_number, Toast.LENGTH_SHORT).show()
                 } else {
                     voiceStatusText.setText(R.string.opening_dialer)
-                    startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+                    pendingPhoneNumber = number
+                    pendingTestName = voiceNameInput.text.toString().trim().takeIf(String::isNotEmpty)
+                    resultSaved = false
+                    try {
+                        dialerWasOpened = true
+                        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        dialerWasOpened = false
+                        pendingPhoneNumber = null
+                        pendingTestName = null
+                        voiceStatusText.setText(R.string.dialer_unavailable)
+                        Toast.makeText(this, R.string.dialer_unavailable, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -673,6 +804,14 @@ class MainActivity : Activity() {
 
     private fun dimen(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
+    private companion object {
+        const val STATE_PENDING_PHONE = "pendingPhone"
+        const val STATE_PENDING_NAME = "pendingName"
+        const val STATE_DIALER_OPENED = "dialerOpened"
+        const val STATE_AWAITING_OUTCOME = "awaitingOutcome"
+        const val STATE_RESULT_SAVED = "resultSaved"
+    }
+
     private object ColorPalette {
         const val background = 0xFFF4F7FB.toInt()
         const val surface = 0xFFFFFFFF.toInt()
@@ -684,5 +823,6 @@ class MainActivity : Activity() {
         const val onAccent = 0xFFFFFFFF.toInt()
         const val ok = 0xFF2E7D32.toInt()
         const val bad = 0xFFC62828.toInt()
+        const val neutral = 0xFF455A64.toInt()
     }
 }

@@ -2,10 +2,10 @@
 
 - Zadanie: kompletny przepływ ręcznego testu Voice i działający Rejestr
 - Gałąź: `feature/voice-register-flow`
-- Aktualny status: IN PROGRESS — checkpoint 1 gotowy
-- Ukończono: inspekcję bezpieczeństwa; model wyniku Voice; trwały zapis i odczyt przez Android SDK; pomijanie pojedynczych uszkodzonych rekordów; sortowanie od najnowszych
-- Obecnie: przygotowanie checkpointu 2 — powrót z dialera i ręczny wybór wyniku
-- Pozostało: panel wyniku, zapis wyboru, Rejestr, dostępność, dokumentacja, build i GitHub Actions
+- Aktualny status: IN PROGRESS — checkpoint 2 gotowy
+- Ukończono: checkpoint 1 (`f7d6bd4`); ACTION_DIAL; zachowanie danych rozpoczętego testu; panel trzech dużych ręcznych wyników po powrocie; zapis wyboru; potwierdzenie i szybkie przejście do Rejestru
+- Obecnie: przygotowanie checkpointu 3 — działający Rejestr i dostępność
+- Pozostało: Rejestr, pusty stan, odświeżanie, końcowa dostępność, dokumentacja, build i GitHub Actions
 - Blokady: brak
-- Ostatni commit: checkpoint 1 (commit tworzony wraz z tym statusem)
+- Ostatni commit: `f7d6bd4`; checkpoint 2 jest commitowany wraz z tym statusem
 - Ostatnie sprawdzenie: `git diff --check` bez błędów; lokalny `testDebugUnitTest` zablokowany na znanym środowiskowym błędzie startu AAPT2 (`:app:processDebugResources`)
