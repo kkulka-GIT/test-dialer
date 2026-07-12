@@ -22,8 +22,8 @@ _To jest raport końcowy dla checkpointu dokumentacyjnego. Opisuje wyłącznie s
 
 ## Finalny stan
 
-- gałąź robocza: `feature/voice-register-flow`,
-- commit: zostanie dopisany w kolejnym kroku,
+- gałąź: `feature/voice-register-flow`
+- commit synchronizacji dokumentacji: `63678ff543a7dbcd7f00d870f3234c398562a942`
 - zakres: dokumentacja בלבד.
 
 ## Uwagi
