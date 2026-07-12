@@ -120,6 +120,9 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 
 - Po każdym wykonanym kroku agent aktualizuje odpowiednie pliki repozytorium, jeśli zadanie tego wymaga.
 - Raport końcowy powstaje po zakończeniu całej ścieżki zadania.
+- Każde zadanie musi zakończyć się:
+  - raportem w katalogu `/brain/reports/`
+  - commit’em dokumentującym wynik pracy
 - Raport zapisuje się w miejscu wskazanym przez zadanie.
 - Jeśli zadanie wymaga także kopii zewnętrznej, agent zapisuje ją dokładnie w wskazanej ścieżce podanej w zadaniu.
 - Raport ma odzwierciedlać rzeczywisty stan repozytorium, builda i testów bez zgadywania.
