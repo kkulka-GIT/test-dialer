@@ -238,7 +238,7 @@ class MainActivity : Activity() {
     }
 
     private fun createSectionButton(section: Section, label: String): Button {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = label
             isAllCaps = false
             textSize = 14f
@@ -448,7 +448,7 @@ class MainActivity : Activity() {
                 append(getString(R.string.result_accessibility, outcomeLabel, formattedDate, result.phoneNumber))
                 result.testName?.let { append(getString(R.string.result_accessibility_name, it)) }
             }
-            addView(TextView(this).apply {
+            addView(TextView(this@MainActivity).apply {
                 text = outcomeLabel
                 textSize = 18f
                 typeface = Typeface.DEFAULT_BOLD
@@ -484,7 +484,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTestTypeChip(type: TestType, label: String): Button {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = label
             isAllCaps = false
             textSize = 14f
@@ -574,7 +574,7 @@ class MainActivity : Activity() {
     }
 
     private fun createOutcomeButton(labelRes: Int, outcome: VoiceTestResult.Outcome, color: Int): Button {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             setText(labelRes)
             isAllCaps = false
             textSize = 18f
@@ -601,7 +601,7 @@ class MainActivity : Activity() {
         resultSaved = true
         renderRegister()
         refreshVoiceSummary()
-        Toast.makeText(this, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
+        Toast.makeText(this@MainActivity, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)
     }
 
@@ -611,7 +611,7 @@ class MainActivity : Activity() {
             addView(spaceVertical(dimen(8)))
             addView(createBodyText(getString(R.string.voice_result_saved_description)))
             addView(spaceVertical(dimen(16)))
-            addView(Button(this).apply {
+            addView(Button(this@MainActivity).apply {
                 setText(R.string.go_to_register)
                 isAllCaps = false
                 textSize = 17f
@@ -621,7 +621,7 @@ class MainActivity : Activity() {
                 setOnClickListener { showSection(Section.REGISTER) }
             })
             addView(spaceVertical(dimen(12)))
-            addView(Button(this).apply {
+            addView(Button(this@MainActivity).apply {
                 setText(R.string.start_another_voice_test)
                 isAllCaps = false
                 textSize = 16f
@@ -649,7 +649,7 @@ class MainActivity : Activity() {
     }
 
     private fun createPrimaryActionButton(): View {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = getString(R.string.dial_test)
             isAllCaps = false
             textSize = 16f
@@ -674,7 +674,7 @@ class MainActivity : Activity() {
                         pendingPhoneNumber = null
                         pendingTestName = null
                         voiceStatusText.setText(R.string.dialer_unavailable)
-                        Toast.makeText(this, R.string.dialer_unavailable, Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, R.string.dialer_unavailable, Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -796,7 +796,7 @@ class MainActivity : Activity() {
     }
 
     private fun createCardTitle(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 18f
             setTextColor(ColorPalette.textPrimary)
@@ -804,7 +804,7 @@ class MainActivity : Activity() {
     }
 
     private fun createHeaderText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 27f
             setTextColor(ColorPalette.textPrimary)
@@ -812,7 +812,7 @@ class MainActivity : Activity() {
     }
 
     private fun createBodyText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 16f
             setTextColor(ColorPalette.textSecondary)
@@ -820,7 +820,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTinyLabel(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text.uppercase()
             textSize = 12f
             setTextColor(ColorPalette.textSecondary)
@@ -828,7 +828,7 @@ class MainActivity : Activity() {
     }
 
     private fun createMicroText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 13f
             setTextColor(ColorPalette.textPrimary)
@@ -836,7 +836,7 @@ class MainActivity : Activity() {
     }
 
     private fun createStatusText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 14f
             setTextColor(ColorPalette.textSecondary)
@@ -844,7 +844,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTag(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 12f
             setTextColor(ColorPalette.textPrimary)

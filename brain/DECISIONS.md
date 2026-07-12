@@ -14,3 +14,7 @@
 - Projekt jest rozwijany iteracyjnie.
 - Build referencyjny wykonujemy przez GitHub Actions.
 - Kotlin, min SDK 26, compile/target SDK 36, JVM 17.
+
+- Wynik Voice jest ręczną deklaracją użytkownika: Udało się, Nie udało się albo Nie sprawdziłem; aplikacja nie potwierdza technicznie połączenia.
+- Wyniki Voice przechowujemy lokalnie i trwale, bez backendu, kont oraz synchronizacji; Rejestr pokazuje najnowsze wpisy jako pierwsze.
+- Rejestr przekazuje wynik tekstem i kolorem, a interakcje Voice mają duże kontrolki i opisy dostępności.

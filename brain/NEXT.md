@@ -1,10 +1,13 @@
 # Co robimy teraz
 
-Na fizycznie podłączonym telefonie dokończyć ręczną weryfikację po recovery, używając APK z referencyjnego runu GitHub Actions `29165568019` dla commita aplikacji `e191f66a68647ed1ce5eba152e03d64a89a36758`:
-- zainstalować pobrany `app-debug.apk` o SHA-256 `f9998cef45dfc0512855f7badc3ac0c8f238f393ef1a3ca745b8232ebb97de65`,
-- sprawdzić uruchomienie i UI Status/Test/Rejestr,
-- sprawdzić Voice i otwarcie systemowego dialera bez automatycznego połączenia,
-- ręcznie sprawdzić reakcje paska Wi-Fi/Dane/SIM na zmiany stanów,
-- zapisać rzeczywiste wyniki PASS/FAIL/BLOCKED i dowody.
+Zainstalować końcowy debug APK z zielonego GitHub Actions dla gałęzi `feature/voice-register-flow` na fizycznym telefonie i wykonać krótki test:
 
-Kontrola repo i brak śledzonych build/cache są zaliczone. Referencyjny build i artefakt APK są zaliczone. Nie przypisywać PASS testom telefonu bez ich faktycznego wykonania.
+- uruchomić aplikację i sprawdzić czytelność Status/Test/Rejestr,
+- wprowadzić numer i opcjonalną nazwę testu Voice,
+- potwierdzić, że `ACTION_DIAL` tylko otwiera dialer i nie rozpoczyna połączenia,
+- wrócić do Test Dialera i sprawdzić automatyczne pokazanie trzech ręcznych wyników,
+- zapisać każdy typ wyniku i sprawdzić Rejestr przed oraz po ponownym uruchomieniu aplikacji,
+- wykonać podstawową kontrolę TalkBack i zmianę orientacji podczas oczekiwania na wynik,
+- zapisać rzeczywiste wyniki PASS/FAIL/BLOCKED oraz dowody.
+
+Nie przypisywać PASS testom telefonu bez ich faktycznego wykonania.
