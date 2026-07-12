@@ -13,3 +13,7 @@
 - UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
 - Repozytorium i `brain/` są utrzymywane iteracyjnie, a następny krok jest wybierany małymi milestone'ami.
 - Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.
+- GitHub Actions jest głównym źródłem prawdy dla builda debug APK.
+- Lokalny build w obecnym środowisku jest BLOCKED przez znany problem AAPT2.
+- Naprawa lokalnego środowiska nie jest obecnie celem projektu.
+- Pipeline buduje debug APK, nie release.
