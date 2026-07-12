@@ -1,13 +1,7 @@
 # Co robimy teraz
 
-Zainstalować końcowy debug APK z zielonego GitHub Actions `29186874690` dla `de40175bf07082954ca3376a9638c9fd20a95ad3` na fizycznym telefonie i wykonać krótki test:
+Etap Voice i Rejestr jest zakończony oraz zaakceptowany po instalacji końcowego APK i ręcznym teście funkcjonalnym zgłoszonym przez użytkownika.
 
-- uruchomić aplikację i sprawdzić czytelność Status/Test/Rejestr,
-- wprowadzić numer i opcjonalną nazwę testu Voice,
-- potwierdzić, że `ACTION_DIAL` tylko otwiera dialer i nie rozpoczyna połączenia,
-- wrócić do Test Dialera i sprawdzić automatyczne pokazanie trzech ręcznych wyników,
-- zapisać każdy typ wyniku i sprawdzić Rejestr przed oraz po ponownym uruchomieniu aplikacji,
-- wykonać podstawową kontrolę TalkBack i zmianę orientacji podczas oczekiwania na wynik,
-- zapisać rzeczywiste wyniki PASS/FAIL/BLOCKED oraz dowody.
+Następny krok: wybrać i uzgodnić kolejny mały kamień milowy produktu na podstawie aktualnych potrzeb i decyzji w `/brain`.
 
-Nie przypisywać PASS testom telefonu bez ich faktycznego wykonania.
+Nie rozpoczynać implementacji SMS ani Data bez osobnej decyzji produktowej i aktualizacji zakresu.

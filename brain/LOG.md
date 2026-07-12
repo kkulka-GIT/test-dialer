@@ -19,3 +19,4 @@
 - Lokalny build pozostał zablokowany przez środowiskowy błąd startu AAPT2; test fizycznego telefonu nie został wykonany i nie ma statusu PASS.
 - Pierwszy run PR `29186741909` ujawnił cztery błędne konteksty Kotlin w UI; naprawiono je w `de40175`, używając kontekstu `MainActivity`.
 - Referencyjny run `29186874690` dla `de40175bf07082954ca3376a9638c9fd20a95ad3` zakończył się sukcesem i opublikował artefakt `test-dialer-debug-apk` (`8258298415`). Test telefonu pozostaje niewykonany.
+- Użytkownik zainstalował końcowy APK etapu Voice i Rejestr oraz zgłosił, że aplikacja zadziałała prawidłowo. Zapisano to jako pozytywny ręczny test funkcjonalny zgłoszony przez użytkownika; nie potwierdzono osobno wszystkich kroków szczegółowej checklisty ani testu TalkBack.
