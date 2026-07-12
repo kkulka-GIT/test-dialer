@@ -62,6 +62,14 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 - Stan dokumentów musi odpowiadać rzeczywistemu kodowi.
 - Nie wolno dopisywać funkcji ani decyzji, których nie potwierdza repozytorium lub uzgodnienie z użytkownikiem.
 
+## Zasady builda
+
+- Nie uruchamiaj lokalnie `./gradlew assembleDebug` ani innych pełnych buildów Androida domyślnie.
+- Lokalny build uruchamiaj wyłącznie po wyraźnym poleceniu użytkownika lub nadzorcy.
+- Standardowa weryfikacja builda odbywa się przez GitHub Actions.
+- Na branchu `feature/*` CI uruchamia się przez pull request albo `workflow_dispatch`.
+- Zadanie wymagające APK nie jest zakończone bez `PASS` w CI i opublikowanego artifactu `test-dialer-debug-apk`.
+
 ## Raportowanie
 
 - Po każdym wykonanym kroku agent aktualizuje odpowiednie pliki repozytorium, jeśli zadanie tego wymaga.
