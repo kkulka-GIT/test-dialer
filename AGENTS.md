@@ -47,6 +47,52 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 
 ## Kontrolowana autonomia implementacyjna
 
+### Model sterowania
+
+- wykonuj polecenia użytkownika
+- polecenia użytkownika mają najwyższy priorytet
+- zasady projektu są domyślne i mogą być nadpisane przez użytkownika
+- zmiana kierunku przez użytkownika nie jest błędem - traktuj ją jako nowy zakres
+
+### Priorytety decyzji
+
+1. polecenie użytkownika
+2. zasady projektu
+3. bezpieczeństwo
+
+### Bezpieczeństwo
+
+- nie wykonuj force push
+- nie pracuj bezpośrednio na `main`
+- nie wykonuj merge do `main` bez polecenia
+- nie usuwaj danych poza zakresem zadania
+
+### Branching
+
+- jeden task = jeden branch
+- branch musi być unikalny
+- nie używaj istniejącego branchu bez sprawdzenia jego celu
+
+### Build i CI
+
+- GitHub Actions jest standardowym mechanizmem buildowania debug APK
+- nie uruchamiaj lokalnego builda Androida domyślnie
+- lokalny build tylko na wyraźne polecenie użytkownika
+- task wymagający APK kończy się dopiero po PASS w CI i artifact
+
+### Tryb pracy
+
+- pracuj w trybie incremental
+- dziel pracę na checkpointy
+- commit i push po każdym checkpointcie
+- nie zatrzymuj się bez potrzeby
+- zatrzymaj się tylko przy blokadzie lub niejasności
+
+### Obsługa niejednoznaczności
+
+- w razie braku danych - zapytaj lub przyjmij bezpieczne założenia
+- w razie konfliktu - zatrzymaj się i poproś o decyzję
+
 - Agent może samodzielnie wykonać uzgodnione kroki techniczne w ramach ustalonego zakresu.
 - Agent nie rozszerza zakresu bez nowej decyzji.
 - Agent nie startuje nowych funkcji, jeśli zadanie dotyczy tylko porządkowania, synchronizacji albo dokumentacji.
