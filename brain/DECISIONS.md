@@ -1,16 +1,15 @@
 # Decyzje projektowe
 
-- Używamy ACTION_DIAL; aplikacja nie wykonuje połączenia automatycznie.
-- Nie wykrywamy automatycznie VoLTE ani VoWiFi.
-- Status pokazuje warunki testu, a nie gwarantuje typu połączenia.
-- Kolor wskaźnika oznacza gotowość do danego testu, nie tylko stan techniczny.
-- Wi-Fi / Dane / SIM są pierwszym minimalnym zestawem statusu.
-- SMS i Data są przewidziane architektonicznie, ale nie są jeszcze aktywne.
-- Główna nawigacja aplikacji to Status/Test/Rejestr.
-- Voice/SMS/Data są wybierane wewnątrz sekcji Test.
-- Aktywny jest tylko Voice.
-- UI budujemy lekko, programowo w Android Views, bez ciężkich bibliotek UI.
-- /brain jest źródłem prawdy projektu.
-- Projekt jest rozwijany iteracyjnie.
-- Build referencyjny wykonujemy przez GitHub Actions.
-- Kotlin, min SDK 26, compile/target SDK 36, JVM 17.
+- Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`.
+- W `Test` wybieramy jeden scenariusz: `Voice`, `SMS` albo `Data`.
+- Aktywny scenariusz produkcyjny to tylko `Voice`.
+- `Voice` otwiera systemowy dialer przez `ACTION_DIAL`; aplikacja nie wykonuje połączenia automatycznie.
+- Wynik Voice jest ręczną deklaracją użytkownika: `Udało się`, `Nie udało się` albo `Nie sprawdziłem`.
+- Aplikacja nie potwierdza technicznie zestawienia połączenia.
+- Wyniki Voice są zapisywane lokalnie, bez backendu, kont i synchronizacji.
+- `Rejestr` pokazuje wpisy Voice od najnowszego do najstarszego.
+- `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
+- `SMS` i `Data` pozostają placeholderami do czasu osobnej decyzji produktowej.
+- UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
+- Repozytorium i `brain/` są utrzymywane iteracyjnie, a następny krok jest wybierany małymi milestone'ami.
+- Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.

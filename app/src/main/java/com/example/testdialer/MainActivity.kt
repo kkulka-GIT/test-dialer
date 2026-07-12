@@ -22,6 +22,10 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 class MainActivity : Activity() {
     private enum class Section {
@@ -42,6 +46,7 @@ class MainActivity : Activity() {
     private lateinit var statusSection: View
     private lateinit var testSection: View
     private lateinit var registerSection: View
+    private lateinit var registerListHost: LinearLayout
     private lateinit var wifiBadge: LinearLayout
     private lateinit var cellularBadge: LinearLayout
     private lateinit var simBadge: LinearLayout
@@ -49,9 +54,16 @@ class MainActivity : Activity() {
     private lateinit var voiceStatusText: TextView
     private lateinit var voicePhoneInput: EditText
     private lateinit var voiceNameInput: EditText
+    private lateinit var voiceSummaryText: TextView
     private var networkCallbackRegistered = false
     private var currentSection = Section.STATUS
     private var currentTestType = TestType.VOICE
+    private lateinit var voiceResultStore: VoiceResultStore
+    private var pendingPhoneNumber: String? = null
+    private var pendingTestName: String? = null
+    private var dialerWasOpened = false
+    private var awaitingVoiceOutcome = false
+    private var resultSaved = false
 
     private val connectivityManager by lazy {
         getSystemService(ConnectivityManager::class.java)
@@ -77,6 +89,17 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        voiceResultStore = VoiceResultStore(this)
+        pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
+        pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
+        dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
+        awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
+        resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
+        currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
+            ?.let { saved -> Section.entries.firstOrNull { it.name == saved } } ?: Section.STATUS
+        currentTestType = savedInstanceState?.getString(STATE_CURRENT_TEST_TYPE)
+            ?.let { saved -> TestType.entries.firstOrNull { it.name == saved } } ?: TestType.VOICE
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -107,13 +130,42 @@ class MainActivity : Activity() {
         root.addView(createBottomNavigation())
         setContentView(root)
 
-        showSection(Section.STATUS)
+        showSection(currentSection)
     }
 
     override fun onStart() {
         super.onStart()
         registerNetworkCallback()
         refreshVoiceStatusBar()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshVoiceScenarioAfterResume()
+    }
+
+    private fun refreshVoiceScenarioAfterResume() {
+        if (!awaitingVoiceOutcome || currentTestType != TestType.VOICE || !::testScenarioHost.isInitialized) return
+        renderScenario(TestType.VOICE)
+    }
+
+    override fun onPause() {
+        if (dialerWasOpened) {
+            dialerWasOpened = false
+            awaitingVoiceOutcome = true
+        }
+        super.onPause()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString(STATE_PENDING_PHONE, pendingPhoneNumber)
+        outState.putString(STATE_PENDING_NAME, pendingTestName)
+        outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
+        outState.putBoolean(STATE_AWAITING_OUTCOME, awaitingVoiceOutcome)
+        outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
+        outState.putString(STATE_CURRENT_SECTION, currentSection.name)
+        outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStop() {
@@ -156,8 +208,12 @@ class MainActivity : Activity() {
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
         }
 
-        if (section == Section.TEST) {
+        if (section == Section.STATUS) {
+            refreshVoiceSummary()
+        } else if (section == Section.TEST) {
             refreshVoiceStatusBar()
+        } else if (section == Section.REGISTER) {
+            renderRegister()
         }
     }
 
@@ -182,7 +238,7 @@ class MainActivity : Activity() {
     }
 
     private fun createSectionButton(section: Section, label: String): Button {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = label
             isAllCaps = false
             textSize = 14f
@@ -238,12 +294,42 @@ class MainActivity : Activity() {
             )
         }
 
-        row.addView(createSummaryTile(getString(R.string.voice_type), getString(R.string.status_summary_placeholder)))
+        row.addView(createVoiceSummaryTile())
         row.addView(spaceHorizontal(dimen(8)))
         row.addView(createSummaryTile(getString(R.string.sms_type), getString(R.string.status_summary_placeholder)))
         row.addView(spaceHorizontal(dimen(8)))
         row.addView(createSummaryTile(getString(R.string.data_type), getString(R.string.status_summary_placeholder)))
         return row
+    }
+
+    private fun createVoiceSummaryTile(): View {
+        return createCard {
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
+            addView(createTinyLabel(getString(R.string.voice_type)))
+            addView(spaceVertical(dimen(6)))
+            voiceSummaryText = createMicroText(getString(R.string.status_voice_no_results))
+            addView(voiceSummaryText)
+            refreshVoiceSummary()
+        }
+    }
+
+    private fun refreshVoiceSummary() {
+        if (!::voiceSummaryText.isInitialized) return
+        val latest = voiceResultStore.loadAll().firstOrNull()
+        voiceSummaryText.text = if (latest == null) {
+            getString(R.string.status_voice_no_results)
+        } else {
+            val outcome = when (latest.outcome) {
+                VoiceTestResult.Outcome.SUCCESS -> getString(R.string.outcome_success)
+                VoiceTestResult.Outcome.FAILURE -> getString(R.string.outcome_failure)
+                VoiceTestResult.Outcome.NOT_CHECKED -> getString(R.string.outcome_not_checked)
+            }
+            val date = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
+                .format(Date(latest.timestampMillis))
+            getString(R.string.status_voice_latest, outcome, date)
+        }
+        voiceSummaryText.contentDescription = getString(R.string.status_voice_summary_accessibility, voiceSummaryText.text)
     }
 
     private fun createSummaryTile(title: String, body: String): View {
@@ -316,16 +402,69 @@ class MainActivity : Activity() {
             getString(R.string.register_description),
         ))
         content.addView(spaceVertical(dimen(16)))
-        content.addView(createCard {
-            addView(createCardTitle(getString(R.string.register_placeholder_title)))
-            addView(spaceVertical(dimen(8)))
-            addView(createBodyText(getString(R.string.register_placeholder_body)))
-            addView(spaceVertical(dimen(12)))
-            addView(createTag(getString(R.string.register_placeholder_tag)))
-        })
+        registerListHost = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        content.addView(registerListHost)
+        renderRegister()
 
         scroll.addView(content)
         return scroll
+    }
+
+    private fun renderRegister() {
+        if (!::registerListHost.isInitialized) return
+        registerListHost.removeAllViews()
+        val results = voiceResultStore.loadAll()
+        if (results.isEmpty()) {
+            registerListHost.addView(createCard {
+                addView(createCardTitle(getString(R.string.register_empty_title)))
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.register_empty_body)))
+            })
+            return
+        }
+        results.forEachIndexed { index, result ->
+            if (index > 0) registerListHost.addView(spaceVertical(dimen(12)))
+            registerListHost.addView(createVoiceResultCard(result))
+        }
+    }
+
+    private fun createVoiceResultCard(result: VoiceTestResult): View {
+        val outcomeLabel = when (result.outcome) {
+            VoiceTestResult.Outcome.SUCCESS -> getString(R.string.outcome_success)
+            VoiceTestResult.Outcome.FAILURE -> getString(R.string.outcome_failure)
+            VoiceTestResult.Outcome.NOT_CHECKED -> getString(R.string.outcome_not_checked)
+        }
+        val outcomeColor = when (result.outcome) {
+            VoiceTestResult.Outcome.SUCCESS -> ColorPalette.ok
+            VoiceTestResult.Outcome.FAILURE -> ColorPalette.bad
+            VoiceTestResult.Outcome.NOT_CHECKED -> ColorPalette.neutral
+        }
+        val formattedDate = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
+            .format(Date(result.timestampMillis))
+        return createCard {
+            contentDescription = buildString {
+                append(getString(R.string.result_accessibility, outcomeLabel, formattedDate, result.phoneNumber))
+                result.testName?.let { append(getString(R.string.result_accessibility_name, it)) }
+            }
+            addView(TextView(this@MainActivity).apply {
+                text = outcomeLabel
+                textSize = 18f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(ColorPalette.onAccent)
+                setPadding(dimen(12), dimen(8), dimen(12), dimen(8))
+                background = pillBackground(outcomeColor)
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCardTitle(result.testName ?: getString(R.string.result_unnamed)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.result_type_value)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.result_phone_value, result.phoneNumber)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.result_date_value, formattedDate)))
+        }
     }
 
     private fun createTestTypeSelectorCard(): View {
@@ -345,7 +484,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTestTypeChip(type: TestType, label: String): Button {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = label
             isAllCaps = false
             textSize = 14f
@@ -389,6 +528,8 @@ class MainActivity : Activity() {
     }
 
     private fun createVoiceScenario(): View {
+        if (awaitingVoiceOutcome) return createVoiceOutcomePanel()
+        if (resultSaved) return createVoiceSavedPanel()
         return createCard {
             addView(createCardTitle(getString(R.string.voice_card_title)))
             addView(spaceVertical(dimen(8)))
@@ -416,6 +557,87 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun createVoiceOutcomePanel(): View {
+        val phoneNumber = pendingPhoneNumber.orEmpty()
+        return createCard {
+            announceForAccessibility(getString(R.string.voice_outcome_accessibility_announcement))
+            addView(createCardTitle(getString(R.string.voice_outcome_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.voice_outcome_description, phoneNumber)))
+            addView(spaceVertical(dimen(18)))
+            addView(createOutcomeButton(R.string.outcome_success, VoiceTestResult.Outcome.SUCCESS, ColorPalette.ok))
+            addView(spaceVertical(dimen(12)))
+            addView(createOutcomeButton(R.string.outcome_failure, VoiceTestResult.Outcome.FAILURE, ColorPalette.bad))
+            addView(spaceVertical(dimen(12)))
+            addView(createOutcomeButton(R.string.outcome_not_checked, VoiceTestResult.Outcome.NOT_CHECKED, ColorPalette.neutral))
+        }
+    }
+
+    private fun createOutcomeButton(labelRes: Int, outcome: VoiceTestResult.Outcome, color: Int): Button {
+        return Button(this@MainActivity).apply {
+            setText(labelRes)
+            isAllCaps = false
+            textSize = 18f
+            minHeight = dimen(58)
+            background = pillBackground(color)
+            setTextColor(ColorPalette.onAccent)
+            contentDescription = getString(R.string.outcome_button_description, getString(labelRes))
+            setOnClickListener { saveVoiceOutcome(outcome) }
+        }
+    }
+
+    private fun saveVoiceOutcome(outcome: VoiceTestResult.Outcome) {
+        val phoneNumber = pendingPhoneNumber ?: return
+        voiceResultStore.save(
+            VoiceTestResult(
+                id = UUID.randomUUID().toString(),
+                outcome = outcome,
+                timestampMillis = System.currentTimeMillis(),
+                phoneNumber = phoneNumber,
+                testName = pendingTestName,
+            ),
+        )
+        awaitingVoiceOutcome = false
+        resultSaved = true
+        renderRegister()
+        refreshVoiceSummary()
+        Toast.makeText(this@MainActivity, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
+        renderScenario(TestType.VOICE)
+    }
+
+    private fun createVoiceSavedPanel(): View {
+        return createCard {
+            addView(createCardTitle(getString(R.string.voice_result_saved_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.voice_result_saved_description)))
+            addView(spaceVertical(dimen(16)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.go_to_register)
+                isAllCaps = false
+                textSize = 17f
+                minHeight = dimen(52)
+                background = pillBackground(ColorPalette.accent)
+                setTextColor(ColorPalette.onAccent)
+                setOnClickListener { showSection(Section.REGISTER) }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.start_another_voice_test)
+                isAllCaps = false
+                textSize = 16f
+                minHeight = dimen(50)
+                background = pillBackground(ColorPalette.button)
+                setTextColor(ColorPalette.textPrimary)
+                setOnClickListener {
+                    resultSaved = false
+                    pendingPhoneNumber = null
+                    pendingTestName = null
+                    renderScenario(TestType.VOICE)
+                }
+            })
+        }
+    }
+
     private fun createPlaceholderScenario(title: String, body: String, tag: String): View {
         return createCard {
             addView(createCardTitle(title))
@@ -427,7 +649,7 @@ class MainActivity : Activity() {
     }
 
     private fun createPrimaryActionButton(): View {
-        return Button(this).apply {
+        return Button(this@MainActivity).apply {
             text = getString(R.string.dial_test)
             isAllCaps = false
             textSize = 16f
@@ -441,7 +663,19 @@ class MainActivity : Activity() {
                     Toast.makeText(this@MainActivity, R.string.enter_phone_number, Toast.LENGTH_SHORT).show()
                 } else {
                     voiceStatusText.setText(R.string.opening_dialer)
-                    startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:$number")))
+                    pendingPhoneNumber = number
+                    pendingTestName = voiceNameInput.text.toString().trim().takeIf(String::isNotEmpty)
+                    resultSaved = false
+                    try {
+                        dialerWasOpened = true
+                        startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
+                    } catch (_: android.content.ActivityNotFoundException) {
+                        dialerWasOpened = false
+                        pendingPhoneNumber = null
+                        pendingTestName = null
+                        voiceStatusText.setText(R.string.dialer_unavailable)
+                        Toast.makeText(this@MainActivity, R.string.dialer_unavailable, Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -562,7 +796,7 @@ class MainActivity : Activity() {
     }
 
     private fun createCardTitle(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 18f
             setTextColor(ColorPalette.textPrimary)
@@ -570,7 +804,7 @@ class MainActivity : Activity() {
     }
 
     private fun createHeaderText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 27f
             setTextColor(ColorPalette.textPrimary)
@@ -578,7 +812,7 @@ class MainActivity : Activity() {
     }
 
     private fun createBodyText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 16f
             setTextColor(ColorPalette.textSecondary)
@@ -586,7 +820,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTinyLabel(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text.uppercase()
             textSize = 12f
             setTextColor(ColorPalette.textSecondary)
@@ -594,7 +828,7 @@ class MainActivity : Activity() {
     }
 
     private fun createMicroText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 13f
             setTextColor(ColorPalette.textPrimary)
@@ -602,7 +836,7 @@ class MainActivity : Activity() {
     }
 
     private fun createStatusText(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 14f
             setTextColor(ColorPalette.textSecondary)
@@ -610,7 +844,7 @@ class MainActivity : Activity() {
     }
 
     private fun createTag(text: String): TextView {
-        return TextView(this).apply {
+        return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 12f
             setTextColor(ColorPalette.textPrimary)
@@ -673,6 +907,16 @@ class MainActivity : Activity() {
 
     private fun dimen(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
+    private companion object {
+        const val STATE_PENDING_PHONE = "pendingPhone"
+        const val STATE_PENDING_NAME = "pendingName"
+        const val STATE_DIALER_OPENED = "dialerOpened"
+        const val STATE_AWAITING_OUTCOME = "awaitingOutcome"
+        const val STATE_RESULT_SAVED = "resultSaved"
+        const val STATE_CURRENT_SECTION = "currentSection"
+        const val STATE_CURRENT_TEST_TYPE = "currentTestType"
+    }
+
     private object ColorPalette {
         const val background = 0xFFF4F7FB.toInt()
         const val surface = 0xFFFFFFFF.toInt()
@@ -684,5 +928,6 @@ class MainActivity : Activity() {
         const val onAccent = 0xFFFFFFFF.toInt()
         const val ok = 0xFF2E7D32.toInt()
         const val bad = 0xFFC62828.toInt()
+        const val neutral = 0xFF455A64.toInt()
     }
 }

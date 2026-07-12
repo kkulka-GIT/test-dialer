@@ -1,37 +1,22 @@
 # Test Dialer
 
-## Opis aplikacji
+## Aktualny stan aplikacji
 
-Test Dialer to aplikacja Android do ręcznego testowania usług mobilnych:
+Test Dialer to lekka aplikacja Android do ręcznego testowania usług mobilnych. W obecnym kodzie aktywny jest tylko przepływ Voice, a SMS i Data są pokazane jako placeholdery.
 
-- Voice
-- SMS w przyszłości
-- Data w przyszłości
+## Zaimplementowane elementy
 
-## Aktualna struktura aplikacji
+- Trzy główne sekcje aplikacji: `Status`, `Test`, `Rejestr`.
+- W `Test` dostępny jest wybór `Voice`, `SMS`, `Data`.
+- `Voice` otwiera systemowy dialer przez `ACTION_DIAL` i nie rozpoczyna połączenia automatycznie.
+- Po powrocie z dialera użytkownik ręcznie wybiera wynik: `Udało się`, `Nie udało się` albo `Nie sprawdziłem`.
+- Wynik Voice jest zapisywany lokalnie wraz z datą, numerem i opcjonalną nazwą.
+- `Rejestr` pokazuje lokalną historię wyników Voice, najnowsze wpisy na górze.
+- `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
 
-- Status — dashboard stanu urządzenia
-- Test — wybór scenariusza Voice/SMS/Data
-- Rejestr — przyszła lista wykonanych testów
+## Założenia bieżące
 
-## Aktualnie zaimplementowane
-
-- scenariusz Voice
-- otwieranie systemowego dialera przez ACTION_DIAL
-- pasek statusu Wi-Fi / Dane / SIM
-- dolna nawigacja Status/Test/Rejestr
-- wybór Voice/SMS/Data, gdzie aktywny jest tylko Voice
-
-## Na razie niezaimplementowane
-
-- zapis testów do rejestru
-- eksport
-- aktywne scenariusze SMS/Data
-- automatyczne wykrywanie VoLTE/VoWiFi
-
-## Założenia
-
-- prosta aplikacja bez backendu
-- użycie systemowych aplikacji Androida
-- rozwój iteracyjny
-- /brain jest źródłem prawdy projektu
+- Brak backendu, kont i synchronizacji.
+- Dane wyników są przechowywane lokalnie.
+- UI jest budowane programowo w Android Views.
+- `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.
