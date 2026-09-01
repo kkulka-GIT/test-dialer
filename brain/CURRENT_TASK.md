@@ -1,6 +1,6 @@
 # Current Task
 
-Status: IMPLEMENTED — CI PENDING
+Status: READY FOR COORDINATOR REVIEW
 
 Feature: F02 — Run Correlation Timeline
 
@@ -33,8 +33,16 @@ Acceptance:
 - Testy JVM i GitHub Actions przechodzą.
 - Debug APK jest opublikowany jako artifact.
 
+Verification:
+- GitHub Actions #46: PASS.
+- Unit tests: PASS.
+- Debug APK build and artifact: PASS.
+
 Mode:
 incremental
 
 Branch:
 `feature/run-correlation-timeline`
+
+Pull request:
+https://github.com/kkulka-GIT/test-dialer/pull/5

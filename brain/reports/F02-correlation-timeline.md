@@ -2,11 +2,12 @@
 
 ## Status
 
-Implementation and JVM tests are committed. GitHub Actions verification is pending.
+Implementation, JVM tests, debug APK build and artifact completed successfully. Ready for coordinator review.
 
-## Branch
+## Branch and PR
 
 - Branch: `feature/run-correlation-timeline`
+- Pull request: https://github.com/kkulka-GIT/test-dialer/pull/5
 - Base: `56fae238d31e5ba89e4f443a456e6f2b3bfefc57`
 - Merge: not performed
 
@@ -29,7 +30,8 @@ Implementation and JVM tests are committed. GitHub Actions verification is pendi
 - `afca08e` — recorder, aggregate timeline and correlation windows
 - `b56dbb8` — deterministic JVM tests
 - `b333689` — aggregate transition validation
-- Documentation commit: current commit
+- `4f563b2` — project documentation and initial delivery report
+- Final verification documentation: current commit
 
 ## Important semantics
 
@@ -49,12 +51,19 @@ A run may be aborted with an open step or attempt so an interruption can still b
 
 Local Android build was not run, following repository rules and the known AAPT2 issue.
 
-Required on the final PR head:
+GitHub Actions run #46 (`33498205669`) for `4f563b29ef3d0278279139718f95d5dbd0ef1f45`:
 
-- `testDebugUnitTest`: pending
-- `assembleDebug`: pending
-- artifact `test-dialer-debug-apk`: pending
+- `testDebugUnitTest`: PASS
+- `assembleDebug`: PASS
+- upload artifact: PASS
+- artifact: `test-dialer-debug-apk`
+- artifact id: `9796648137`
+- size: 1,024,054 bytes
+- digest: `sha256:5a8cbdabaa60d2d45f3ccc63d8dc2b765a289dbffc92e2d7be085783c3c9e873`
+- expires: 2026-11-30
+
+The final documentation-only head must also receive successful PR CI before merge.
 
 ## Decision
 
-No merge was performed. Coordinator review and successful GitHub Actions are required.
+No merge was performed. Coordinator review and successful final-head GitHub Actions are required.
