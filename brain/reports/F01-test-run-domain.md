@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for coordinator review. GitHub Actions passed.
+Final action-validation correction pushed; current head requires GitHub Actions verification.
 
 ## Branch and PR
 
@@ -19,7 +19,7 @@ Ready for coordinator review. GitHub Actions passed.
 - Independent expected result and neutral observation model.
 - Typed correlation references.
 - Multiple events may reference the same scenario step.
-- Explicit validator checks run scenario identity/version, known step IDs, and matching event/step service types.
+- Explicit validator checks run scenario identity/version, known step IDs, and an exact event action match, including all Voice, SMS, and Data parameters.
 - Run status invariants prevent unfinished states from having a completion time and terminal states from lacking one.
 - Isolated one-way legacy Voice adapter.
 - JVM unit tests and the minimum JUnit dependency.
@@ -52,15 +52,14 @@ All observations have source `TESTER`.
 
 Local Android build was not run, in accordance with repository rules and the known local AAPT2 problem.
 
-GitHub Actions run 40 for commit `a78ada8` completed successfully:
+Prior GitHub Actions run 41 for commit `f43b1c6` completed successfully. The current action-validation correction must receive its own successful workflow run before merge:
 
 - `testDebugUnitTest`: PASS
 - `assembleDebug`: PASS
 - artifact `test-dialer-debug-apk`: published
-- artifact ID: `9791881815`
-- artifact digest: `sha256:28f2f5a5ab7f082feec2383332eda11eb68e214de05bd772c8ad983a23ebc82d`
-
-A final documentation-only commit will receive its own required PR workflow verification.
+- `testDebugUnitTest`: required on the current head
+- `assembleDebug`: required on the current head
+- artifact `test-dialer-debug-apk`: required on the current head
 
 ## Known limitations
 
