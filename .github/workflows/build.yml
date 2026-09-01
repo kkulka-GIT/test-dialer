@@ -30,6 +30,9 @@ jobs:
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
 
+      - name: Run debug unit tests
+        run: ./gradlew testDebugUnitTest
+
       - name: Build debug APK
         run: ./gradlew assembleDebug
 

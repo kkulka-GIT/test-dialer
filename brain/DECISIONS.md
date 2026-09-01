@@ -1,19 +1,27 @@
 # Decyzje projektowe
 
+- Docelowym kierunkiem jest mobilny asystent testów end-to-end systemów ratingowych i billingowych.
+- Definicja scenariusza i kroku jest oddzielona od wykonania testu i zdarzeń.
+- Model domenowy jest czystym Kotlinem, bez zależności od Androida, UI i storage.
+- Typy usług w modelu to `VOICE`, `SMS` i `DATA`.
+- Akcje testowe są jawnymi wariantami `Voice`, `Sms` i `Data`.
+- Oczekiwany rezultat i obserwacja są niezależnymi pojęciami.
+- Obserwacja używa neutralnego statusu `CONFIRMED`, `NOT_CONFIRMED` albo `NOT_VERIFIED` oraz wskazuje źródło.
+- Korelacja używa jawnych par `CorrelationReference(namespace, value)`.
+- Jeden krok scenariusza może mieć wiele zdarzeń z różnymi `EventId`.
+- Zgodność runu z definicją scenariusza jest sprawdzana jawnie przez validator: identyfikator i wersja scenariusza, istnienie kroku oraz typ usługi.
+- Run w stanie `CREATED` lub `RUNNING` nie ma czasu zakończenia; `COMPLETED` i `ABORTED` wymagają czasu zakończenia.
+- F01 definiuje lekkie typy ID i pola czasu; generowanie ID, czas UTC i okna wyszukiwania należą do późniejszego etapu.
 - Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`.
-- W `Test` wybieramy jeden scenariusz: `Voice`, `SMS` albo `Data`.
-- Aktywny scenariusz produkcyjny to tylko `Voice`.
+- W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL`; aplikacja nie wykonuje połączenia automatycznie.
-- Wynik Voice jest ręczną deklaracją użytkownika: `Udało się`, `Nie udało się` albo `Nie sprawdziłem`.
+- Obecny wynik Voice jest ręczną deklaracją użytkownika.
 - Aplikacja nie potwierdza technicznie zestawienia połączenia.
-- Wyniki Voice są zapisywane lokalnie, bez backendu, kont i synchronizacji.
-- `Rejestr` pokazuje wpisy Voice od najnowszego do najstarszego.
-- `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
-- `SMS` i `Data` pozostają placeholderami do czasu osobnej decyzji produktowej.
+- Istniejący `VoiceResultStore`, jego JSON i zapisane rekordy pozostają bez zmian.
+- Jednokierunkowy adapter legacy zachowuje stare wartości jako neutralne kody `LEGACY_SUCCESS`, `LEGACY_FAILURE` i `NOT_VERIFIED`, bez interpretacji technicznego stanu połączenia.
+- `SMS` i `Data` w UI pozostają placeholderami do czasu osobnych feature'ów.
 - UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
-- Repozytorium i `brain/` są utrzymywane iteracyjnie, a następny krok jest wybierany małymi milestone'ami.
 - Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.
-- GitHub Actions jest głównym źródłem prawdy dla builda debug APK.
+- GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.
 - Lokalny build w obecnym środowisku jest BLOCKED przez znany problem AAPT2.
-- Naprawa lokalnego środowiska nie jest obecnie celem projektu.
 - Pipeline buduje debug APK, nie release.
