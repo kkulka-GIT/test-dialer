@@ -11,7 +11,14 @@
 - Jeden krok scenariusza może mieć wiele zdarzeń z różnymi `EventId`.
 - Zgodność runu z definicją scenariusza jest sprawdzana jawnie przez validator: identyfikator i wersja scenariusza, istnienie kroku oraz typ usługi.
 - Run w stanie `CREATED` lub `RUNNING` nie ma czasu zakończenia; `COMPLETED` i `ABORTED` wymagają czasu zakończenia.
-- F01 definiuje lekkie typy ID i pola czasu; generowanie ID, czas UTC i okna wyszukiwania należą do późniejszego etapu.
+- Identyfikatory runu, zdarzenia, próby i wpisu osi są tworzone przez osobne wstrzykiwane providery.
+- `TimelineEntryId` jest niezależny od `EventId`; wpis osi i zdarzenie biznesowe mają różne tożsamości.
+- `TimelineEntry.sequenceNumber` jest ciągłym, trwałym źródłem kolejności wpisów w runie.
+- `epochMillis` służy do korelacji z systemami zewnętrznymi, a `monotonicNanos` wyłącznie do kolejności i czasu trwania w jednym procesie.
+- Zegar ścienny może się cofnąć; oś nie wymusza rosnącego `epochMillis`, jeśli czas monotoniczny nie maleje.
+- Start i koniec runu, kroku oraz próby są osobnymi wpisami osi, a `ACTION_RECORDED` wskazuje właściwy `TestEvent`.
+- `TestRunRecorder` pilnuje jednej aktywnej próby w jednym aktywnym kroku, zamykania prób przed krokiem i braku zmian po stanie terminalnym.
+- Okna korelacji CDR mają jawny margines przed i po zdarzeniu oraz bezpieczną obsługę granic Long.
 - Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`.
 - W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL`; aplikacja nie wykonuje połączenia automatycznie.
