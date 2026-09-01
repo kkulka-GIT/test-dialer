@@ -79,12 +79,14 @@ data class TestRunEntity(
     indices = [
         Index(value = ["runId"]),
         Index(value = ["eventId", "runId"], unique = true),
+        Index(value = ["runId", "eventOrder"], unique = true),
     ],
 )
 data class TestEventEntity(
     @androidx.room.PrimaryKey val eventId: String,
     val runId: String,
     val stepId: String,
+    val eventOrder: Int,
     val actionKind: String,
     val actionDestinationOrTarget: String,
     val actionMessage: String?,
