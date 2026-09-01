@@ -34,3 +34,10 @@
 - GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.
 - Lokalny build w obecnym środowisku jest BLOCKED przez znany problem AAPT2.
 - Pipeline buduje debug APK, nie release.
+
+- Trwała historia nowych testów używa Room v1 w osobnym pakiecie persistence; legacy VoiceResultStore/JSON pozostaje niezależny.
+- Snapshot scenariusza jest zapisany razem z jego identyfikatorem i wersją, łącznie z ExpectedResult każdego kroku.
+- Zapis runu jest atomowy, wersjonowany optimistic revision i nie może przepisywać istniejącej historii timeline/event/correlation.
+- Room nie używa destructive migration fallback, a schemat bazy jest eksportowany i wersjonowany.
+- monotonicNanos jest zachowywany jako historyczny pomiar z procesu źródłowego; F03 nie wznawia automatycznie RUNNING recorder po restarcie procesu.
+- Dane rating/billing pozostają w prywatnej bazie aplikacji, nie są logowane, a Android backup aplikacji jest wyłączony.
