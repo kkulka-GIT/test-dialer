@@ -16,7 +16,12 @@ import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class CellularDataViewModelCancellationTest {
     @Test fun `clear before queued execution prevents gateway prepare and execute`() {
         val gateway = CountingGateway()
