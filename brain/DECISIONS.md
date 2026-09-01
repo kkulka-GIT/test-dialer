@@ -9,6 +9,8 @@
 - Obserwacja używa neutralnego statusu `CONFIRMED`, `NOT_CONFIRMED` albo `NOT_VERIFIED` oraz wskazuje źródło.
 - Korelacja używa jawnych par `CorrelationReference(namespace, value)`.
 - Jeden krok scenariusza może mieć wiele zdarzeń z różnymi `EventId`.
+- Zgodność runu z definicją scenariusza jest sprawdzana jawnie przez validator: identyfikator i wersja scenariusza, istnienie kroku oraz typ usługi.
+- Run w stanie `CREATED` lub `RUNNING` nie ma czasu zakończenia; `COMPLETED` i `ABORTED` wymagają czasu zakończenia.
 - F01 definiuje lekkie typy ID i pola czasu; generowanie ID, czas UTC i okna wyszukiwania należą do późniejszego etapu.
 - Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`.
 - W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`.
@@ -16,10 +18,10 @@
 - Obecny wynik Voice jest ręczną deklaracją użytkownika.
 - Aplikacja nie potwierdza technicznie zestawienia połączenia.
 - Istniejący `VoiceResultStore`, jego JSON i zapisane rekordy pozostają bez zmian.
-- Jednokierunkowy adapter legacy mapuje historyczne wyniki Voice na neutralne obserwacje testera.
+- Jednokierunkowy adapter legacy zachowuje stare wartości jako neutralne kody `LEGACY_SUCCESS`, `LEGACY_FAILURE` i `NOT_VERIFIED`, bez interpretacji technicznego stanu połączenia.
 - `SMS` i `Data` w UI pozostają placeholderami do czasu osobnych feature'ów.
 - UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
 - Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.
-- GitHub Actions jest głównym źródłem prawdy dla builda debug APK.
+- GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.
 - Lokalny build w obecnym środowisku jest BLOCKED przez znany problem AAPT2.
 - Pipeline buduje debug APK, nie release.

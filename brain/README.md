@@ -15,7 +15,8 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
 - Czysty model domenowy oddziela definicję scenariusza i kroku od wykonania testu i jego zdarzeń.
 - Model wspiera akcje Voice, SMS i Data, niezależne oczekiwania i obserwacje oraz jawne referencje korelacyjne.
-- Izolowany adapter potrafi przedstawić historyczny wynik Voice jako neutralną obserwację testera bez zmiany istniejącego zapisu.
+- Validator sprawdza powiązanie runu z wersją scenariusza, krokami i typami usług.
+- Izolowany adapter przedstawia historyczny wynik Voice jako neutralną obserwację testera bez zmiany istniejącego zapisu.
 
 ## Założenia bieżące
 
