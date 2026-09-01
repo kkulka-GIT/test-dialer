@@ -33,12 +33,10 @@ object TestRunScenarioValidator {
                     eventId = event.id,
                     message = "Event references a step outside the scenario definition",
                 )
-                event.action.serviceType != step.action.serviceType -> {
-                    issues += TestRunValidationIssue(
-                        eventId = event.id,
-                        message = "Event service type does not match its scenario step",
-                    )
-                }
+                event.action != step.action -> issues += TestRunValidationIssue(
+                    eventId = event.id,
+                    message = "Event action does not match its scenario step",
+                )
             }
         }
 
