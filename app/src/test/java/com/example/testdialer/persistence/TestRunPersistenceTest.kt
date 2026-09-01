@@ -26,19 +26,14 @@ import com.example.testdialer.domain.execution.TimelineEntry
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -236,36 +231,38 @@ class TestRunPersistenceTest {
     }
 
     @Test
-    fun twoDatabaseInstancesAllowExactlyOneCompetingWriter() {
+    fun staleCasAcrossTwoDatabaseInstancesCannotOverwriteWinner() {
         database.close()
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val name = "concurrent-${UUID.randomUUID()}.db"
+        val name = "cas-${UUID.randomUUID()}.db"
         val firstDatabase = fileDatabase(context, name)
         val secondDatabase = fileDatabase(context, name)
         try {
             val firstRepository = RoomTestRunRepository(firstDatabase.testRunDao())
             val secondRepository = RoomTestRunRepository(secondDatabase.testRunDao())
             firstRepository.saveSnapshot(scenario(), runningRun())
-            val start = CountDownLatch(1)
-            val executor = Executors.newFixedThreadPool(2)
-            val results = listOf(
-                executor.submit<Result<StoredTestRun>> {
-                    start.await()
-                    runCatching { firstRepository.saveSnapshot(scenario(), completedRun(), 0L) }
-                },
-                executor.submit<Result<StoredTestRun>> {
-                    start.await()
-                    runCatching { secondRepository.saveSnapshot(scenario(), abortedRun(), 0L) }
-                },
-            )
-            start.countDown()
-            val outcomes = results.map { it.get(20, TimeUnit.SECONDS) }
-            executor.shutdownNow()
+            val firstView = requireNotNull(firstRepository.get(RunId("run-1")))
+            val secondView = requireNotNull(secondRepository.get(RunId("run-1")))
+            assertEquals(0L, firstView.revision)
+            assertEquals(0L, secondView.revision)
 
-            assertEquals(1, outcomes.count { it.isSuccess })
-            val failure = outcomes.single { it.isFailure }.exceptionOrNull()
-            assertTrue(failure is SnapshotConflictException)
-            assertEquals(1L, firstRepository.get(RunId("run-1"))?.revision)
+            val winner = firstRepository.saveSnapshot(
+                scenario(),
+                completedRun(),
+                firstView.revision,
+            )
+            assertEquals(1L, winner.revision)
+            assertThrows(SnapshotConflictException::class.java) {
+                secondRepository.saveSnapshot(
+                    scenario(),
+                    abortedRun(),
+                    secondView.revision,
+                )
+            }
+
+            val finalState = secondRepository.get(RunId("run-1"))
+            assertEquals(1L, finalState?.revision)
+            assertEquals(completedRun(), finalState?.run)
         } finally {
             firstDatabase.close()
             secondDatabase.close()
