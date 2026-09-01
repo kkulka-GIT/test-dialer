@@ -1,5 +1,5 @@
 # Co robimy teraz
 
-Wspólnie z użytkownikiem wybrać kolejny mały milestone produktu po zakończonym etapie Voice i Rejestr.
+Dokończyć przegląd F01, potwierdzić testy JVM, PASS w GitHub Actions i artifact debug APK.
 
-Nie rozpoczynać SMS ani Data bez osobnej decyzji produktowej.
+Po akceptacji F01 przygotować zależny feature korelacji i precyzyjnej osi czasu. Nie podłączać nowego modelu do storage ani UI poza osobno zatwierdzonym feature'em.

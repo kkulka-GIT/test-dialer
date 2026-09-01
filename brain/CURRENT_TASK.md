@@ -1,36 +1,38 @@
 # Current Task
 
-Status: COMPLETED
+Status: IN REVIEW
+
+Feature: F01 — Test Run Domain
 
 Goal:
-Uporządkowanie i synchronizacja `AGENTS.md` oraz `/brain` z aktualnym stanem repozytorium.
-
-Context:
-Repozytorium ma już zaimplementowany aktywny przepływ Voice, lokalny Rejestr i sekcję Status. Celem było doprowadzenie dokumentacji do zgodności z rzeczywistym kodem, bez zmiany kodu aplikacji.
+Wprowadzić czysty fundament domenowy mobilnego asystenta testów end-to-end systemów ratingowych i billingowych.
 
 Scope:
-- Zaktualizować `AGENTS.md`.
-- Uporządkować `brain/README.md`.
-- Uporządkować `brain/DECISIONS.md`.
-- Uporządkować `brain/LOG.md`.
-- Uporządkować `brain/NEXT.md`.
-- Zachować ważną historię projektu.
+- Oddzielić definicję scenariusza i kroku od wykonania testu i zdarzeń.
+- Dodać lekkie typy identyfikatorów.
+- Dodać jawne akcje Voice, SMS i Data.
+- Rozdzielić oczekiwany rezultat od neutralnej obserwacji.
+- Dodać jawne referencje korelacyjne.
+- Wspierać wiele zdarzeń jednego kroku.
+- Dodać jednokierunkowy adapter historycznych wyników Voice.
+- Dodać testy JVM.
 
 Out of scope:
-- Zmiany w kodzie aplikacji.
-- Dodawanie nowych funkcji.
-- Zmiana architektury.
-- Rozpoczynanie SMS lub Data.
+- Zmiany UI i bieżącego przepływu Voice.
+- Migracja lub zmiana `VoiceResultStore`.
+- Generowanie identyfikatorów i precyzyjna oś czasu.
+- Trwały zapis nowych sesji.
+- Rzeczywista obsługa SMS i Data.
+- Backend, eksport i analiza CDR.
 
-Acceptance criteria:
-- Dokumenty w `brain/` odpowiadają rzeczywistemu stanowi aplikacji.
-- Historia projektu zostaje zachowana, bez powtórzeń i bez spekulacji.
-- `NEXT.md` zawiera jeden aktualny kierunek.
-- Zakres i zasady pracy w `AGENTS.md` są jawne i spójne.
+Acceptance:
+- Istniejące dane i zachowanie Voice pozostają bez zmian.
+- Model jest niezależny od Androida.
+- Testy JVM i GitHub Actions przechodzą.
+- Debug APK jest opublikowany jako artifact.
 
 Mode:
 incremental
 
-Reporting:
-- repo update
-- file in `/sdcard/Download/`
+Branch:
+`feature/test-run-domain`
