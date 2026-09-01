@@ -34,11 +34,15 @@ kapt {
 }
 
 dependencies {
+    implementation("androidx.activity:activity-ktx:1.10.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1")
     implementation("androidx.room:room-runtime:2.7.2")
     kapt("androidx.room:room-compiler:2.7.2")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("androidx.room:room-testing:2.7.2")
     testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.robolectric:robolectric:4.14.1")
 }
