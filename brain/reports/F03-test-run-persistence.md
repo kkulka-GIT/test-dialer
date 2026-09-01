@@ -56,4 +56,6 @@ Previous gate on pre-review head:
 - GitHub Actions #54 / run 33500665258: PASS;
 - JVM/Robolectric tests, Room schema publication, debug APK build and artifact: PASS.
 
-That gate predates the review corrections. The final corrected head requires a fresh successful GitHub Actions run; no merge is permitted based only on #54.
+That gate predates the review corrections. CI #56 was intentionally superseded after a simultaneous-writer test exposed test-harness lock contention between SQLite transactions. The production CAS was not weakened. The replacement test opens two real Room database instances on the same file, lets both observe revision 0, commits writer A, and proves writer B cannot overwrite it with its stale revision 0. This deterministic interleaving verifies the database-level CAS across separate connections without manufacturing a SQLite lock deadlock.
+
+The final corrected head requires a fresh successful GitHub Actions run; no merge is permitted based only on #54.
