@@ -69,6 +69,17 @@
     <string name="sms_start_another">Rozpocznij kolejny test SMS</string>
     <string name="data_placeholder_body">Scenariusz Data jest przygotowany wizualnie i będzie rozwijany później.</string>
     <string name="data_placeholder_tag">wkrótce</string>
+    <string name="data_card_title">Kontrolowany test danych komórkowych</string>
+    <string name="data_card_description">Pobierz maksymalnie 1 MiB przez aktualnie aktywną sieć komórkową. Test nie przełącza sieci i nie działa przez VPN.</string>
+    <string name="data_label_hint">Nazwa testu (opcjonalna)</string>
+    <string name="data_url_hint">Publiczny adres HTTPS bez parametrów</string>
+    <string name="data_start">Uruchom pobieranie</string>
+    <string name="data_running">Pobieranie przez sieć komórkową…</string>
+    <string name="data_cancel">Anuluj test</string>
+    <string name="data_saved_title">Test Data zapisany</string>
+    <string name="data_saved_description">Wynik, liczba bajtów i dokładne czasy zostały zapisane w Rejestrze.</string>
+    <string name="data_cancelled">Test anulowano, a zdarzenie terminalne zapisano w Rejestrze.</string>
+    <string name="data_start_another">Rozpocznij kolejny test Data</string>
     <string name="register_title">Rejestr</string>
     <string name="register_description">Lokalna historia ręcznie zadeklarowanych wyników Voice. Najnowsze są na górze.</string>
     <string name="register_empty_title">Brak zapisanych wyników</string>
