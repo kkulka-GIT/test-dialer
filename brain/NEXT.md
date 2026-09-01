@@ -1,5 +1,5 @@
 # Co robimy teraz
 
-GitHub Actions ma zweryfikować F04: kompilację ComponentActivity/lifecycle, testy koordynatora i ViewModelu, smoke test legacy Voice, Room oraz debug APK.
+Opublikować F05 na osobnym branchu i uruchomić GitHub Actions: testy intent factory, koordynatora, ViewModelu, smoke regresji UI, Room oraz debug APK.
 
-Po zielonym CI koordynator wykonuje recenzję F04. Nie dodawać eksportu, backend/CDR lookup, automatycznego wykonywania call/SMS/Data ani wznowienia recorder po śmierci procesu bez osobnego feature'u.
+Po zielonym CI koordynator wykonuje niezależną recenzję F05. Nie dodawać delivery reports, receiverów, permissions, backendu ani eksportu.
