@@ -1,0 +1,574 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "34cb8e0cdf11890ed34fb5571f7edb38",
+    "entities": [
+      {
+        "tableName": "scenarios",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scenarioId` TEXT NOT NULL, `version` INTEGER NOT NULL, `name` TEXT NOT NULL, `description` TEXT, PRIMARY KEY(`scenarioId`, `version`))",
+        "fields": [
+          {
+            "fieldPath": "scenarioId",
+            "columnName": "scenarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scenarioId",
+            "version"
+          ]
+        }
+      },
+      {
+        "tableName": "scenario_steps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`scenarioId` TEXT NOT NULL, `scenarioVersion` INTEGER NOT NULL, `stepId` TEXT NOT NULL, `stepOrder` INTEGER NOT NULL, `title` TEXT NOT NULL, `instruction` TEXT NOT NULL, `actionKind` TEXT NOT NULL, `actionDestinationOrTarget` TEXT NOT NULL, `actionMessage` TEXT, `expectedResultCode` TEXT, `expectedResultDescription` TEXT, PRIMARY KEY(`scenarioId`, `scenarioVersion`, `stepId`), FOREIGN KEY(`scenarioId`, `scenarioVersion`) REFERENCES `scenarios`(`scenarioId`, `version`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "scenarioId",
+            "columnName": "scenarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scenarioVersion",
+            "columnName": "scenarioVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stepId",
+            "columnName": "stepId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stepOrder",
+            "columnName": "stepOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "instruction",
+            "columnName": "instruction",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionKind",
+            "columnName": "actionKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionDestinationOrTarget",
+            "columnName": "actionDestinationOrTarget",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionMessage",
+            "columnName": "actionMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expectedResultCode",
+            "columnName": "expectedResultCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "expectedResultDescription",
+            "columnName": "expectedResultDescription",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "scenarioId",
+            "scenarioVersion",
+            "stepId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_scenario_steps_scenarioId_scenarioVersion",
+            "unique": false,
+            "columnNames": [
+              "scenarioId",
+              "scenarioVersion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_scenario_steps_scenarioId_scenarioVersion` ON `${TABLE_NAME}` (`scenarioId`, `scenarioVersion`)"
+          },
+          {
+            "name": "index_scenario_steps_scenarioId_scenarioVersion_stepOrder",
+            "unique": true,
+            "columnNames": [
+              "scenarioId",
+              "scenarioVersion",
+              "stepOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_scenario_steps_scenarioId_scenarioVersion_stepOrder` ON `${TABLE_NAME}` (`scenarioId`, `scenarioVersion`, `stepOrder`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "scenarios",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "scenarioId",
+              "scenarioVersion"
+            ],
+            "referencedColumns": [
+              "scenarioId",
+              "version"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "test_runs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`runId` TEXT NOT NULL, `scenarioId` TEXT NOT NULL, `scenarioVersion` INTEGER NOT NULL, `status` TEXT NOT NULL, `startedAtMillis` INTEGER NOT NULL, `completedAtMillis` INTEGER, `revision` INTEGER NOT NULL, PRIMARY KEY(`runId`), FOREIGN KEY(`scenarioId`, `scenarioVersion`) REFERENCES `scenarios`(`scenarioId`, `version`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "runId",
+            "columnName": "runId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scenarioId",
+            "columnName": "scenarioId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scenarioVersion",
+            "columnName": "scenarioVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAtMillis",
+            "columnName": "startedAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAtMillis",
+            "columnName": "completedAtMillis",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "revision",
+            "columnName": "revision",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "runId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_test_runs_scenarioId_scenarioVersion",
+            "unique": false,
+            "columnNames": [
+              "scenarioId",
+              "scenarioVersion"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_test_runs_scenarioId_scenarioVersion` ON `${TABLE_NAME}` (`scenarioId`, `scenarioVersion`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "scenarios",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "scenarioId",
+              "scenarioVersion"
+            ],
+            "referencedColumns": [
+              "scenarioId",
+              "version"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "test_events",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventId` TEXT NOT NULL, `runId` TEXT NOT NULL, `stepId` TEXT NOT NULL, `eventOrder` INTEGER NOT NULL, `actionKind` TEXT NOT NULL, `actionDestinationOrTarget` TEXT NOT NULL, `actionMessage` TEXT, `occurredAtMillis` INTEGER NOT NULL, `observationStatus` TEXT, `observationSource` TEXT, `observationCode` TEXT, `observationDescription` TEXT, `correlationSourceAddress` TEXT, `correlationDestinationAddress` TEXT, `correlationSubscriberAlias` TEXT, PRIMARY KEY(`eventId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "runId",
+            "columnName": "runId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stepId",
+            "columnName": "stepId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "eventOrder",
+            "columnName": "eventOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionKind",
+            "columnName": "actionKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionDestinationOrTarget",
+            "columnName": "actionDestinationOrTarget",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "actionMessage",
+            "columnName": "actionMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "occurredAtMillis",
+            "columnName": "occurredAtMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observationStatus",
+            "columnName": "observationStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observationSource",
+            "columnName": "observationSource",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observationCode",
+            "columnName": "observationCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "observationDescription",
+            "columnName": "observationDescription",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "correlationSourceAddress",
+            "columnName": "correlationSourceAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "correlationDestinationAddress",
+            "columnName": "correlationDestinationAddress",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "correlationSubscriberAlias",
+            "columnName": "correlationSubscriberAlias",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "eventId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_test_events_runId",
+            "unique": false,
+            "columnNames": [
+              "runId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_test_events_runId` ON `${TABLE_NAME}` (`runId`)"
+          },
+          {
+            "name": "index_test_events_eventId_runId",
+            "unique": true,
+            "columnNames": [
+              "eventId",
+              "runId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_test_events_eventId_runId` ON `${TABLE_NAME}` (`eventId`, `runId`)"
+          },
+          {
+            "name": "index_test_events_runId_eventOrder",
+            "unique": true,
+            "columnNames": [
+              "runId",
+              "eventOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_test_events_runId_eventOrder` ON `${TABLE_NAME}` (`runId`, `eventOrder`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "test_runs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "runId"
+            ],
+            "referencedColumns": [
+              "runId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "correlation_references",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventId` TEXT NOT NULL, `ordinal` INTEGER NOT NULL, `namespace` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`eventId`, `ordinal`), FOREIGN KEY(`eventId`) REFERENCES `test_events`(`eventId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ordinal",
+            "columnName": "ordinal",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "namespace",
+            "columnName": "namespace",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "eventId",
+            "ordinal"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_correlation_references_eventId",
+            "unique": false,
+            "columnNames": [
+              "eventId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_correlation_references_eventId` ON `${TABLE_NAME}` (`eventId`)"
+          },
+          {
+            "name": "index_correlation_references_eventId_namespace_value",
+            "unique": true,
+            "columnNames": [
+              "eventId",
+              "namespace",
+              "value"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_correlation_references_eventId_namespace_value` ON `${TABLE_NAME}` (`eventId`, `namespace`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "test_events",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "eventId"
+            ],
+            "referencedColumns": [
+              "eventId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "timeline_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`timelineEntryId` TEXT NOT NULL, `runId` TEXT NOT NULL, `sequenceNumber` INTEGER NOT NULL, `kind` TEXT NOT NULL, `epochMillis` INTEGER NOT NULL, `monotonicNanos` INTEGER NOT NULL, `stepId` TEXT, `attemptId` TEXT, `relatedEventId` TEXT, PRIMARY KEY(`timelineEntryId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`relatedEventId`, `runId`) REFERENCES `test_events`(`eventId`, `runId`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "fields": [
+          {
+            "fieldPath": "timelineEntryId",
+            "columnName": "timelineEntryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "runId",
+            "columnName": "runId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sequenceNumber",
+            "columnName": "sequenceNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epochMillis",
+            "columnName": "epochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "monotonicNanos",
+            "columnName": "monotonicNanos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "stepId",
+            "columnName": "stepId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "attemptId",
+            "columnName": "attemptId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "relatedEventId",
+            "columnName": "relatedEventId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "timelineEntryId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_timeline_entries_runId",
+            "unique": false,
+            "columnNames": [
+              "runId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_timeline_entries_runId` ON `${TABLE_NAME}` (`runId`)"
+          },
+          {
+            "name": "index_timeline_entries_runId_sequenceNumber",
+            "unique": true,
+            "columnNames": [
+              "runId",
+              "sequenceNumber"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_timeline_entries_runId_sequenceNumber` ON `${TABLE_NAME}` (`runId`, `sequenceNumber`)"
+          },
+          {
+            "name": "index_timeline_entries_relatedEventId_runId",
+            "unique": false,
+            "columnNames": [
+              "relatedEventId",
+              "runId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_timeline_entries_relatedEventId_runId` ON `${TABLE_NAME}` (`relatedEventId`, `runId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "test_runs",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "runId"
+            ],
+            "referencedColumns": [
+              "runId"
+            ]
+          },
+          {
+            "table": "test_events",
+            "onDelete": "NO ACTION",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "relatedEventId",
+              "runId"
+            ],
+            "referencedColumns": [
+              "eventId",
+              "runId"
+            ]
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '34cb8e0cdf11890ed34fb5571f7edb38')"
+    ]
+  }
+}

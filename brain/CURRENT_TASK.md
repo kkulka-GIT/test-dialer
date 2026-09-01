@@ -1,48 +1,27 @@
 # Current Task
 
-Status: REVIEW CORRECTIONS IMPLEMENTED — FINAL CI PENDING
+Status: IMPLEMENTED — CI PENDING
 
-Feature: F02 — Run Correlation Timeline
+Feature: F03 — Test Run Persistence
 
 Goal:
-Dodać kontrolowane tworzenie identyfikatorów, precyzyjne znaczniki czasu oraz trwałą kolejność osi wykonania testu, aby zdarzenia można było później korelować z CDR-ami i sesjami systemów ratingowych.
+Zapewnić lokalny, trwały i atomowy zapis historii scenariuszy, runów, zdarzeń oraz osi czasu potrzebnej do korelacji rating/billing po restarcie aplikacji.
 
 Scope:
-- Generowanie RunId, EventId, AttemptId i TimelineEntryId przez wstrzykiwane providery.
-- Rozdzielenie czasu UTC od czasu monotonicznego.
-- Jawny sequenceNumber jako trwałe źródło kolejności osi.
-- Osobne wpisy TimelineEntry dla runu, kroków, prób i zarejestrowanych akcji.
-- Kontrolowane przejścia przez TestRunRecorder.
-- Powiązanie ACTION_RECORDED z TestEvent.
-- Jawne okna czasowe wyszukiwania CDR.
-- Deterministyczne testy JVM.
+- Room database v1 i jawne encje relacyjne.
+- Pełny round-trip scenariusza, ExpectedResult, TestRun, TestEvent, TestAction, Observation, CorrelationMetadata i TimelineEntry.
+- Zachowanie event order, sequenceNumber, epochMillis i monotonicNanos.
+- Atomowe immutable snapshots oraz optimistic revision.
+- Strict decoding i testy Room przez Robolectric/JVM.
+- Bezpieczna polityka Android backup.
 
 Out of scope:
-- UI, Room, SharedPreferences i inny trwały zapis nowych runów.
-- JSON, CSV i eksport.
-- Wykonywanie połączeń, SMS lub transmisji danych.
-- Backend oraz rzeczywiste wyszukiwanie CDR.
-- Zmiany VoiceResultStore i historycznego JSON.
-- Nowe uprawnienia Androida.
-
-Acceptance:
-- Model pozostaje czystym Kotlinem bez Android Context.
-- SequenceNumber jest ciągły i niezależny od zegara.
-- Zmiana zegara ściennego nie niszczy kolejności przy rosnącym czasie monotonicznym.
-- Nieprawidłowe przejścia wykonania są odrzucane.
-- Testy JVM i GitHub Actions przechodzą.
-- Debug APK jest opublikowany jako artifact.
-
-Verification:
-- GitHub Actions #46: PASS.
-- Unit tests: PASS.
-- Debug APK build and artifact: PASS.
-
-Mode:
-incremental
+- UI, VoiceResultStore, legacy JSON, eksport, backend/CDR lookup i wykonanie telekomunikacji.
+- Automatyczne wznowienie RUNNING recorder po śmierci procesu.
+- Szyfrowanie aplikacyjne i polityka retencji.
 
 Branch:
-`feature/run-correlation-timeline`
+`feature/test-run-persistence`
 
-Pull request:
-https://github.com/kkulka-GIT/test-dialer/pull/5
+Verification:
+GitHub Actions pending.
