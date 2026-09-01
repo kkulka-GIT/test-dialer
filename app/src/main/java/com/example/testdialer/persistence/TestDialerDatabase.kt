@@ -8,7 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.Update
+import android.database.sqlite.SQLiteConstraintException
 
 data class PersistenceSnapshot(
     val scenario: ScenarioEntity,
@@ -44,6 +44,12 @@ abstract class TestRunDao {
     @Query("SELECT * FROM test_runs ORDER BY startedAtMillis DESC, runId")
     abstract fun listRuns(): List<TestRunEntity>
 
+    @Query("SELECT COUNT(*) FROM test_events WHERE runId = :runId")
+    abstract fun eventCount(runId: String): Int
+
+    @Query("SELECT COUNT(*) FROM timeline_entries WHERE runId = :runId")
+    abstract fun timelineCount(runId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertScenario(entity: ScenarioEntity)
 
@@ -53,8 +59,26 @@ abstract class TestRunDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertRun(entity: TestRunEntity)
 
-    @Update
-    protected abstract fun updateRun(entity: TestRunEntity): Int
+    @Query("""
+        UPDATE test_runs
+        SET status = :status,
+            completedAtMillis = :completedAtMillis,
+            revision = revision + 1
+        WHERE runId = :runId
+          AND revision = :expectedRevision
+          AND scenarioId = :scenarioId
+          AND scenarioVersion = :scenarioVersion
+          AND startedAtMillis = :startedAtMillis
+    """)
+    protected abstract fun compareAndSetRun(
+        runId: String,
+        expectedRevision: Long,
+        scenarioId: String,
+        scenarioVersion: Int,
+        startedAtMillis: Long,
+        status: String,
+        completedAtMillis: Long?,
+    ): Int
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertEvents(entities: List<TestEventEntity>)
@@ -123,9 +147,22 @@ abstract class TestRunDao {
 
         val nextRun = snapshot.run.copy(revision = nextRevision)
         if (existing == null) {
-            insertRun(nextRun)
-        } else if (updateRun(nextRun) != 1) {
-            throw SnapshotConflictException("Snapshot update did not affect exactly one run")
+            try {
+                insertRun(nextRun)
+            } catch (_: SQLiteConstraintException) {
+                throw SnapshotConflictException("Run was created concurrently")
+            }
+        } else if (compareAndSetRun(
+                runId = nextRun.runId,
+                expectedRevision = requireNotNull(expectedRevision),
+                scenarioId = nextRun.scenarioId,
+                scenarioVersion = nextRun.scenarioVersion,
+                startedAtMillis = nextRun.startedAtMillis,
+                status = nextRun.status,
+                completedAtMillis = nextRun.completedAtMillis,
+            ) != 1
+        ) {
+            throw SnapshotConflictException("Snapshot revision is stale")
         }
 
         deleteTimeline(nextRun.runId)
@@ -138,8 +175,25 @@ abstract class TestRunDao {
     }
 
     private fun requireExtension(existing: PersistenceSnapshot, replacement: PersistenceSnapshot) {
+        if (replacement.run.runId != existing.run.runId ||
+            replacement.run.scenarioId != existing.run.scenarioId ||
+            replacement.run.scenarioVersion != existing.run.scenarioVersion ||
+            replacement.run.startedAtMillis != existing.run.startedAtMillis
+        ) {
+            throw SnapshotConflictException("Run identity metadata is immutable")
+        }
         if (existing.run.status == "COMPLETED" || existing.run.status == "ABORTED") {
             throw SnapshotConflictException("Terminal snapshots are immutable")
+        }
+        val allowedStatuses = when (existing.run.status) {
+            "CREATED" -> setOf("CREATED", "RUNNING")
+            "RUNNING" -> setOf("RUNNING", "COMPLETED", "ABORTED")
+            else -> throw SnapshotConflictException("Unknown stored run status")
+        }
+        if (replacement.run.status !in allowedStatuses) {
+            throw SnapshotConflictException(
+                "Run status transition ${existing.run.status} -> ${replacement.run.status} is not allowed",
+            )
         }
         if (replacement.timeline.take(existing.timeline.size) != existing.timeline) {
             throw SnapshotConflictException("Timeline history cannot be rewritten")
