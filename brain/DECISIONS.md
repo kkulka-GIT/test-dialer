@@ -41,3 +41,10 @@
 - Room nie używa destructive migration fallback, a schemat bazy jest eksportowany i wersjonowany.
 - monotonicNanos jest zachowywany jako historyczny pomiar z procesu źródłowego; F03 nie wznawia automatycznie RUNNING recorder po restarcie procesu.
 - Dane rating/billing pozostają w prywatnej bazie aplikacji, nie są logowane, a Android backup aplikacji jest wyłączony.
+- Pierwszy interfejs nowych sesji pozostaje w programmatic Android Views; migracja do Compose nie jest częścią F04.
+- Ręczna sesja F04 tworzy jednorazowy scenariusz z jednym krokiem i zapisuje RUNNING snapshot przed rejestracją zdarzenia.
+- Rejestracja ręczna oznacza wyłącznie znacznik czasu i obserwację `NOT_VERIFIED`; nie potwierdza technicznego wykonania usługi.
+- Po błędzie zapisu mutable recorder jest unieważniany, aby nie kontynuować historii rozbieżnej z trwałym snapshotem.
+- Sesja RUNNING po śmierci procesu jest widoczna read-only w historii, ale nie jest automatycznie wznawiana.
+- Minimalne DI F04 zapewnia `TestDialerApplication`; ViewModel wykonuje wszystkie operacje Room przez pojedynczy executor.
+- Rejestr pokazuje nowe sesje testowe i zachowuje osobną sekcję dotychczasowych wyników Voice.

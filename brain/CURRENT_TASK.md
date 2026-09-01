@@ -2,26 +2,26 @@
 
 Status: IMPLEMENTED — CI PENDING
 
-Feature: F03 — Test Run Persistence
+Feature: F04 — Manual Billing Session UI
 
 Goal:
-Zapewnić lokalny, trwały i atomowy zapis historii scenariuszy, runów, zdarzeń oraz osi czasu potrzebnej do korelacji rating/billing po restarcie aplikacji.
+Udostępnić minimalny interfejs ręcznej sesji rating/billing, zapis zdarzenia oraz historię z osią czasu bez wykonywania akcji telekomunikacyjnych.
 
 Scope:
-- Room database v1 i jawne encje relacyjne.
-- Pełny round-trip scenariusza, ExpectedResult, TestRun, TestEvent, TestAction, Observation, CorrelationMetadata i TimelineEntry.
-- Zachowanie event order, sequenceNumber, epochMillis i monotonicNanos.
-- Atomowe immutable snapshots oraz optimistic revision.
-- Strict decoding i testy Room przez Robolectric/JVM.
-- Bezpieczna polityka Android backup.
+- Ręczna sesja Voice/SMS/Data: start, rejestracja czasu zdarzenia i zakończenie.
+- Zapis Room poza main thread z optimistic revision.
+- Lista sesji oraz szczegóły osi czasu z kopiowalnymi Run ID i Event ID.
+- Zachowanie dotychczasowych ekranów i danych Voice.
+- ComponentActivity, ViewModel, pojedynczy executor i ręczne DI bez frameworka.
+- Dostępność: czytelne etykiety, nagłówki, komunikaty live i min. 48 dp dla nowych akcji.
 
 Out of scope:
-- UI, VoiceResultStore, legacy JSON, eksport, backend/CDR lookup i wykonanie telekomunikacji.
+- Eksport, backend/CDR lookup i automatyczne wykonanie call/SMS/Data.
 - Automatyczne wznowienie RUNNING recorder po śmierci procesu.
-- Szyfrowanie aplikacyjne i polityka retencji.
+- Compose, Navigation Component, Hilt/Koin i duży redesign.
 
 Branch:
-`feature/test-run-persistence`
+`feature/manual-billing-session-ui`
 
 Verification:
-GitHub Actions pending.
+GitHub Actions pending after PR creation.
