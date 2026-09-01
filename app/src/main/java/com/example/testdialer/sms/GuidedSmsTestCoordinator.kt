@@ -9,6 +9,9 @@ import com.example.testdialer.domain.ScenarioStepDefinition
 import com.example.testdialer.domain.StepId
 import com.example.testdialer.domain.TestAction
 import com.example.testdialer.domain.execution.TestRunRecorder
+import com.example.testdialer.domain.execution.CapturedTime
+import com.example.testdialer.domain.execution.SystemTimeProvider
+import com.example.testdialer.domain.execution.TimeProvider
 import com.example.testdialer.persistence.StoredTestRun
 import com.example.testdialer.persistence.TestRunRepository
 import java.util.UUID
@@ -30,6 +33,7 @@ enum class GuidedSmsOutcome(
 
 class GuidedSmsTestCoordinator(
     private val repository: TestRunRepository,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
 ) {
     private data class Session(
         val scenario: ScenarioDefinition,
@@ -61,8 +65,10 @@ class GuidedSmsTestCoordinator(
                 ),
             ),
         )
-        val recorder = TestRunRecorder.start(scenario)
+        val recorder = TestRunRecorder.start(scenario, timeProvider = timeProvider)
         return try {
+            recorder.startStep(stepId)
+            recorder.startAttempt()
             val stored = repository.saveSnapshot(scenario, recorder.snapshot())
             session = Session(scenario, recorder, stored.revision)
             stored
@@ -72,13 +78,11 @@ class GuidedSmsTestCoordinator(
         }
     }
 
-    fun recordAndComplete(outcome: GuidedSmsOutcome): StoredTestRun {
+    fun recordAndComplete(outcome: GuidedSmsOutcome, observedAt: CapturedTime): StoredTestRun {
         val current = requireNotNull(session) { "No guided SMS test is active" }
         return try {
-            val stepId = current.scenario.steps.single().id
-            current.recorder.startStep(stepId)
-            current.recorder.startAttempt()
-            current.recorder.recordEvent(
+            current.recorder.recordEventAt(
+                capturedAt = observedAt,
                 observation = Observation(
                     status = outcome.status,
                     source = ObservationSource.TESTER,

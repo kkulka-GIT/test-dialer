@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.persistence.TestRunRepository
+import com.example.testdialer.domain.execution.SystemTimeProvider
+import com.example.testdialer.domain.execution.TimeProvider
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -22,6 +24,7 @@ data class GuidedSmsUiState(
 class GuidedSmsViewModel(
     private val coordinator: GuidedSmsTestCoordinator,
     private val executor: ExecutorService,
+    private val timeProvider: TimeProvider = SystemTimeProvider,
 ) : ViewModel() {
     private val mutableState = MutableLiveData(GuidedSmsUiState())
     val state: LiveData<GuidedSmsUiState> = mutableState
@@ -43,10 +46,16 @@ class GuidedSmsViewModel(
         )
     }
 
-    fun record(outcome: GuidedSmsOutcome) = submit("Nie udało się zapisać wyniku SMS") {
-        val stored = coordinator.recordAndComplete(outcome)
-        check(stored.run.status == TestRunStatus.COMPLETED)
-        GuidedSmsUiState(saved = true)
+    fun composerLaunchFailed() = returnedFromComposer()
+
+    fun record(outcome: GuidedSmsOutcome) {
+        if (current().busy) return
+        val observedAt = timeProvider.capture()
+        submit("Nie udało się zapisać wyniku SMS") {
+            val stored = coordinator.recordAndComplete(outcome, observedAt)
+            check(stored.run.status == TestRunStatus.COMPLETED)
+            GuidedSmsUiState(saved = true)
+        }
     }
 
     fun startAnother() {
@@ -86,8 +95,9 @@ class GuidedSmsViewModel(
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(GuidedSmsViewModel::class.java))
             return GuidedSmsViewModel(
-                GuidedSmsTestCoordinator(repository),
+                GuidedSmsTestCoordinator(repository, SystemTimeProvider),
                 Executors.newSingleThreadExecutor(),
+                SystemTimeProvider,
             ) as T
         }
     }

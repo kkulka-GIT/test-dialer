@@ -890,7 +890,7 @@ class MainActivity : ComponentActivity() {
         try {
             startActivity(intent)
         } catch (_: android.content.ActivityNotFoundException) {
-            guidedSmsViewModel.returnedFromComposer()
+            guidedSmsViewModel.composerLaunchFailed()
             Toast.makeText(this, R.string.sms_composer_unavailable_after_start, Toast.LENGTH_LONG).show()
         }
     }
