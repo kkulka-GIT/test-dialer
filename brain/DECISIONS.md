@@ -52,4 +52,5 @@
 - Composer SMS jest otwierany wyłącznie przez `ACTION_SENDTO` z URI `smsto:` i `sms_body`; aplikacja nie używa `SEND_SMS`, permissions ani receiverów.
 - Numer i treść nie są normalizowane poza trim numeru, nie są logowane i pozostają w prywatnej bazie aplikacji.
 - Powrót z composera nie jest dowodem wysłania ani delivery; tester zapisuje neutralną obserwację `CONFIRMED`, `NOT_CONFIRMED` albo `NOT_VERIFIED` ze źródłem `TESTER`.
-- Zdarzenie Guided SMS otrzymuje czas w momencie wyboru obserwacji użytkownika.
+- Step i attempt Guided SMS rozpoczynają się przed otwarciem composera i są częścią pierwszego trwałego RUNNING snapshotu; po śmierci procesu pozostają historią read-only bez automatycznego wznowienia.
+- Zdarzenie Guided SMS otrzymuje `CapturedTime` synchronicznie w momencie wyboru obserwacji użytkownika, przed kolejką zapisu; późniejsze opóźnienie executora nie zmienia czasu `TestEvent` ani `ACTION_RECORDED`.

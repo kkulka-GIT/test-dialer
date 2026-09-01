@@ -13,8 +13,8 @@ Placeholder SMS zastąpiono kontrolowanym scenariuszem. Użytkownik podaje numer
 
 ## Korelacja billing/rating
 
-Po powrocie tester wybiera własną neutralną obserwację. Wtedy powstaje `TestEvent`, wpis osi czasu i zakończony snapshot Room zapisany z kontrolą revision. Rejestr pokazuje sesję oraz Run ID, Event ID i dokładny czas.
+Step i attempt są zapisywane przed otwarciem composera. Po powrocie tester wybiera własną neutralną obserwację. `CapturedTime` powstaje synchronicznie przy kliknięciu, zanim zapis trafi do kolejki executora. Ten sam czas zasila `TestEvent` i `ACTION_RECORDED`; później powstaje zakończony snapshot Room zapisany z kontrolą revision. Rejestr pokazuje sesję oraz Run ID, Event ID i dokładny czas.
 
 ## Weryfikacja
 
-Dodano testy intent factory, koordynatora, ViewModelu i regresji głównych scenariuszy UI. Ostatecznym źródłem prawdy pozostaje GitHub Actions po publikacji PR.
+Dodano testy intent factory, koordynatora, ViewModelu i regresji głównych scenariuszy UI. Test z opóźnionym executorem dowodzi zachowania czasu kliknięcia; osobne testy obejmują podwójne kliknięcie, zniknięcie handlera oraz read-only RUNNING attempt po odtworzeniu procesu. Ostatecznym źródłem prawdy pozostaje GitHub Actions po publikacji PR.
