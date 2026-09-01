@@ -1,5 +1,8 @@
 package com.example.testdialer.domain
 
+import com.example.testdialer.domain.execution.TimelineEntry
+import com.example.testdialer.domain.execution.TimelineEntryKind
+
 enum class TestRunStatus {
     CREATED,
     RUNNING,
@@ -27,6 +30,7 @@ data class TestRun(
     val startedAtMillis: Long,
     val completedAtMillis: Long? = null,
     val events: List<TestEvent> = emptyList(),
+    val timeline: List<TimelineEntry> = emptyList(),
 ) {
     init {
         require(scenarioVersion > 0) { "Scenario version must be positive" }
@@ -51,6 +55,56 @@ data class TestRun(
         }
         require(events.map { it.id }.distinct().size == events.size) {
             "Event identifiers must be unique within a run"
+        }
+        validateTimeline()
+    }
+
+    private fun validateTimeline() {
+        if (timeline.isEmpty()) return
+
+        require(status != TestRunStatus.CREATED) { "A created run must not have timeline entries" }
+        require(timeline.all { it.runId == id }) { "Every timeline entry must belong to this run" }
+        require(timeline.map { it.id }.distinct().size == timeline.size) {
+            "Timeline entry identifiers must be unique within a run"
+        }
+        require(timeline.map { it.sequenceNumber } == timeline.indices.map(Int::toLong)) {
+            "Timeline sequence numbers must be contiguous and start at zero"
+        }
+        require(timeline.zipWithNext().all { (previous, next) ->
+            previous.capturedAt.monotonicNanos <= next.capturedAt.monotonicNanos
+        }) {
+            "Timeline monotonic time must not move backwards"
+        }
+        require(timeline.first().kind == TimelineEntryKind.RUN_STARTED) {
+            "The first timeline entry must start the run"
+        }
+        require(timeline.count { it.kind == TimelineEntryKind.RUN_STARTED } == 1) {
+            "A timeline must contain exactly one run start"
+        }
+
+        val terminalKinds = setOf(TimelineEntryKind.RUN_COMPLETED, TimelineEntryKind.RUN_ABORTED)
+        val terminalEntries = timeline.filter { it.kind in terminalKinds }
+        when (status) {
+            TestRunStatus.RUNNING -> require(terminalEntries.isEmpty()) {
+                "A running run must not contain a terminal timeline entry"
+            }
+            TestRunStatus.COMPLETED -> require(
+                terminalEntries.size == 1 && timeline.last().kind == TimelineEntryKind.RUN_COMPLETED,
+            ) { "A completed run must end with one completion entry" }
+            TestRunStatus.ABORTED -> require(
+                terminalEntries.size == 1 && timeline.last().kind == TimelineEntryKind.RUN_ABORTED,
+            ) { "An aborted run must end with one abort entry" }
+            TestRunStatus.CREATED -> Unit
+        }
+
+        val recordedEventIds = timeline
+            .filter { it.kind == TimelineEntryKind.ACTION_RECORDED }
+            .mapNotNull { it.relatedEventId }
+        require(recordedEventIds.distinct().size == recordedEventIds.size) {
+            "Each event may be recorded on the timeline only once"
+        }
+        require(recordedEventIds.toSet() == events.map { it.id }.toSet()) {
+            "Timeline action entries must correspond exactly to run events"
         }
     }
 }
