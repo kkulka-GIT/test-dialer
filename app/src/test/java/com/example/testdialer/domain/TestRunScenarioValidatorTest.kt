@@ -6,15 +6,15 @@ import org.junit.Test
 
 class TestRunScenarioValidatorTest {
     @Test
-    fun acceptsEventsWhoseStepsAndServicesMatchScenario() {
-        val scenario = scenario()
+    fun acceptsEventsWhoseActionsExactlyMatchScenario() {
+        val scenario = scenario(
+            stepId = StepId("voice-step"),
+            action = TestAction.Voice("+48123123123"),
+        )
         val run = runWith(
-            TestEvent(
-                id = EventId("event-1"),
-                runId = RUN_ID,
+            event(
                 stepId = StepId("voice-step"),
-                action = TestAction.Voice("+48222222222"),
-                occurredAtMillis = 1_000L,
+                action = TestAction.Voice("+48123123123"),
             ),
         )
 
@@ -26,20 +26,42 @@ class TestRunScenarioValidatorTest {
     fun reportsEventReferencingUnknownStep() {
         val issues = TestRunScenarioValidator.validate(
             runWith(event(stepId = StepId("unknown-step"), action = TestAction.Voice("+48111"))),
-            scenario(),
+            scenario(stepId = StepId("voice-step"), action = TestAction.Voice("+48111")),
         )
 
         assertEquals(EventId("event-1"), issues.single().eventId)
     }
 
     @Test
-    fun reportsEventWhoseServiceDoesNotMatchStep() {
-        val issues = TestRunScenarioValidator.validate(
-            runWith(event(stepId = StepId("voice-step"), action = TestAction.Sms("+48111"))),
-            scenario(),
+    fun reportsVoiceDestinationMismatch() {
+        assertActionMismatch(
+            scenarioAction = TestAction.Voice("+48111"),
+            eventAction = TestAction.Voice("+48222"),
         )
+    }
 
-        assertEquals(EventId("event-1"), issues.single().eventId)
+    @Test
+    fun reportsSmsDestinationMismatch() {
+        assertActionMismatch(
+            scenarioAction = TestAction.Sms(destination = "+48111", message = "TEST"),
+            eventAction = TestAction.Sms(destination = "+48222", message = "TEST"),
+        )
+    }
+
+    @Test
+    fun reportsSmsMessageMismatch() {
+        assertActionMismatch(
+            scenarioAction = TestAction.Sms(destination = "+48111", message = "TEST"),
+            eventAction = TestAction.Sms(destination = "+48111", message = "OTHER"),
+        )
+    }
+
+    @Test
+    fun reportsDataTargetMismatch() {
+        assertActionMismatch(
+            scenarioAction = TestAction.Data("https://example.test/rating"),
+            eventAction = TestAction.Data("https://example.test/other"),
+        )
     }
 
     @Test
@@ -53,21 +75,40 @@ class TestRunScenarioValidatorTest {
         )
 
         assertThrows(IllegalArgumentException::class.java) {
-            TestRunScenarioValidator.requireValid(run, scenario())
+            TestRunScenarioValidator.requireValid(
+                run,
+                scenario(stepId = STEP_ID, action = TestAction.Voice("+48111")),
+            )
         }
     }
 
-    private fun scenario() = ScenarioDefinition(
+    private fun assertActionMismatch(
+        scenarioAction: TestAction,
+        eventAction: TestAction,
+    ) {
+        val issues = TestRunScenarioValidator.validate(
+            runWith(event(stepId = STEP_ID, action = eventAction)),
+            scenario(stepId = STEP_ID, action = scenarioAction),
+        )
+
+        assertEquals(EventId("event-1"), issues.single().eventId)
+        assertEquals("Event action does not match its scenario step", issues.single().message)
+    }
+
+    private fun scenario(
+        stepId: StepId,
+        action: TestAction,
+    ) = ScenarioDefinition(
         id = ScenarioId("scenario-1"),
         version = 1,
-        name = "Voice scenario",
+        name = "Billing scenario",
         steps = listOf(
             ScenarioStepDefinition(
-                id = StepId("voice-step"),
+                id = stepId,
                 order = 0,
-                title = "Voice",
-                instruction = "Place a call",
-                action = TestAction.Voice("+48123123123"),
+                title = "Generate event",
+                instruction = "Perform the configured action",
+                action = action,
             ),
         ),
     )
@@ -91,5 +132,6 @@ class TestRunScenarioValidatorTest {
 
     private companion object {
         val RUN_ID = RunId("run-1")
+        val STEP_ID = StepId("step-1")
     }
 }
