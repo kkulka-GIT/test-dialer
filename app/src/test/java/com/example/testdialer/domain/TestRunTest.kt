@@ -14,14 +14,7 @@ class TestRunTest {
             event(EventId("event-2"), runId, stepId, 2_000L),
         )
 
-        val run = TestRun(
-            id = runId,
-            scenarioId = ScenarioId("scenario-1"),
-            scenarioVersion = 1,
-            status = TestRunStatus.RUNNING,
-            startedAtMillis = 500L,
-            events = events,
-        )
+        val run = runningRun(runId = runId, events = events)
 
         assertEquals(2, run.events.count { it.stepId == stepId })
     }
@@ -29,12 +22,8 @@ class TestRunTest {
     @Test
     fun rejectsEventFromAnotherRun() {
         assertThrows(IllegalArgumentException::class.java) {
-            TestRun(
-                id = RunId("run-1"),
-                scenarioId = ScenarioId("scenario-1"),
-                scenarioVersion = 1,
-                status = TestRunStatus.RUNNING,
-                startedAtMillis = 500L,
+            runningRun(
+                runId = RunId("run-1"),
                 events = listOf(
                     event(EventId("event-1"), RunId("run-2"), StepId("voice-step"), 1_000L),
                 ),
@@ -54,6 +43,45 @@ class TestRunTest {
         assertEquals("RATED", expected.code)
         assertEquals(ObservationStatus.NOT_VERIFIED, observation.status)
     }
+
+    @Test
+    fun rejectsCompletedRunWithoutCompletionTime() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TestRun(
+                id = RunId("run-1"),
+                scenarioId = ScenarioId("scenario-1"),
+                scenarioVersion = 1,
+                status = TestRunStatus.COMPLETED,
+                startedAtMillis = 500L,
+            )
+        }
+    }
+
+    @Test
+    fun rejectsRunningRunWithCompletionTime() {
+        assertThrows(IllegalArgumentException::class.java) {
+            TestRun(
+                id = RunId("run-1"),
+                scenarioId = ScenarioId("scenario-1"),
+                scenarioVersion = 1,
+                status = TestRunStatus.RUNNING,
+                startedAtMillis = 500L,
+                completedAtMillis = 1_000L,
+            )
+        }
+    }
+
+    private fun runningRun(
+        runId: RunId,
+        events: List<TestEvent>,
+    ) = TestRun(
+        id = runId,
+        scenarioId = ScenarioId("scenario-1"),
+        scenarioVersion = 1,
+        status = TestRunStatus.RUNNING,
+        startedAtMillis = 500L,
+        events = events,
+    )
 
     private fun event(id: EventId, runId: RunId, stepId: StepId, time: Long) = TestEvent(
         id = id,

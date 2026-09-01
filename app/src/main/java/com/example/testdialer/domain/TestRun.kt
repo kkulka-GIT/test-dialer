@@ -34,6 +34,18 @@ data class TestRun(
         require(completedAtMillis == null || completedAtMillis >= startedAtMillis) {
             "Run completion time must not precede its start"
         }
+        when (status) {
+            TestRunStatus.CREATED,
+            TestRunStatus.RUNNING,
+            -> require(completedAtMillis == null) {
+                "$status run must not have a completion time"
+            }
+            TestRunStatus.COMPLETED,
+            TestRunStatus.ABORTED,
+            -> require(completedAtMillis != null) {
+                "$status run must have a completion time"
+            }
+        }
         require(events.all { it.runId == id }) {
             "Every event must belong to this run"
         }
