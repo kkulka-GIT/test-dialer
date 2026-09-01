@@ -54,3 +54,8 @@
 - Powrót z composera nie jest dowodem wysłania ani delivery; tester zapisuje neutralną obserwację `CONFIRMED`, `NOT_CONFIRMED` albo `NOT_VERIFIED` ze źródłem `TESTER`.
 - Step i attempt Guided SMS rozpoczynają się przed otwarciem composera i są częścią pierwszego trwałego RUNNING snapshotu; po śmierci procesu pozostają historią read-only bez automatycznego wznowienia.
 - Zdarzenie Guided SMS otrzymuje `CapturedTime` synchronicznie w momencie wyboru obserwacji użytkownika, przed kolejką zapisu; późniejsze opóźnienie executora nie zmienia czasu `TestEvent` ani `ACTION_RECORDED`.
+- F06 używa wyłącznie `ConnectivityManager.activeNetwork` z transportem CELLULAR bez VPN; nie żąda, nie wiąże i nie przełącza sieci.
+- Data wykonuje ograniczony foreground HTTPS GET na publiczny host/443 bez redirect, auth, upload, cache i compression, z limitem 1 MiB i timeoutami.
+- URL i transport są sprawdzane przed pierwszym RUNNING snapshotem; błędny preflight nie tworzy sesji.
+- Czas żądania jest chwytany synchronicznie przy kliknięciu, a zdarzenie terminalne zapisuje czas startu sieci, końca, bytes, duration, status, host i transport.
+- Po śmierci procesu RUNNING pozostaje wyłącznie historią read-only; F06 nie wznawia pobierania.

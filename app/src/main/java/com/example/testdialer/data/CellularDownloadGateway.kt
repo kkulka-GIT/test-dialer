@@ -77,6 +77,10 @@ class AndroidCellularDownloadGateway(
             require(response in 200..299) {
                 if (response in 300..399) "Przekierowania są niedozwolone" else "HTTP $response"
             }
+            val contentEncoding = opened.contentEncoding
+            require(contentEncoding.isNullOrBlank() || contentEncoding.equals("identity", ignoreCase = true)) {
+                "Skompresowane odpowiedzi są niedozwolone"
+            }
             opened.inputStream.use { input ->
                 val buffer = ByteArray(BUFFER_SIZE)
                 while (true) {
@@ -100,7 +104,7 @@ class AndroidCellularDownloadGateway(
                 code = "CANCELLED"
             } else {
                 status = DownloadStatus.FAILED
-                code = error.message?.take(80)?.let { "FAILED" } ?: "FAILED"
+                code = "FAILED"
             }
         } finally {
             connection?.disconnect()

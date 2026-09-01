@@ -1,28 +1,27 @@
 # Current Task
 
-Status: IMPLEMENTED LOCALLY — PUBLICATION/CI PENDING
+Status: IMPLEMENTATION — CHECKPOINT PUBLISHED
 
-Feature: F05 — Guided SMS Test
+Feature: F06 — Cellular Data Download Test
 
 Goal:
-Zastąpić placeholder SMS kontrolowanym scenariuszem, który otwiera systemowy composer i zapisuje ręczną obserwację do korelacji rating/billing.
+Zastąpić placeholder Data ograniczonym pobraniem HTTPS przez aktualnie aktywną sieć komórkową i zapisać dane korelacyjne rating/billing.
 
 Scope:
-- Wymagany numer i treść, opcjonalna etykieta testu.
-- Preflight obsługi Intent przed utworzeniem RUNNING snapshotu.
-- Wyłącznie `ACTION_SENDTO`, URI `smsto:` i `sms_body`; brak automatycznego wysyłania.
-- Ręczna, neutralna obserwacja testera po powrocie z composera.
-- Trwały TestRun/TestEvent/timeline z optimistic revision w Room.
-- Zachowanie Voice, Data placeholder, ręcznych sesji i historii.
+- Foreground HTTPS GET przez `activeNetwork` wyłącznie CELLULAR i bez VPN.
+- Preflight URL oraz sieci przed utworzeniem RUNNING snapshotu.
+- Limit 1 MiB, timeouty, brak redirect/auth/upload/cache/compression.
+- Terminalny TestEvent z bytes, duration, status, host, transport i czasami.
+- Anulowanie przez cancel + disconnect; dokładnie jedno zdarzenie terminalne.
+- Zachowanie Voice, SMS, ręcznych sesji i historii.
 
 Out of scope:
-- Delivery reports, receiver, `SEND_SMS` i permissions.
-- Backend, eksport i CDR lookup.
-- Automatyczne wznowienie sesji po śmierci procesu.
-- Redesign innych scenariuszy.
+- `requestNetwork`, process binding i przełączanie transportu.
+- Prywatne/lokalne hosty, upload, body, redirect, auth i backend.
+- Automatyczne wznowienie RUNNING po śmierci procesu.
 
 Branch:
-`feature/guided-sms-test`
+`feature/cellular-data-download-test`
 
 Verification:
-Publikacja przez GitHub connector, PR i GitHub Actions pending.
+Checkpoint opublikowany; fake-only testy, PR i GitHub Actions pending.
