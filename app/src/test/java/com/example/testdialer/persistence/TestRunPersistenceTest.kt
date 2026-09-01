@@ -26,12 +26,19 @@ import com.example.testdialer.domain.execution.TimelineEntry
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -114,6 +121,166 @@ class TestRunPersistenceTest {
             TestRunPersistenceMapper.fromPersistence(corrupted)
         }
     }
+
+    @Test
+    fun mapperRejectsUnknownEnumAndIncompleteNullableStructures() {
+        val snapshot = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+
+        assertThrows(IllegalArgumentException::class.java) {
+            TestRunPersistenceMapper.fromPersistence(
+                snapshot.copy(run = snapshot.run.copy(status = "UNKNOWN")),
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            TestRunPersistenceMapper.fromPersistence(
+                snapshot.copy(events = snapshot.events.map {
+                    it.copy(observationSource = null)
+                }),
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            TestRunPersistenceMapper.fromPersistence(
+                snapshot.copy(scenarioSteps = snapshot.scenarioSteps.mapIndexed { index, step ->
+                    if (index == 0) step.copy(expectedResultDescription = null) else step
+                }),
+            )
+        }
+    }
+
+    @Test
+    fun immutableIdentityAndIllegalStatusRollbackCompletely() {
+        val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+        database.testRunDao().storeSnapshot(original, null)
+
+        assertThrows(SnapshotConflictException::class.java) {
+            database.testRunDao().storeSnapshot(
+                original.copy(run = original.run.copy(startedAtMillis = original.run.startedAtMillis + 1)),
+                0L,
+            )
+        }
+        assertThrows(SnapshotConflictException::class.java) {
+            database.testRunDao().storeSnapshot(
+                original.copy(run = original.run.copy(status = "CREATED")),
+                0L,
+            )
+        }
+
+        assertEquals(0L, database.testRunDao().findRun(original.run.runId)?.revision)
+        assertEquals(original, database.testRunDao().loadSnapshot(original.run.runId))
+    }
+
+    @Test
+    fun legalExtensionReplacesChildrenWithoutDuplicates() {
+        val initial = repository.saveSnapshot(scenario(), runningRun())
+        val completed = completedRun()
+
+        repository.saveSnapshot(scenario(), completed, initial.revision)
+
+        assertEquals(completed.events.size, database.testRunDao().eventCount(completed.id.value))
+        assertEquals(completed.timeline.size, database.testRunDao().timelineCount(completed.id.value))
+        assertEquals(completed, repository.get(completed.id)?.run)
+    }
+
+    @Test
+    fun failureAfterChildDeletionRollsBackCasAndChildren() {
+        val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+        database.testRunDao().storeSnapshot(original, null)
+        val invalidEntry = original.timeline.last().copy(
+            timelineEntryId = "invalid-fk-entry",
+            sequenceNumber = original.timeline.size.toLong(),
+            relatedEventId = "missing-event",
+        )
+        val invalid = original.copy(timeline = original.timeline + invalidEntry)
+
+        assertThrows(RuntimeException::class.java) {
+            database.testRunDao().storeSnapshot(invalid, 0L)
+        }
+
+        assertEquals(original, database.testRunDao().loadSnapshot(original.run.runId))
+        assertEquals(0L, database.testRunDao().findRun(original.run.runId)?.revision)
+    }
+
+    @Test
+    fun terminalSnapshotIsImmutable() {
+        val terminal = completedRun()
+        repository.saveSnapshot(scenario(), terminal)
+
+        assertThrows(SnapshotConflictException::class.java) {
+            repository.saveSnapshot(scenario(), terminal, 0L)
+        }
+        assertEquals(StoredTestRun(scenario(), terminal, 0L), repository.get(terminal.id))
+    }
+
+    @Test
+    fun compositeForeignKeyRejectsEventFromAnotherRun() {
+        val first = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+        database.testRunDao().storeSnapshot(first, null)
+        val secondRunId = "run-2"
+        val second = first.copy(
+            run = first.run.copy(runId = secondRunId, revision = 0L),
+            events = emptyList(),
+            references = emptyList(),
+            timeline = listOf(
+                first.timeline.first().copy(
+                    timelineEntryId = "run-2-entry",
+                    runId = secondRunId,
+                    relatedEventId = first.events.single().eventId,
+                ),
+            ),
+        )
+
+        assertThrows(RuntimeException::class.java) {
+            database.testRunDao().storeSnapshot(second, null)
+        }
+        assertNull(database.testRunDao().findRun(secondRunId))
+    }
+
+    @Test
+    fun twoDatabaseInstancesAllowExactlyOneCompetingWriter() {
+        database.close()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val name = "concurrent-${UUID.randomUUID()}.db"
+        val firstDatabase = fileDatabase(context, name)
+        val secondDatabase = fileDatabase(context, name)
+        try {
+            val firstRepository = RoomTestRunRepository(firstDatabase.testRunDao())
+            val secondRepository = RoomTestRunRepository(secondDatabase.testRunDao())
+            firstRepository.saveSnapshot(scenario(), runningRun())
+            val start = CountDownLatch(1)
+            val executor = Executors.newFixedThreadPool(2)
+            val results = listOf(
+                executor.submit<Result<StoredTestRun>> {
+                    start.await()
+                    runCatching { firstRepository.saveSnapshot(scenario(), completedRun(), 0L) }
+                },
+                executor.submit<Result<StoredTestRun>> {
+                    start.await()
+                    runCatching { secondRepository.saveSnapshot(scenario(), abortedRun(), 0L) }
+                },
+            )
+            start.countDown()
+            val outcomes = results.map { it.get(20, TimeUnit.SECONDS) }
+            executor.shutdownNow()
+
+            assertEquals(1, outcomes.count { it.isSuccess })
+            val failure = outcomes.single { it.isFailure }.exceptionOrNull()
+            assertTrue(failure is SnapshotConflictException)
+            assertEquals(1L, firstRepository.get(RunId("run-1"))?.revision)
+        } finally {
+            firstDatabase.close()
+            secondDatabase.close()
+            context.deleteDatabase(name)
+            database = Room.inMemoryDatabaseBuilder(context, TestDialerDatabase::class.java)
+                .allowMainThreadQueries()
+                .build()
+            repository = RoomTestRunRepository(database.testRunDao())
+        }
+    }
+
+    private fun fileDatabase(context: Context, name: String): TestDialerDatabase =
+        Room.databaseBuilder(context, TestDialerDatabase::class.java, name)
+            .allowMainThreadQueries()
+            .build()
 
     private fun scenario() = ScenarioDefinition(
         id = ScenarioId("rating-e2e"),
@@ -201,6 +368,15 @@ class TestRunPersistenceTest {
                 timelineEntry(5, TimelineEntryKind.STEP_FINISHED, StepId("voice")),
                 timelineEntry(6, TimelineEntryKind.RUN_COMPLETED),
             ),
+        )
+    }
+
+    private fun abortedRun(): TestRun {
+        val running = runningRun()
+        return running.copy(
+            status = TestRunStatus.ABORTED,
+            completedAtMillis = 1_700_000_000_010L,
+            timeline = running.timeline + timelineEntry(4, TimelineEntryKind.RUN_ABORTED),
         )
     }
 
