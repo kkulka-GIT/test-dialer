@@ -12,7 +12,7 @@ import com.example.testdialer.domain.StepId
 import com.example.testdialer.domain.TestAction
 import com.example.testdialer.domain.TestEvent
 
-fun VoiceTestResult.toLegacyTestEvent(
+fun VoiceTestResult.toDomainTestEvent(
     runId: RunId,
     stepId: StepId,
 ): TestEvent {
@@ -20,12 +20,12 @@ fun VoiceTestResult.toLegacyTestEvent(
         VoiceTestResult.Outcome.SUCCESS -> Observation(
             status = ObservationStatus.CONFIRMED,
             source = ObservationSource.TESTER,
-            code = "CALL_ESTABLISHED",
+            code = "LEGACY_SUCCESS",
         )
         VoiceTestResult.Outcome.FAILURE -> Observation(
             status = ObservationStatus.NOT_CONFIRMED,
             source = ObservationSource.TESTER,
-            code = "CALL_NOT_ESTABLISHED",
+            code = "LEGACY_FAILURE",
         )
         VoiceTestResult.Outcome.NOT_CHECKED -> Observation(
             status = ObservationStatus.NOT_VERIFIED,

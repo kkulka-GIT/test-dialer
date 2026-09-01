@@ -12,25 +12,26 @@ import org.junit.Test
 
 class VoiceTestResultDomainAdapterTest {
     @Test
-    fun mapsSuccessToNeutralConfirmedTesterObservation() {
-        val event = result(VoiceTestResult.Outcome.SUCCESS).toLegacyTestEvent(RUN_ID, STEP_ID)
+    fun mapsSuccessWithoutInferringCallState() {
+        val event = result(VoiceTestResult.Outcome.SUCCESS).toDomainTestEvent(RUN_ID, STEP_ID)
 
         assertEquals(ObservationStatus.CONFIRMED, event.observation?.status)
         assertEquals(ObservationSource.TESTER, event.observation?.source)
-        assertEquals("CALL_ESTABLISHED", event.observation?.code)
+        assertEquals("LEGACY_SUCCESS", event.observation?.code)
     }
 
     @Test
-    fun mapsFailureToNeutralNotConfirmedTesterObservation() {
-        val event = result(VoiceTestResult.Outcome.FAILURE).toLegacyTestEvent(RUN_ID, STEP_ID)
+    fun mapsFailureWithoutInferringCallState() {
+        val event = result(VoiceTestResult.Outcome.FAILURE).toDomainTestEvent(RUN_ID, STEP_ID)
 
         assertEquals(ObservationStatus.NOT_CONFIRMED, event.observation?.status)
-        assertEquals("CALL_NOT_ESTABLISHED", event.observation?.code)
+        assertEquals(ObservationSource.TESTER, event.observation?.source)
+        assertEquals("LEGACY_FAILURE", event.observation?.code)
     }
 
     @Test
     fun mapsNotCheckedToNeutralNotVerifiedTesterObservation() {
-        val event = result(VoiceTestResult.Outcome.NOT_CHECKED).toLegacyTestEvent(RUN_ID, STEP_ID)
+        val event = result(VoiceTestResult.Outcome.NOT_CHECKED).toDomainTestEvent(RUN_ID, STEP_ID)
 
         assertEquals(ObservationStatus.NOT_VERIFIED, event.observation?.status)
         assertEquals("NOT_VERIFIED", event.observation?.code)
@@ -38,7 +39,7 @@ class VoiceTestResultDomainAdapterTest {
 
     @Test
     fun preservesLegacyIdentityTimeNumberAndName() {
-        val event = result(VoiceTestResult.Outcome.SUCCESS).toLegacyTestEvent(RUN_ID, STEP_ID)
+        val event = result(VoiceTestResult.Outcome.SUCCESS).toDomainTestEvent(RUN_ID, STEP_ID)
 
         assertEquals(EventId("voice-id"), event.id)
         assertEquals(1_234_567L, event.occurredAtMillis)
