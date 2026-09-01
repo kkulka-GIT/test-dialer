@@ -60,13 +60,22 @@ class TestRunRecorder private constructor(
         observation: Observation? = null,
         correlation: CorrelationMetadata = CorrelationMetadata(),
     ): TestRun {
-        requireRunning()
-        val stepId = requireNotNull(activeStepId) { "A step must be active before recording an event" }
-        val attemptId = requireNotNull(activeAttemptId) {
-            "An attempt must be active before recording an event"
-        }
+        requireRecordingState()
+        return recordEventAt(captureNext(), observation, correlation)
+    }
+
+    fun recordEventAt(
+        capturedAt: CapturedTime,
+        observation: Observation? = null,
+        correlation: CorrelationMetadata = CorrelationMetadata(),
+    ): TestRun {
+        val (stepId, attemptId) = requireRecordingState()
         val step = scenario.steps.single { it.id == stepId }
-        val capturedAt = captureNext()
+        require(capturedAt.epochMillis > 0L) { "Captured epoch time must be positive" }
+        val previous = currentRun.timeline.lastOrNull()?.capturedAt
+        require(previous == null || capturedAt.monotonicNanos >= previous.monotonicNanos) {
+            "Monotonic time must not move backwards"
+        }
         val eventId = eventIdProvider.next()
         val event = TestEvent(
             id = eventId,
@@ -91,6 +100,15 @@ class TestRunRecorder private constructor(
         )
         TestRunScenarioValidator.requireValid(currentRun, scenario)
         return currentRun
+    }
+
+    private fun requireRecordingState(): Pair<StepId, AttemptId> {
+        requireRunning()
+        val stepId = requireNotNull(activeStepId) { "A step must be active before recording an event" }
+        val attemptId = requireNotNull(activeAttemptId) {
+            "An attempt must be active before recording an event"
+        }
+        return stepId to attemptId
     }
 
     fun finishAttempt(): TestRun {

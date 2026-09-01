@@ -119,6 +119,31 @@ class TestRunRecorderTest {
     }
 
     @Test
+    fun recordsEventAtSuppliedUiBoundaryTime() {
+        val recorder = recorder(times(7))
+        recorder.startStep(STEP_ID)
+        recorder.startAttempt()
+        val clickTime = CapturedTime(epochMillis = 5_000L, monotonicNanos = 350L)
+
+        val run = recorder.recordEventAt(clickTime)
+
+        assertEquals(clickTime.epochMillis, run.events.single().occurredAtMillis)
+        assertEquals(clickTime, run.timeline.last().capturedAt)
+        assertEquals(TimelineEntryKind.ACTION_RECORDED, run.timeline.last().kind)
+    }
+
+    @Test
+    fun rejectsSuppliedEventTimeBeforeActiveAttempt() {
+        val recorder = recorder(times(4))
+        recorder.startStep(STEP_ID)
+        recorder.startAttempt()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            recorder.recordEventAt(CapturedTime(epochMillis = 5_000L, monotonicNanos = 250L))
+        }
+    }
+
+    @Test
     fun requiresAttemptToFinishBeforeStep() {
         val recorder = recorder(times(4))
         recorder.startStep(STEP_ID)
