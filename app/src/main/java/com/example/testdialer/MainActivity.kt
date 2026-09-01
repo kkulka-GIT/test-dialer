@@ -608,7 +608,7 @@ class MainActivity : ComponentActivity() {
         return createCard {
             isClickable = true
             isFocusable = true
-            minHeight = dimen(64)
+            minimumHeight = dimen(64)
             contentDescription = getString(
                 R.string.manual_history_item_accessibility,
                 summary.scenarioName,
