@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation complete; GitHub Actions verification pending.
+Review corrections implemented; final GitHub Actions verification pending.
 
 ## Scope
 
@@ -31,7 +31,7 @@ Foreign keys use cascade deletion from a run to its event/timeline children. Com
 
 ## Snapshot semantics
 
-A null expected revision creates a new run. Replacing an existing snapshot requires its exact revision. Timeline, event and correlation history may only be extended; terminal snapshots are immutable. Parent and all children are written in one Room transaction, so an exception preserves the previous snapshot.
+A null expected revision creates a new run with an abort-on-conflict insert. Replacing an existing snapshot uses a database-level conditional UPDATE keyed by run identity and the exact expected revision; SQLite increments the revision atomically. Run identity (run/scenario/version/start time) is immutable. CREATED may remain CREATED or become RUNNING; RUNNING may remain RUNNING or become COMPLETED/ABORTED. Timeline, event and correlation history may only be extended; terminal snapshots are immutable. Parent and all children are written in one Room transaction, so an exception preserves the previous snapshot.
 
 A stored `RUNNING` run is loaded as history only. F03 does not reconstruct `TestRunRecorder` after process death: Android monotonic time is process-local and cannot safely be compared with a new process. Recovery/resume needs a later explicit policy or a segment/boot identity model.
 
@@ -51,9 +51,9 @@ A stored `RUNNING` run is loaded as history only. F03 does not reconstruct `Test
 
 Local Gradle execution is blocked because the isolated runtime cannot download the Gradle distribution. GitHub Actions is the source of truth.
 
-Pending:
+Previous gate on pre-review head:
 
-- `testDebugUnitTest`;
-- `assembleDebug`;
-- exported Room v1 schema;
-- debug APK artifact.
+- GitHub Actions #54 / run 33500665258: PASS;
+- JVM/Robolectric tests, Room schema publication, debug APK build and artifact: PASS.
+
+That gate predates the review corrections. The final corrected head requires a fresh successful GitHub Actions run; no merge is permitted based only on #54.
