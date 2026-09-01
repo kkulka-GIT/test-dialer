@@ -11,7 +11,9 @@ import java.util.concurrent.Executors
 
 data class GuidedSmsUiState(
     val busy: Boolean = false,
+    val input: GuidedSmsInput? = null,
     val composerRequested: Boolean = false,
+    val composerOpen: Boolean = false,
     val awaitingObservation: Boolean = false,
     val saved: Boolean = false,
     val error: String? = null,
@@ -26,15 +28,19 @@ class GuidedSmsViewModel(
 
     fun start(input: GuidedSmsInput) = submit("Nie udało się rozpocząć testu SMS") {
         coordinator.start(input)
-        GuidedSmsUiState(composerRequested = true)
+        GuidedSmsUiState(input = input, composerRequested = true)
     }
 
     fun composerOpened() {
-        mutableState.value = current().copy(composerRequested = false)
+        mutableState.value = current().copy(composerRequested = false, composerOpen = true)
     }
 
     fun returnedFromComposer() {
-        mutableState.value = current().copy(composerRequested = false, awaitingObservation = true)
+        mutableState.value = current().copy(
+            composerRequested = false,
+            composerOpen = false,
+            awaitingObservation = true,
+        )
     }
 
     fun record(outcome: GuidedSmsOutcome) = submit("Nie udało się zapisać wyniku SMS") {
@@ -57,11 +63,12 @@ class GuidedSmsViewModel(
                 runCatching(operation).fold(
                     onSuccess = { it },
                     onFailure = { failure ->
-                        before.copy(
-                            busy = false,
-                            composerRequested = false,
-                            error = "$errorPrefix: ${failure.message ?: failure.javaClass.simpleName}",
-                        )
+                        val error = "$errorPrefix: ${failure.message ?: failure.javaClass.simpleName}"
+                        if (coordinator.hasActiveSession()) {
+                            before.copy(busy = false, composerRequested = false, error = error)
+                        } else {
+                            GuidedSmsUiState(error = error)
+                        }
                     },
                 ),
             )

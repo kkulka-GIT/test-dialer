@@ -30,6 +30,7 @@ class GuidedSmsViewModelTest {
 
         viewModel.composerOpened()
         assertFalse(viewModel.state.value!!.composerRequested)
+        assertTrue(viewModel.state.value!!.composerOpen)
         viewModel.returnedFromComposer()
         assertTrue(viewModel.state.value!!.awaitingObservation)
     }

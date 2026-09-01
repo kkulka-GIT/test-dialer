@@ -37,6 +37,24 @@ class MainActivitySmokeTest {
         assertTrue(allText.contains(activity.getString(R.string.legacy_voice_history_title)))
     }
 
+    @Test
+    fun `guided SMS replaces placeholder without hiding Data placeholder`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+
+        findButton(activity, activity.getString(R.string.sms_type)).performClick()
+        var allText = collectText(activity.findViewById(android.R.id.content))
+        assertTrue(allText.contains(activity.getString(R.string.sms_card_title)))
+        assertNotNull(findButton(activity, activity.getString(R.string.sms_open_composer)))
+
+        findButton(activity, activity.getString(R.string.data_type)).performClick()
+        allText = collectText(activity.findViewById(android.R.id.content))
+        assertTrue(allText.contains(activity.getString(R.string.data_placeholder_body)))
+
+        findButton(activity, activity.getString(R.string.voice_type)).performClick()
+        assertNotNull(findButton(activity, activity.getString(R.string.dial_test)))
+    }
+
     private fun findButton(activity: MainActivity, text: String): Button {
         val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         return descendants(root).filterIsInstance<Button>().first { it.text.toString() == text }

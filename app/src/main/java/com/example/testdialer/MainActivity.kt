@@ -31,6 +31,11 @@ import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.persistence.TestRunSummary
 import com.example.testdialer.session.ManualSessionUiState
 import com.example.testdialer.session.ManualSessionViewModel
+import com.example.testdialer.sms.GuidedSmsInput
+import com.example.testdialer.sms.GuidedSmsOutcome
+import com.example.testdialer.sms.GuidedSmsUiState
+import com.example.testdialer.sms.GuidedSmsViewModel
+import com.example.testdialer.sms.SmsComposerIntentFactory
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -71,7 +76,9 @@ class MainActivity : ComponentActivity() {
     private var currentTestType = TestType.VOICE
     private lateinit var voiceResultStore: VoiceResultStore
     private lateinit var manualSessionViewModel: ManualSessionViewModel
+    private lateinit var guidedSmsViewModel: GuidedSmsViewModel
     private var manualSessionState = ManualSessionUiState()
+    private var guidedSmsState = GuidedSmsUiState()
     private var pendingPhoneNumber: String? = null
     private var pendingTestName: String? = null
     private var dialerWasOpened = false
@@ -109,6 +116,10 @@ class MainActivity : ComponentActivity() {
             this,
             ManualSessionViewModel.Factory(repository),
         )[ManualSessionViewModel::class.java]
+        guidedSmsViewModel = ViewModelProvider(
+            this,
+            GuidedSmsViewModel.Factory(repository),
+        )[GuidedSmsViewModel::class.java]
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
@@ -154,6 +165,15 @@ class MainActivity : ComponentActivity() {
             renderRegister()
             state.message?.let { manualSessionHost.announceForAccessibility(it) }
         }
+        guidedSmsViewModel.state.observe(this) { state ->
+            guidedSmsState = state
+            if (currentTestType == TestType.SMS) renderScenario(TestType.SMS)
+            if (state.composerRequested) openSmsComposer(state)
+            if (state.saved) {
+                manualSessionViewModel.loadHistory()
+                testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
+            }
+        }
         onBackPressedDispatcher.addCallback(this) {
             if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
@@ -176,6 +196,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshVoiceScenarioAfterResume()
+        if (::guidedSmsViewModel.isInitialized && guidedSmsState.composerOpen) {
+            guidedSmsViewModel.returnedFromComposer()
+        }
     }
 
     private fun refreshVoiceScenarioAfterResume() {
@@ -788,11 +811,7 @@ class MainActivity : ComponentActivity() {
         testScenarioHost.removeAllViews()
         when (type) {
             TestType.VOICE -> testScenarioHost.addView(createVoiceScenario())
-            TestType.SMS -> testScenarioHost.addView(createPlaceholderScenario(
-                getString(R.string.sms_type),
-                getString(R.string.sms_placeholder_body),
-                getString(R.string.sms_placeholder_tag),
-            ))
+            TestType.SMS -> testScenarioHost.addView(createGuidedSmsScenario())
             TestType.DATA -> testScenarioHost.addView(createPlaceholderScenario(
                 getString(R.string.data_type),
                 getString(R.string.data_placeholder_body),
@@ -800,6 +819,130 @@ class MainActivity : ComponentActivity() {
             ))
         }
         updateTestTypeChips()
+    }
+
+    private fun createGuidedSmsScenario(): View {
+        val state = guidedSmsState
+        if (state.awaitingObservation) return createSmsObservationPanel()
+        if (state.saved) return createSmsSavedPanel()
+        return createCard {
+            addView(createCardTitle(getString(R.string.sms_card_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.sms_card_description)))
+            addView(spaceVertical(dimen(14)))
+            val labelInput = createOptionalInput(getString(R.string.sms_label_hint))
+            val destinationInput = createPhoneInput(getString(R.string.sms_destination_hint))
+            val messageInput = createOptionalInput(getString(R.string.sms_message_hint)).apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                minLines = 3
+                gravity = Gravity.TOP
+            }
+            addView(labelInput)
+            addView(spaceVertical(dimen(10)))
+            addView(destinationInput)
+            addView(spaceVertical(dimen(10)))
+            addView(messageInput)
+            state.error?.let {
+                addView(spaceVertical(dimen(10)))
+                addView(createStatusText(it).apply { setTextColor(ColorPalette.bad) })
+            }
+            addView(spaceVertical(dimen(14)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.sms_open_composer)
+                isAllCaps = false
+                textSize = 17f
+                minHeight = dimen(52)
+                isEnabled = !state.busy
+                background = pillBackground(ColorPalette.accent)
+                setTextColor(ColorPalette.onAccent)
+                setOnClickListener {
+                    val destination = destinationInput.text.toString().trim()
+                    val message = messageInput.text.toString()
+                    val intent = runCatching { SmsComposerIntentFactory.create(destination, message) }
+                        .getOrElse {
+                            Toast.makeText(this@MainActivity, R.string.sms_required, Toast.LENGTH_LONG).show()
+                            return@setOnClickListener
+                        }
+                    if (intent.resolveActivity(packageManager) == null) {
+                        Toast.makeText(this@MainActivity, R.string.sms_composer_unavailable, Toast.LENGTH_LONG).show()
+                        return@setOnClickListener
+                    }
+                    guidedSmsViewModel.start(
+                        GuidedSmsInput(
+                            destination = destination,
+                            message = message,
+                            label = labelInput.text.toString().trim().takeIf { it.isNotEmpty() },
+                        ),
+                    )
+                }
+            })
+            if (state.busy) {
+                addView(spaceVertical(dimen(10)))
+                addView(createStatusText(getString(R.string.sms_starting)))
+            }
+        }
+    }
+
+    private fun openSmsComposer(state: GuidedSmsUiState) {
+        val input = state.input ?: return
+        val intent = SmsComposerIntentFactory.create(input.destination, input.message)
+        guidedSmsViewModel.composerOpened()
+        try {
+            startActivity(intent)
+        } catch (_: android.content.ActivityNotFoundException) {
+            guidedSmsViewModel.returnedFromComposer()
+            Toast.makeText(this, R.string.sms_composer_unavailable_after_start, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun createSmsObservationPanel(): View = createCard {
+        announceForAccessibility(getString(R.string.sms_returned_announcement))
+        addView(createCardTitle(getString(R.string.sms_observation_title)))
+        addView(spaceVertical(dimen(8)))
+        addView(createBodyText(getString(R.string.sms_observation_description)))
+        addView(spaceVertical(dimen(16)))
+        addView(createSmsOutcomeButton(R.string.sms_user_reported_sent, GuidedSmsOutcome.USER_REPORTED_SENT, ColorPalette.ok))
+        addView(spaceVertical(dimen(10)))
+        addView(createSmsOutcomeButton(R.string.sms_user_reported_not_sent, GuidedSmsOutcome.USER_REPORTED_NOT_SENT, ColorPalette.bad))
+        addView(spaceVertical(dimen(10)))
+        addView(createSmsOutcomeButton(R.string.sms_not_verified, GuidedSmsOutcome.NOT_VERIFIED, ColorPalette.neutral))
+        if (guidedSmsState.busy) {
+            addView(spaceVertical(dimen(10)))
+            addView(createStatusText(getString(R.string.manual_session_saving)))
+        }
+    }
+
+    private fun createSmsOutcomeButton(label: Int, outcome: GuidedSmsOutcome, color: Int): Button =
+        Button(this).apply {
+            setText(label)
+            isAllCaps = false
+            textSize = 17f
+            minHeight = dimen(52)
+            isEnabled = !guidedSmsState.busy
+            background = pillBackground(color)
+            setTextColor(ColorPalette.onAccent)
+            contentDescription = getString(R.string.sms_outcome_accessibility, getString(label))
+            setOnClickListener { guidedSmsViewModel.record(outcome) }
+        }
+
+    private fun createSmsSavedPanel(): View = createCard {
+        addView(createCardTitle(getString(R.string.sms_saved_title)))
+        addView(spaceVertical(dimen(8)))
+        addView(createBodyText(getString(R.string.sms_saved_description)))
+        addView(spaceVertical(dimen(14)))
+        addView(Button(this@MainActivity).apply {
+            setText(R.string.go_to_register)
+            isAllCaps = false
+            minHeight = dimen(52)
+            setOnClickListener { showSection(Section.REGISTER) }
+        })
+        addView(spaceVertical(dimen(10)))
+        addView(Button(this@MainActivity).apply {
+            setText(R.string.sms_start_another)
+            isAllCaps = false
+            minHeight = dimen(52)
+            setOnClickListener { guidedSmsViewModel.startAnother() }
+        })
     }
 
     private fun createVoiceScenario(): View {
