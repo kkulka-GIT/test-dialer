@@ -10,6 +10,7 @@ import com.example.testdialer.domain.execution.TimeProvider
 import com.example.testdialer.persistence.TestRunRepository
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 data class CellularDataUiState(
     val busy: Boolean = false,
@@ -25,14 +26,18 @@ class CellularDataViewModel(
 ) : ViewModel() {
     private val mutableState = MutableLiveData(CellularDataUiState())
     val state: LiveData<CellularDataUiState> = mutableState
+    @Volatile private var currentCancellation: DownloadCancellation? = null
+    @Volatile private var currentFuture: Future<*>? = null
 
     fun start(input: CellularDataInput) {
         if (mutableState.value?.busy == true) return
         val requestedAt = timeProvider.capture()
+        val cancellation = DownloadCancellation()
+        currentCancellation = cancellation
         mutableState.value = CellularDataUiState(busy = true)
-        executor.execute {
+        currentFuture = executor.submit {
             mutableState.postValue(
-                runCatching { coordinator.run(input, requestedAt) }.fold(
+                runCatching { coordinator.run(input, requestedAt, cancellation) }.fold(
                     onSuccess = { stored ->
                         CellularDataUiState(
                             saved = true,
@@ -42,11 +47,15 @@ class CellularDataViewModel(
                     onFailure = { CellularDataUiState(error = it.message ?: "Nie udało się wykonać testu Data") },
                 ),
             )
+            currentCancellation = null
+            currentFuture = null
         }
     }
 
     fun cancel() {
-        if (mutableState.value?.busy == true) coordinator.cancel()
+        if (mutableState.value?.busy == true) {
+            currentCancellation?.cancel()
+        }
     }
 
     fun startAnother() {
@@ -55,8 +64,9 @@ class CellularDataViewModel(
     }
 
     override fun onCleared() {
-        coordinator.cancel()
-        executor.shutdown()
+        currentCancellation?.cancel()
+        currentFuture?.cancel(true)
+        executor.shutdownNow()
     }
 
     class Factory(

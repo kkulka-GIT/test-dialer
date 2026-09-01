@@ -59,3 +59,8 @@
 - URL i transport są sprawdzane przed pierwszym RUNNING snapshotem; błędny preflight nie tworzy sesji.
 - Czas żądania jest chwytany synchronicznie przy kliknięciu, a zdarzenie terminalne zapisuje czas startu sieci, końca, bytes, duration, status, host i transport.
 - Po śmierci procesu RUNNING pozostaje wyłącznie historią read-only; F06 nie wznawia pobierania.
+- Każde wykonanie F06 ma własny token anulowania; anulowanie nigdy nie jest resetowane przez start operacji, a wyczyszczenie ViewModelu przerywa future, rozłącza połączenie i usuwa zadania z kolejki.
+- Bezpośrednio przed połączeniem host jest rozwiązywany przez wybrany `Network.getAllByName`; każda odpowiedź prywatna, loopback, link-local, unspecified, multicast, CGNAT lub IPv6 ULA blokuje wykonanie.
+- Walidacja DNS jest kontrolą pre-connect, ale nie usuwa całkowicie okna TOCTOU ani ryzyka DNS rebinding między walidacją a rozwiązywaniem wykonanym wewnętrznie przez stos HTTP.
+- Limit odpowiedzi wykonuje precheck Content-Length; przy braku długości czyta maksymalnie pozostały limit i jeden bajt kontrolny po dokładnie 1 MiB.
+- Wynik zapisuje kontrolowany `resultCode` oraz opcjonalny status HTTP; surowe wyjątki, pełny URL i dane wrażliwe nie trafiają do korelacji.

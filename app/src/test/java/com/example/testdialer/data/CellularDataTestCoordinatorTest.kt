@@ -19,7 +19,11 @@ class CellularDataTestCoordinatorTest {
         val gateway = FakeGateway(DownloadStatus.COMPLETED)
         val coordinator = CellularDataTestCoordinator(repository, gateway, IncrementingTime())
 
-        val stored = coordinator.run(CellularDataInput("https://example.com/file", "Data test"), CapturedTime(10, 1))
+        val stored = coordinator.run(
+            CellularDataInput("https://example.com/file", "Data test"),
+            CapturedTime(10, 1),
+            DownloadCancellation(),
+        )
 
         assertEquals(TestRunStatus.COMPLETED, stored.run.status)
         assertEquals(1, stored.run.events.size)
@@ -37,7 +41,7 @@ class CellularDataTestCoordinatorTest {
             repository,
             FakeGateway(DownloadStatus.CANCELLED),
             IncrementingTime(),
-        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1))
+        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
 
         assertEquals(TestRunStatus.ABORTED, stored.run.status)
         assertEquals(1, stored.run.events.size)
@@ -48,13 +52,17 @@ class CellularDataTestCoordinatorTest {
         val repository = FakeRepository()
         val gateway = object : CellularDownloadGateway {
             override fun prepare(rawUrl: String): PreparedCellularDownload = error("Wi-Fi active")
-            override fun execute(prepared: PreparedCellularDownload) = error("must not execute")
-            override fun cancel() = Unit
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) =
+                error("must not execute")
         }
 
         runCatching {
             CellularDataTestCoordinator(repository, gateway, IncrementingTime())
-                .run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1))
+                .run(
+                    CellularDataInput("https://example.com/file", null),
+                    CapturedTime(10, 1),
+                    DownloadCancellation(),
+                )
         }
 
         assertEquals(0, repository.saveCount)
@@ -62,10 +70,14 @@ class CellularDataTestCoordinatorTest {
 
     private class FakeGateway(private val status: DownloadStatus) : CellularDownloadGateway {
         override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl))
-        override fun execute(prepared: PreparedCellularDownload) = DownloadResult(
-            status, CapturedTime(400, 400), CapturedTime(500, 500), 512, status.name,
+        override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
+            status,
+            if (status == DownloadStatus.CANCELLED) DownloadResultCode.CANCELLED else DownloadResultCode.COMPLETED,
+            CapturedTime(400, 400),
+            CapturedTime(500, 500),
+            512,
+            200,
         )
-        override fun cancel() = Unit
     }
 
     private class IncrementingTime : TimeProvider {

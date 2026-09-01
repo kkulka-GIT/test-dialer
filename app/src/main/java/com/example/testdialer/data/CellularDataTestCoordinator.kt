@@ -25,7 +25,11 @@ class CellularDataTestCoordinator(
     private val gateway: CellularDownloadGateway,
     private val timeProvider: TimeProvider = SystemTimeProvider,
 ) {
-    fun run(input: CellularDataInput, requestedAt: CapturedTime): StoredTestRun {
+    fun run(
+        input: CellularDataInput,
+        requestedAt: CapturedTime,
+        cancellation: DownloadCancellation,
+    ): StoredTestRun {
         val prepared = gateway.prepare(input.url) // preflight before RUNNING
         val stepId = StepId("cellular-data-download")
         val scenario = ScenarioDefinition(
@@ -48,7 +52,7 @@ class CellularDataTestCoordinator(
         recorder.startAttempt()
         var revision = repository.saveSnapshot(scenario, recorder.snapshot()).revision
         return try {
-            val result = gateway.execute(prepared)
+            val result = gateway.execute(prepared, cancellation)
             val observation = Observation(
                 status = if (result.status == DownloadStatus.COMPLETED) {
                     ObservationStatus.CONFIRMED
@@ -56,7 +60,7 @@ class CellularDataTestCoordinator(
                     ObservationStatus.NOT_CONFIRMED
                 },
                 source = ObservationSource.APPLICATION,
-                code = result.status.name,
+                code = result.resultCode.name,
             )
             recorder.recordEventAt(
                 capturedAt = result.endedAt,
@@ -65,13 +69,18 @@ class CellularDataTestCoordinator(
                     destinationAddress = prepared.url.host,
                     references = listOf(
                         CorrelationReference("requestedAtEpochMillis", requestedAt.epochMillis.toString()),
-                        CorrelationReference("networkStartedAtEpochMillis", result.networkStartedAt.epochMillis.toString()),
                         CorrelationReference("endedAtEpochMillis", result.endedAt.epochMillis.toString()),
                         CorrelationReference("bytes", result.bytes.toString()),
                         CorrelationReference("durationMillis", durationMillis(result)),
                         CorrelationReference("status", result.status.name),
+                        CorrelationReference("resultCode", result.resultCode.name),
                         CorrelationReference("host", prepared.url.host),
                         CorrelationReference("transport", "CELLULAR"),
+                    ) + listOfNotNull(
+                        result.networkStartedAt?.let {
+                            CorrelationReference("networkStartedAtEpochMillis", it.epochMillis.toString())
+                        },
+                        result.httpStatus?.let { CorrelationReference("httpStatus", it.toString()) },
                     ),
                 ),
             )
@@ -85,8 +94,8 @@ class CellularDataTestCoordinator(
         }
     }
 
-    fun cancel() = gateway.cancel()
-
     private fun durationMillis(result: DownloadResult): String =
-        ((result.endedAt.monotonicNanos - result.networkStartedAt.monotonicNanos).coerceAtLeast(0L) / 1_000_000L).toString()
+        result.networkStartedAt?.let {
+            ((result.endedAt.monotonicNanos - it.monotonicNanos).coerceAtLeast(0L) / 1_000_000L).toString()
+        } ?: "0"
 }
