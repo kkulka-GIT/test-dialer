@@ -25,6 +25,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.addCallback
 import androidx.lifecycle.ViewModelProvider
 import androidx.core.view.ViewCompat
+import com.example.testdialer.data.CellularDataInput
+import com.example.testdialer.data.CellularDataUiState
+import com.example.testdialer.data.CellularDataViewModel
 import com.example.testdialer.domain.RunId
 import com.example.testdialer.domain.ServiceType
 import com.example.testdialer.domain.TestRunStatus
@@ -77,8 +80,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var voiceResultStore: VoiceResultStore
     private lateinit var manualSessionViewModel: ManualSessionViewModel
     private lateinit var guidedSmsViewModel: GuidedSmsViewModel
+    private lateinit var cellularDataViewModel: CellularDataViewModel
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
+    private var cellularDataState = CellularDataUiState()
     private var pendingPhoneNumber: String? = null
     private var pendingTestName: String? = null
     private var dialerWasOpened = false
@@ -120,6 +125,10 @@ class MainActivity : ComponentActivity() {
             this,
             GuidedSmsViewModel.Factory(repository),
         )[GuidedSmsViewModel::class.java]
+        cellularDataViewModel = ViewModelProvider(
+            this,
+            CellularDataViewModel.Factory(repository, connectivityManager),
+        )[CellularDataViewModel::class.java]
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
@@ -173,6 +182,11 @@ class MainActivity : ComponentActivity() {
                 manualSessionViewModel.loadHistory()
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
             }
+        }
+        cellularDataViewModel.state.observe(this) { state ->
+            cellularDataState = state
+            if (currentTestType == TestType.DATA) renderScenario(TestType.DATA)
+            if (state.saved) manualSessionViewModel.loadHistory()
         }
         onBackPressedDispatcher.addCallback(this) {
             if (manualSessionState.selected != null) {
@@ -812,13 +826,78 @@ class MainActivity : ComponentActivity() {
         when (type) {
             TestType.VOICE -> testScenarioHost.addView(createVoiceScenario())
             TestType.SMS -> testScenarioHost.addView(createGuidedSmsScenario())
-            TestType.DATA -> testScenarioHost.addView(createPlaceholderScenario(
-                getString(R.string.data_type),
-                getString(R.string.data_placeholder_body),
-                getString(R.string.data_placeholder_tag),
-            ))
+            TestType.DATA -> testScenarioHost.addView(createCellularDataScenario())
         }
         updateTestTypeChips()
+    }
+
+    private fun createCellularDataScenario(): View {
+        val state = cellularDataState
+        if (state.saved) return createCard {
+            addView(createCardTitle(getString(R.string.data_saved_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(if (state.cancelled) getString(R.string.data_cancelled) else getString(R.string.data_saved_description)))
+            addView(spaceVertical(dimen(14)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.go_to_register)
+                isAllCaps = false
+                minHeight = dimen(52)
+                setOnClickListener { showSection(Section.REGISTER) }
+            })
+            addView(spaceVertical(dimen(10)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.data_start_another)
+                isAllCaps = false
+                minHeight = dimen(52)
+                setOnClickListener { cellularDataViewModel.startAnother() }
+            })
+        }
+        return createCard {
+            addView(createCardTitle(getString(R.string.data_card_title)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.data_card_description)))
+            addView(spaceVertical(dimen(14)))
+            val label = createOptionalInput(getString(R.string.data_label_hint))
+            val url = createOptionalInput(getString(R.string.data_url_hint)).apply {
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            }
+            addView(label)
+            addView(spaceVertical(dimen(10)))
+            addView(url)
+            state.error?.let {
+                addView(spaceVertical(dimen(10)))
+                addView(createStatusText(it).apply { setTextColor(ColorPalette.bad) })
+            }
+            addView(spaceVertical(dimen(14)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.data_start)
+                isAllCaps = false
+                textSize = 17f
+                minHeight = dimen(52)
+                isEnabled = !state.busy
+                background = pillBackground(ColorPalette.accent)
+                setTextColor(ColorPalette.onAccent)
+                setOnClickListener {
+                    cellularDataViewModel.start(
+                        CellularDataInput(
+                            url = url.text.toString(),
+                            label = label.text.toString().trim().takeIf(String::isNotEmpty),
+                        ),
+                    )
+                }
+            })
+            if (state.busy) {
+                addView(spaceVertical(dimen(10)))
+                addView(createStatusText(getString(R.string.data_running)))
+                addView(spaceVertical(dimen(10)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.data_cancel)
+                    isAllCaps = false
+                    minHeight = dimen(52)
+                    setOnClickListener { cellularDataViewModel.cancel() }
+                })
+            }
+        }
     }
 
     private fun createGuidedSmsScenario(): View {
