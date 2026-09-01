@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation and coordinator review corrections complete; CI pending at the time of this report.
+Ready for coordinator review. GitHub Actions passed.
 
 ## Branch and PR
 
@@ -46,16 +46,21 @@ All observations have source `TESTER`.
 - `b82eb78` — `ci: run debug unit tests before APK build`
 - `b95056f` — `feat(domain): validate test runs against scenarios`
 - `b0f0497` — `fix(domain): keep legacy voice outcomes neutral`
+- `a78ada8` — `docs(domain): record F01 review corrections`
 
 ## Verification
 
 Local Android build was not run, in accordance with repository rules and the known local AAPT2 problem.
 
-Required GitHub Actions verification:
+GitHub Actions run 40 for commit `a78ada8` completed successfully:
 
-- `testDebugUnitTest` passes.
-- `assembleDebug` passes.
-- `test-dialer-debug-apk` artifact is published.
+- `testDebugUnitTest`: PASS
+- `assembleDebug`: PASS
+- artifact `test-dialer-debug-apk`: published
+- artifact ID: `9791881815`
+- artifact digest: `sha256:28f2f5a5ab7f082feec2383332eda11eb68e214de05bd772c8ad983a23ebc82d`
+
+A final documentation-only commit will receive its own required PR workflow verification.
 
 ## Known limitations
 

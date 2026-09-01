@@ -1,6 +1,6 @@
 # Current Task
 
-Status: IN REVIEW
+Status: READY FOR COORDINATOR REVIEW
 
 Feature: F01 — Test Run Domain
 
@@ -14,8 +14,10 @@ Scope:
 - Rozdzielić oczekiwany rezultat od neutralnej obserwacji.
 - Dodać jawne referencje korelacyjne.
 - Wspierać wiele zdarzeń jednego kroku.
+- Walidować wykonanie względem definicji scenariusza.
+- Zapewnić spójność statusu runu i czasu zakończenia.
 - Dodać jednokierunkowy adapter historycznych wyników Voice.
-- Dodać testy JVM.
+- Dodać testy JVM wykonywane jawnie w GitHub Actions.
 
 Out of scope:
 - Zmiany UI i bieżącego przepływu Voice.
@@ -36,3 +38,6 @@ incremental
 
 Branch:
 `feature/test-run-domain`
+
+Pull request:
+https://github.com/kkulka-GIT/test-dialer/pull/4
