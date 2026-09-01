@@ -32,7 +32,7 @@ abstract class TestRunDao {
     @Query("SELECT * FROM test_runs WHERE runId = :runId")
     abstract fun findRun(runId: String): TestRunEntity?
 
-    @Query("SELECT * FROM test_events WHERE runId = :runId ORDER BY occurredAtMillis, eventId")
+    @Query("SELECT * FROM test_events WHERE runId = :runId ORDER BY eventOrder")
     abstract fun findEvents(runId: String): List<TestEventEntity>
 
     @Query("SELECT r.* FROM correlation_references r INNER JOIN test_events e ON e.eventId = r.eventId WHERE e.runId = :runId ORDER BY r.eventId, r.ordinal")
