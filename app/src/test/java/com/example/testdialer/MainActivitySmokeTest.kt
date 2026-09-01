@@ -38,7 +38,7 @@ class MainActivitySmokeTest {
     }
 
     @Test
-    fun `guided SMS replaces placeholder without hiding Data placeholder`() {
+    fun `guided SMS and cellular Data remain reachable without hiding Voice`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         findButton(activity, activity.getString(R.string.nav_test)).performClick()
 
@@ -49,7 +49,8 @@ class MainActivitySmokeTest {
 
         findButton(activity, activity.getString(R.string.data_type)).performClick()
         allText = collectText(activity.findViewById(android.R.id.content))
-        assertTrue(allText.contains(activity.getString(R.string.data_placeholder_body)))
+        assertTrue(allText.contains(activity.getString(R.string.data_card_title)))
+        assertNotNull(findButton(activity, activity.getString(R.string.data_start)))
 
         findButton(activity, activity.getString(R.string.voice_type)).performClick()
         assertNotNull(findButton(activity, activity.getString(R.string.dial_test)))
