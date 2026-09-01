@@ -19,3 +19,13 @@ value class RunId(val value: String) {
 value class EventId(val value: String) {
     init { require(value.isNotBlank()) { "EventId must not be blank" } }
 }
+
+@JvmInline
+value class AttemptId(val value: String) {
+    init { require(value.isNotBlank()) { "AttemptId must not be blank" } }
+}
+
+@JvmInline
+value class TimelineEntryId(val value: String) {
+    init { require(value.isNotBlank()) { "TimelineEntryId must not be blank" } }
+}
