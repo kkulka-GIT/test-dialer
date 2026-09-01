@@ -15,7 +15,9 @@
 - `TimelineEntryId` jest niezależny od `EventId`; wpis osi i zdarzenie biznesowe mają różne tożsamości.
 - `TimelineEntry.sequenceNumber` jest ciągłym, trwałym źródłem kolejności wpisów w runie.
 - `epochMillis` służy do korelacji z systemami zewnętrznymi, a `monotonicNanos` wyłącznie do kolejności i czasu trwania w jednym procesie.
-- Zegar ścienny może się cofnąć; oś nie wymusza rosnącego `epochMillis`, jeśli czas monotoniczny nie maleje.
+- Zegar ścienny może się cofnąć; oś ani `completedAtMillis` nie wymuszają chronologii epoch względem startu, jeśli czasy pozostają dodatnie, `sequenceNumber` rośnie, a czas monotoniczny nie maleje.
+- `AttemptId` jest globalnie unikalny w obrębie całego runu, także pomiędzy kolejnymi próbami tego samego kroku.
+- `ACTION_RECORDED` musi wskazywać zdarzenie należące do tego samego runu i tego samego kroku.
 - Start i koniec runu, kroku oraz próby są osobnymi wpisami osi, a `ACTION_RECORDED` wskazuje właściwy `TestEvent`.
 - `TestRunRecorder` pilnuje jednej aktywnej próby w jednym aktywnym kroku, zamykania prób przed krokiem i braku zmian po stanie terminalnym.
 - Okna korelacji CDR mają jawny margines przed i po zdarzeniu oraz bezpieczną obsługę granic Long.

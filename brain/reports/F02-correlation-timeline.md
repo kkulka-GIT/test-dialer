@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation, JVM tests, debug APK build and artifact completed successfully. Ready for coordinator review.
+Review corrections are implemented. Final-head GitHub Actions verification is pending.
 
 ## Branch and PR
 
@@ -20,7 +20,9 @@ Implementation, JVM tests, debug APK build and artifact completed successfully. 
 - Markers for run, step, attempt, recorded action, completion and abort.
 - `TestRunRecorder` transition API producing immutable `TestRun` snapshots.
 - Exact link from `ACTION_RECORDED` to a `TestEvent`.
-- Aggregate invariants for ownership, uniqueness, sequence, monotonic order, terminal state and step/attempt transitions.
+- Aggregate invariants for ownership, globally unique attempt IDs, sequence, monotonic order, terminal state and step/attempt transitions.
+- Step identity validation between each `ACTION_RECORDED` entry and its related `TestEvent`.
+- Wall-clock rollback support for both completion and abort while retaining positive timestamps.
 - Explicit CDR correlation windows with before/after margins and saturated arithmetic.
 - Deterministic JVM tests for normal execution, retries, clock correction, invalid transitions, abort and windows.
 
@@ -31,7 +33,9 @@ Implementation, JVM tests, debug APK build and artifact completed successfully. 
 - `b56dbb8` — deterministic JVM tests
 - `b333689` — aggregate transition validation
 - `4f563b2` — project documentation and initial delivery report
-- Final verification documentation: current commit
+- `827d823` — align completion, attempt and event-link invariants
+- `e1d2aa3` — cover review corrections with negative and clock-rollback tests
+- Review-correction documentation: current commit
 
 ## Important semantics
 
@@ -62,8 +66,8 @@ GitHub Actions run #46 (`33498205669`) for `4f563b29ef3d0278279139718f95d5dbd0ef
 - digest: `sha256:5a8cbdabaa60d2d45f3ccc63d8dc2b765a289dbffc92e2d7be085783c3c9e873`
 - expires: 2026-11-30
 
-The final documentation-only head must also receive successful PR CI before merge.
+Run #47 passed on the pre-review head. The final review-correction head must receive successful PR CI before merge.
 
 ## Decision
 
-No merge was performed. Coordinator review and successful final-head GitHub Actions are required.
+No merge was performed. The earlier F01 constraint requiring completion epoch not to precede start epoch was intentionally removed: wall-clock epoch is for external correlation, while durable order comes from sequenceNumber and in-process duration/order from monotonicNanos. Coordinator re-review and successful final-head GitHub Actions are required.
