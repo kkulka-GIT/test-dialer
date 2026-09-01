@@ -1,6 +1,5 @@
 package com.example.testdialer
 
-import android.app.Activity
 import android.content.Intent
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -22,12 +21,23 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
+import androidx.lifecycle.ViewModelProvider
+import androidx.core.view.ViewCompat
+import com.example.testdialer.domain.RunId
+import com.example.testdialer.domain.ServiceType
+import com.example.testdialer.domain.TestRunStatus
+import com.example.testdialer.persistence.TestRunSummary
+import com.example.testdialer.session.ManualSessionUiState
+import com.example.testdialer.session.ManualSessionViewModel
+import com.example.testdialer.domain.execution.TimelineEntryKind
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private enum class Section {
         STATUS,
         TEST,
@@ -47,6 +57,7 @@ class MainActivity : Activity() {
     private lateinit var testSection: View
     private lateinit var registerSection: View
     private lateinit var registerListHost: LinearLayout
+    private lateinit var manualSessionHost: LinearLayout
     private lateinit var wifiBadge: LinearLayout
     private lateinit var cellularBadge: LinearLayout
     private lateinit var simBadge: LinearLayout
@@ -59,6 +70,8 @@ class MainActivity : Activity() {
     private var currentSection = Section.STATUS
     private var currentTestType = TestType.VOICE
     private lateinit var voiceResultStore: VoiceResultStore
+    private lateinit var manualSessionViewModel: ManualSessionViewModel
+    private var manualSessionState = ManualSessionUiState()
     private var pendingPhoneNumber: String? = null
     private var pendingTestName: String? = null
     private var dialerWasOpened = false
@@ -91,6 +104,11 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         voiceResultStore = VoiceResultStore(this)
+        val repository = (application as TestDialerApplication).testRunRepository
+        manualSessionViewModel = ViewModelProvider(
+            this,
+            ManualSessionViewModel.Factory(repository),
+        )[ManualSessionViewModel::class.java]
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
@@ -129,6 +147,22 @@ class MainActivity : Activity() {
         root.addView(contentHost)
         root.addView(createBottomNavigation())
         setContentView(root)
+
+        manualSessionViewModel.state.observe(this) { state ->
+            manualSessionState = state
+            renderManualSession()
+            renderRegister()
+            state.message?.let { manualSessionHost.announceForAccessibility(it) }
+        }
+        onBackPressedDispatcher.addCallback(this) {
+            if (manualSessionState.selected != null) {
+                manualSessionViewModel.clearSelection()
+            } else {
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        }
+        manualSessionViewModel.loadHistory()
 
         showSection(currentSection)
     }
@@ -374,9 +408,15 @@ class MainActivity : Activity() {
             }
             addView(testScenarioHost)
         })
+        content.addView(spaceVertical(dimen(14)))
+        manualSessionHost = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        content.addView(manualSessionHost)
 
         scroll.addView(content)
         renderScenario(currentTestType)
+        renderManualSession()
         return scroll
     }
 
@@ -412,9 +452,141 @@ class MainActivity : Activity() {
         return scroll
     }
 
+    private fun renderManualSession() {
+        if (!::manualSessionHost.isInitialized) return
+        manualSessionHost.removeAllViews()
+        val state = manualSessionState
+        manualSessionHost.addView(createCard {
+            addView(createCardTitle(getString(R.string.manual_session_title)).apply {
+                ViewCompat.setAccessibilityHeading(this, true)
+            })
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.manual_session_description)))
+            addView(spaceVertical(dimen(14)))
+
+            state.error?.let {
+                addView(createStatusText(it).apply {
+                    setTextColor(ColorPalette.bad)
+                    accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+                })
+                addView(spaceVertical(dimen(12)))
+            }
+
+            val active = state.active
+            if (active == null) {
+                val nameInput = createOptionalInput(getString(R.string.manual_session_name_hint))
+                val targetInput = createOptionalInput(getString(R.string.manual_session_target_hint))
+                addView(nameInput)
+                addView(spaceVertical(dimen(10)))
+                addView(targetInput)
+                addView(spaceVertical(dimen(12)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.manual_session_start)
+                    isAllCaps = false
+                    textSize = 17f
+                    minHeight = dimen(52)
+                    isEnabled = !state.busy
+                    background = pillBackground(ColorPalette.accent)
+                    setTextColor(ColorPalette.onAccent)
+                    setOnClickListener {
+                        val name = nameInput.text.toString().trim()
+                        val target = targetInput.text.toString().trim()
+                        if (name.isBlank() || target.isBlank()) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                R.string.manual_session_required,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        } else {
+                            manualSessionViewModel.start(name, currentTestType.toServiceType(), target)
+                        }
+                    }
+                })
+            } else {
+                val run = active.stored.run
+                addView(createBodyText(getString(R.string.manual_session_active, active.stored.scenario.name)))
+                addView(spaceVertical(dimen(6)))
+                addView(createMicroText(getString(R.string.manual_session_run_id, run.id.value)).apply {
+                    setTextIsSelectable(true)
+                })
+                addView(spaceVertical(dimen(12)))
+                if (!active.eventRecorded) {
+                    addView(Button(this@MainActivity).apply {
+                        setText(R.string.manual_session_record)
+                        isAllCaps = false
+                        textSize = 17f
+                        minHeight = dimen(52)
+                        isEnabled = !state.busy
+                        background = pillBackground(ColorPalette.accent)
+                        setTextColor(ColorPalette.onAccent)
+                        setOnClickListener { manualSessionViewModel.recordEvent() }
+                    })
+                } else {
+                    addView(createStatusText(getString(R.string.manual_session_recorded)).apply {
+                        accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+                    })
+                    addView(spaceVertical(dimen(12)))
+                    addView(Button(this@MainActivity).apply {
+                        setText(R.string.manual_session_complete)
+                        isAllCaps = false
+                        textSize = 17f
+                        minHeight = dimen(52)
+                        isEnabled = !state.busy
+                        background = pillBackground(ColorPalette.ok)
+                        setTextColor(ColorPalette.onAccent)
+                        setOnClickListener { manualSessionViewModel.complete() }
+                    })
+                }
+            }
+            if (state.busy) {
+                addView(spaceVertical(dimen(10)))
+                addView(createStatusText(getString(R.string.manual_session_saving)).apply {
+                    accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+                })
+            }
+        })
+    }
+
+    private fun TestType.toServiceType(): ServiceType = when (this) {
+        TestType.VOICE -> ServiceType.VOICE
+        TestType.SMS -> ServiceType.SMS
+        TestType.DATA -> ServiceType.DATA
+    }
+
     private fun renderRegister() {
         if (!::registerListHost.isInitialized) return
         registerListHost.removeAllViews()
+        manualSessionState.selected?.let { selected ->
+            registerListHost.addView(createManualSessionDetail(selected))
+            return
+        }
+
+        registerListHost.addView(createCard {
+            addView(createCardTitle(getString(R.string.manual_history_title)).apply {
+                ViewCompat.setAccessibilityHeading(this, true)
+            })
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.manual_history_description)))
+        })
+        val summaries = manualSessionState.history
+        if (summaries.isEmpty()) {
+            registerListHost.addView(spaceVertical(dimen(12)))
+            registerListHost.addView(createCard {
+                addView(createBodyText(getString(R.string.manual_history_empty)))
+            })
+        } else {
+            summaries.forEach { summary ->
+                registerListHost.addView(spaceVertical(dimen(12)))
+                registerListHost.addView(createManualSummaryCard(summary))
+            }
+        }
+        registerListHost.addView(spaceVertical(dimen(20)))
+        registerListHost.addView(createCard {
+            addView(createCardTitle(getString(R.string.legacy_voice_history_title)).apply {
+                ViewCompat.setAccessibilityHeading(this, true)
+            })
+        })
+        registerListHost.addView(spaceVertical(dimen(12)))
         val results = voiceResultStore.loadAll()
         if (results.isEmpty()) {
             registerListHost.addView(createCard {
@@ -429,6 +601,109 @@ class MainActivity : Activity() {
             registerListHost.addView(createVoiceResultCard(result))
         }
     }
+
+    private fun createManualSummaryCard(summary: TestRunSummary): View {
+        val date = formatDate(summary.startedAtMillis)
+        val status = localizeRunStatus(summary.status)
+        return createCard {
+            isClickable = true
+            isFocusable = true
+            minHeight = dimen(64)
+            contentDescription = getString(
+                R.string.manual_history_item_accessibility,
+                summary.scenarioName,
+                status,
+                date,
+            )
+            addView(createCardTitle(summary.scenarioName))
+            addView(spaceVertical(dimen(6)))
+            addView(createBodyText(getString(R.string.manual_history_item, status, date)))
+            if (summary.status == TestRunStatus.RUNNING) {
+                addView(spaceVertical(dimen(6)))
+                addView(createStatusText(getString(R.string.manual_history_not_resumable)))
+            }
+            setOnClickListener { manualSessionViewModel.select(summary.runId) }
+        }
+    }
+
+    private fun createManualSessionDetail(stored: com.example.testdialer.persistence.StoredTestRun): View {
+        val scenario = stored.scenario
+        val run = stored.run
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.manual_detail_back)
+                isAllCaps = false
+                minHeight = dimen(48)
+                setOnClickListener { manualSessionViewModel.clearSelection() }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createHeaderText(scenario.name).apply {
+                    ViewCompat.setAccessibilityHeading(this, true)
+                })
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(
+                    R.string.manual_detail_status,
+                    localizeRunStatus(run.status),
+                )))
+                addView(spaceVertical(dimen(6)))
+                addView(createBodyText(getString(R.string.manual_detail_started, formatDate(run.startedAtMillis))))
+                run.completedAtMillis?.let {
+                    addView(spaceVertical(dimen(6)))
+                    addView(createBodyText(getString(R.string.manual_detail_completed, formatDate(it))))
+                }
+                addView(spaceVertical(dimen(10)))
+                addView(createMicroText(getString(R.string.manual_session_run_id, run.id.value)).apply {
+                    setTextIsSelectable(true)
+                })
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createCardTitle(getString(R.string.manual_detail_timeline)).apply {
+                    ViewCompat.setAccessibilityHeading(this, true)
+                })
+                run.timeline.forEach { entry ->
+                    addView(spaceVertical(dimen(10)))
+                    addView(createBodyText(getString(
+                        R.string.manual_detail_timeline_item,
+                        entry.sequenceNumber + 1,
+                        localizeTimelineKind(entry.kind),
+                        formatDateWithMillis(entry.capturedAt.epochMillis),
+                    )))
+                    entry.relatedEventId?.let { id ->
+                        addView(createMicroText(getString(R.string.manual_detail_event_id, id.value)).apply {
+                            setTextIsSelectable(true)
+                        })
+                    }
+                }
+            })
+        }
+    }
+
+    private fun localizeRunStatus(status: TestRunStatus): String = when (status) {
+        TestRunStatus.CREATED -> getString(R.string.manual_status_created)
+        TestRunStatus.RUNNING -> getString(R.string.manual_status_running)
+        TestRunStatus.COMPLETED -> getString(R.string.manual_status_completed)
+        TestRunStatus.ABORTED -> getString(R.string.manual_status_aborted)
+    }
+
+    private fun localizeTimelineKind(kind: TimelineEntryKind): String = when (kind) {
+        TimelineEntryKind.RUN_STARTED -> getString(R.string.timeline_run_started)
+        TimelineEntryKind.STEP_STARTED -> getString(R.string.timeline_step_started)
+        TimelineEntryKind.ATTEMPT_STARTED -> getString(R.string.timeline_attempt_started)
+        TimelineEntryKind.ACTION_RECORDED -> getString(R.string.timeline_action_recorded)
+        TimelineEntryKind.ATTEMPT_FINISHED -> getString(R.string.timeline_attempt_finished)
+        TimelineEntryKind.STEP_FINISHED -> getString(R.string.timeline_step_finished)
+        TimelineEntryKind.RUN_COMPLETED -> getString(R.string.timeline_run_completed)
+        TimelineEntryKind.RUN_ABORTED -> getString(R.string.timeline_run_aborted)
+    }
+
+    private fun formatDate(millis: Long): String =
+        SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault()).format(Date(millis))
+
+    private fun formatDateWithMillis(millis: Long): String =
+        SimpleDateFormat(getString(R.string.manual_detail_date_pattern), Locale.getDefault()).format(Date(millis))
 
     private fun createVoiceResultCard(result: VoiceTestResult): View {
         val outcomeLabel = when (result.outcome) {
