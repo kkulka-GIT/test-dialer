@@ -1,27 +1,28 @@
 # Current Task
 
-Status: IMPLEMENTED — CI PENDING
+Status: IMPLEMENTED LOCALLY — PUBLICATION/CI PENDING
 
-Feature: F04 — Manual Billing Session UI
+Feature: F05 — Guided SMS Test
 
 Goal:
-Udostępnić minimalny interfejs ręcznej sesji rating/billing, zapis zdarzenia oraz historię z osią czasu bez wykonywania akcji telekomunikacyjnych.
+Zastąpić placeholder SMS kontrolowanym scenariuszem, który otwiera systemowy composer i zapisuje ręczną obserwację do korelacji rating/billing.
 
 Scope:
-- Ręczna sesja Voice/SMS/Data: start, rejestracja czasu zdarzenia i zakończenie.
-- Zapis Room poza main thread z optimistic revision.
-- Lista sesji oraz szczegóły osi czasu z kopiowalnymi Run ID i Event ID.
-- Zachowanie dotychczasowych ekranów i danych Voice.
-- ComponentActivity, ViewModel, pojedynczy executor i ręczne DI bez frameworka.
-- Dostępność: czytelne etykiety, nagłówki, komunikaty live i min. 48 dp dla nowych akcji.
+- Wymagany numer i treść, opcjonalna etykieta testu.
+- Preflight obsługi Intent przed utworzeniem RUNNING snapshotu.
+- Wyłącznie `ACTION_SENDTO`, URI `smsto:` i `sms_body`; brak automatycznego wysyłania.
+- Ręczna, neutralna obserwacja testera po powrocie z composera.
+- Trwały TestRun/TestEvent/timeline z optimistic revision w Room.
+- Zachowanie Voice, Data placeholder, ręcznych sesji i historii.
 
 Out of scope:
-- Eksport, backend/CDR lookup i automatyczne wykonanie call/SMS/Data.
-- Automatyczne wznowienie RUNNING recorder po śmierci procesu.
-- Compose, Navigation Component, Hilt/Koin i duży redesign.
+- Delivery reports, receiver, `SEND_SMS` i permissions.
+- Backend, eksport i CDR lookup.
+- Automatyczne wznowienie sesji po śmierci procesu.
+- Redesign innych scenariuszy.
 
 Branch:
-`feature/manual-billing-session-ui`
+`feature/guided-sms-test`
 
 Verification:
-GitHub Actions pending after PR creation.
+Publikacja przez GitHub connector, PR i GitHub Actions pending.
