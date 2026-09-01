@@ -1,43 +1,48 @@
 # Current Task
 
-Status: READY FOR COORDINATOR REVIEW
+Status: REVIEW CORRECTIONS IMPLEMENTED — FINAL CI PENDING
 
-Feature: F01 — Test Run Domain
+Feature: F02 — Run Correlation Timeline
 
 Goal:
-Wprowadzić czysty fundament domenowy mobilnego asystenta testów end-to-end systemów ratingowych i billingowych.
+Dodać kontrolowane tworzenie identyfikatorów, precyzyjne znaczniki czasu oraz trwałą kolejność osi wykonania testu, aby zdarzenia można było później korelować z CDR-ami i sesjami systemów ratingowych.
 
 Scope:
-- Oddzielić definicję scenariusza i kroku od wykonania testu i zdarzeń.
-- Dodać lekkie typy identyfikatorów.
-- Dodać jawne akcje Voice, SMS i Data.
-- Rozdzielić oczekiwany rezultat od neutralnej obserwacji.
-- Dodać jawne referencje korelacyjne.
-- Wspierać wiele zdarzeń jednego kroku.
-- Walidować wykonanie względem definicji scenariusza.
-- Zapewnić spójność statusu runu i czasu zakończenia.
-- Dodać jednokierunkowy adapter historycznych wyników Voice.
-- Dodać testy JVM wykonywane jawnie w GitHub Actions.
+- Generowanie RunId, EventId, AttemptId i TimelineEntryId przez wstrzykiwane providery.
+- Rozdzielenie czasu UTC od czasu monotonicznego.
+- Jawny sequenceNumber jako trwałe źródło kolejności osi.
+- Osobne wpisy TimelineEntry dla runu, kroków, prób i zarejestrowanych akcji.
+- Kontrolowane przejścia przez TestRunRecorder.
+- Powiązanie ACTION_RECORDED z TestEvent.
+- Jawne okna czasowe wyszukiwania CDR.
+- Deterministyczne testy JVM.
 
 Out of scope:
-- Zmiany UI i bieżącego przepływu Voice.
-- Migracja lub zmiana `VoiceResultStore`.
-- Generowanie identyfikatorów i precyzyjna oś czasu.
-- Trwały zapis nowych sesji.
-- Rzeczywista obsługa SMS i Data.
-- Backend, eksport i analiza CDR.
+- UI, Room, SharedPreferences i inny trwały zapis nowych runów.
+- JSON, CSV i eksport.
+- Wykonywanie połączeń, SMS lub transmisji danych.
+- Backend oraz rzeczywiste wyszukiwanie CDR.
+- Zmiany VoiceResultStore i historycznego JSON.
+- Nowe uprawnienia Androida.
 
 Acceptance:
-- Istniejące dane i zachowanie Voice pozostają bez zmian.
-- Model jest niezależny od Androida.
+- Model pozostaje czystym Kotlinem bez Android Context.
+- SequenceNumber jest ciągły i niezależny od zegara.
+- Zmiana zegara ściennego nie niszczy kolejności przy rosnącym czasie monotonicznym.
+- Nieprawidłowe przejścia wykonania są odrzucane.
 - Testy JVM i GitHub Actions przechodzą.
 - Debug APK jest opublikowany jako artifact.
+
+Verification:
+- GitHub Actions #46: PASS.
+- Unit tests: PASS.
+- Debug APK build and artifact: PASS.
 
 Mode:
 incremental
 
 Branch:
-`feature/test-run-domain`
+`feature/run-correlation-timeline`
 
 Pull request:
-https://github.com/kkulka-GIT/test-dialer/pull/4
+https://github.com/kkulka-GIT/test-dialer/pull/5

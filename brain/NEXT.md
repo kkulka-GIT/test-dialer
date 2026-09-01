@@ -1,5 +1,5 @@
 # Co robimy teraz
 
-Dokończyć przegląd F01, potwierdzić testy JVM, PASS w GitHub Actions i artifact debug APK.
+Koordynator przegląda F02 oraz końcowe CI dla PR #5.
 
-Po akceptacji F01 przygotować zależny feature korelacji i precyzyjnej osi czasu. Nie podłączać nowego modelu do storage ani UI poza osobno zatwierdzonym feature'em.
+Po akceptacji F02 przygotować osobny feature trwałego zapisu nowych runów. Nie podłączać modelu do UI, VoiceResultStore ani wykonywania usług bez osobno zatwierdzonego zakresu.
