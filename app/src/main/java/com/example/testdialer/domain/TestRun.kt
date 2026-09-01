@@ -97,6 +97,8 @@ data class TestRun(
             TestRunStatus.CREATED -> Unit
         }
 
+        validateTimelineTransitions()
+
         val recordedEventIds = timeline
             .filter { it.kind == TimelineEntryKind.ACTION_RECORDED }
             .mapNotNull { it.relatedEventId }
@@ -105,6 +107,49 @@ data class TestRun(
         }
         require(recordedEventIds.toSet() == events.map { it.id }.toSet()) {
             "Timeline action entries must correspond exactly to run events"
+        }
+    }
+
+    private fun validateTimelineTransitions() {
+        var activeStepId: StepId? = null
+        var activeAttemptId: AttemptId? = null
+
+        timeline.drop(1).forEach { entry ->
+            when (entry.kind) {
+                TimelineEntryKind.RUN_STARTED -> error("Run start may only be the first entry")
+                TimelineEntryKind.STEP_STARTED -> {
+                    require(activeStepId == null) { "Another step is already active" }
+                    activeStepId = entry.stepId
+                }
+                TimelineEntryKind.ATTEMPT_STARTED -> {
+                    require(activeStepId == entry.stepId && activeAttemptId == null) {
+                        "Attempt must start inside the active step"
+                    }
+                    activeAttemptId = entry.attemptId
+                }
+                TimelineEntryKind.ACTION_RECORDED -> require(
+                    activeStepId == entry.stepId && activeAttemptId == entry.attemptId,
+                ) { "Action must be recorded inside the active attempt" }
+                TimelineEntryKind.ATTEMPT_FINISHED -> {
+                    require(activeStepId == entry.stepId && activeAttemptId == entry.attemptId) {
+                        "Only the active attempt may be finished"
+                    }
+                    activeAttemptId = null
+                }
+                TimelineEntryKind.STEP_FINISHED -> {
+                    require(activeStepId == entry.stepId && activeAttemptId == null) {
+                        "Only an active step without an open attempt may be finished"
+                    }
+                    activeStepId = null
+                }
+                TimelineEntryKind.RUN_COMPLETED -> require(
+                    activeStepId == null && activeAttemptId == null,
+                ) { "Run completion requires closed step and attempt" }
+                TimelineEntryKind.RUN_ABORTED -> {
+                    activeAttemptId = null
+                    activeStepId = null
+                }
+            }
         }
     }
 }
