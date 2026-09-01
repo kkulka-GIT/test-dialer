@@ -177,6 +177,76 @@ class TestRunRecorderTest {
         }
     }
 
+    @Test
+    fun completesWhenWallClockMovesBackwardsButMonotonicTimeAdvances() {
+        val recorder = recorder(
+            listOf(
+                CapturedTime(epochMillis = 2_000L, monotonicNanos = 10L),
+                CapturedTime(epochMillis = 1_900L, monotonicNanos = 20L),
+            ).iterator(),
+        )
+
+        val run = recorder.complete()
+
+        assertEquals(TestRunStatus.COMPLETED, run.status)
+        assertEquals(1_900L, run.completedAtMillis)
+        assertEquals(listOf(0L, 1L), run.timeline.map { it.sequenceNumber })
+    }
+
+    @Test
+    fun abortsWhenWallClockMovesBackwardsButMonotonicTimeAdvances() {
+        val recorder = recorder(
+            listOf(
+                CapturedTime(epochMillis = 2_000L, monotonicNanos = 10L),
+                CapturedTime(epochMillis = 1_800L, monotonicNanos = 30L),
+            ).iterator(),
+        )
+
+        val run = recorder.abort()
+
+        assertEquals(TestRunStatus.ABORTED, run.status)
+        assertEquals(1_800L, run.completedAtMillis)
+        assertEquals(listOf(0L, 1L), run.timeline.map { it.sequenceNumber })
+    }
+
+    @Test
+    fun rejectsAttemptIdentifierReusedByLaterRetry() {
+        val timeIterator = times(8)
+        var timelineNumber = 0
+        val recorder = TestRunRecorder.start(
+            scenario = scenario(),
+            timeProvider = TimeProvider { timeIterator.next() },
+            runIdProvider = RunIdProvider { RunId("run-1") },
+            eventIdProvider = EventIdProvider { EventId("event-1") },
+            attemptIdProvider = AttemptIdProvider { AttemptId("reused-attempt") },
+            timelineEntryIdProvider = TimelineEntryIdProvider {
+                timelineNumber += 1
+                TimelineEntryId("timeline-$timelineNumber")
+            },
+        )
+        recorder.startStep(STEP_ID)
+        recorder.startAttempt()
+        recorder.finishAttempt()
+
+        assertThrows(IllegalArgumentException::class.java) {
+            recorder.startAttempt()
+        }
+    }
+
+    @Test
+    fun rejectsActionLinkedToEventFromAnotherStep() {
+        val recorder = recorder(times(7))
+        recorder.startStep(STEP_ID)
+        recorder.startAttempt()
+        recorder.recordEvent()
+        val run = recorder.snapshot()
+        val eventFromAnotherStep = run.events.single().copy(stepId = StepId("other-step"))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            run.copy(events = listOf(eventFromAnotherStep))
+        }
+    }
+
     private fun recorder(timeIterator: Iterator<CapturedTime>): TestRunRecorder {
         var eventNumber = 0
         var attemptNumber = 0
