@@ -12,20 +12,31 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class SystemStatusStripViewTest {
     @Test
-    fun `strip exposes truthful status descriptions and touch sized badges`() {
+    fun `strip exposes four truthful statuses in a compact container`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val strip = SystemStatusStripView(context, "Wi-Fi", "Dane", "SIM", "W", "D", "S")
+        val strip = SystemStatusStripView(
+            context, "SIM", "Sieć", "Dane", "S", "N", "D", "Wi-Fi", "W",
+        )
 
-        strip.render(wifiAvailable = true, cellularAvailable = false, simReady = true)
+        strip.render(
+            simReady = true,
+            networkAvailable = true,
+            cellularDataEnabled = false,
+            wifiAvailable = true,
+        )
 
-        assertTrue(strip.contentDescription.contains("Wi-Fi: dostępne"))
-        assertTrue(strip.contentDescription.contains("Dane: niedostępne"))
         assertTrue(strip.contentDescription.contains("SIM: dostępne"))
+        assertTrue(strip.contentDescription.contains("Sieć: dostępne"))
+        assertTrue(strip.contentDescription.contains("Dane: niedostępne"))
+        assertTrue(strip.contentDescription.contains("Wi-Fi: dostępne"))
+        var badgeCount = 0
         repeat(strip.childCount) { index ->
             val child = strip.getChildAt(index)
             if (child is android.widget.LinearLayout) {
-                assertTrue(child.minimumHeight >= (48 * context.resources.displayMetrics.density).toInt())
+                badgeCount += 1
+                assertTrue(child.minimumHeight <= (40 * context.resources.displayMetrics.density).toInt())
             }
         }
+        assertTrue(badgeCount == 4)
     }
 }
