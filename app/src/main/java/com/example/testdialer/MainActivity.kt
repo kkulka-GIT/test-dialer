@@ -87,6 +87,13 @@ class MainActivity : ComponentActivity() {
     private var dialerWasOpened = false
     private var awaitingVoiceOutcome = false
     private var resultSaved = false
+    private var voiceNameDraft: String? = null
+    private var voicePhoneDraft: String? = null
+    private var smsLabelDraft: String? = null
+    private var smsDestinationDraft: String? = null
+    private var smsMessageDraft: String? = null
+    private var dataLabelDraft: String? = null
+    private var dataUrlDraft: String? = null
 
     private val connectivityManager by lazy {
         getSystemService(ConnectivityManager::class.java)
@@ -136,6 +143,13 @@ class MainActivity : ComponentActivity() {
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
         awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
         resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
+        voiceNameDraft = savedInstanceState?.getString(STATE_VOICE_NAME_DRAFT)
+        voicePhoneDraft = savedInstanceState?.getString(STATE_VOICE_PHONE_DRAFT)
+        smsLabelDraft = savedInstanceState?.getString(STATE_SMS_LABEL_DRAFT)
+        smsDestinationDraft = savedInstanceState?.getString(STATE_SMS_DESTINATION_DRAFT)
+        smsMessageDraft = savedInstanceState?.getString(STATE_SMS_MESSAGE_DRAFT)
+        dataLabelDraft = savedInstanceState?.getString(STATE_DATA_LABEL_DRAFT)
+        dataUrlDraft = savedInstanceState?.getString(STATE_DATA_URL_DRAFT)
         selectedActiveTaskId = savedInstanceState?.getString(STATE_ACTIVE_TASK_ID)?.let(::StepId)
         currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
             ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } }
@@ -249,6 +263,13 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
         outState.putBoolean(STATE_AWAITING_OUTCOME, awaitingVoiceOutcome)
         outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
+        outState.putString(STATE_VOICE_NAME_DRAFT, voiceNameDraft)
+        outState.putString(STATE_VOICE_PHONE_DRAFT, voicePhoneDraft)
+        outState.putString(STATE_SMS_LABEL_DRAFT, smsLabelDraft)
+        outState.putString(STATE_SMS_DESTINATION_DRAFT, smsDestinationDraft)
+        outState.putString(STATE_SMS_MESSAGE_DRAFT, smsMessageDraft)
+        outState.putString(STATE_DATA_LABEL_DRAFT, dataLabelDraft)
+        outState.putString(STATE_DATA_URL_DRAFT, dataUrlDraft)
         outState.putString(STATE_CURRENT_SECTION, currentSection.name)
         outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
         outState.putString(STATE_ACTIVE_TASK_ID, selectedActiveTaskId?.value)
@@ -389,6 +410,7 @@ class MainActivity : ComponentActivity() {
         }
         val active = state.active
         if (active == null) {
+            runHomeView.executionContextHost.removeAllViews()
             runHomeView.runHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.run_empty_title)))
                 addView(spaceVertical(dimen(6)))
@@ -474,6 +496,7 @@ class MainActivity : ComponentActivity() {
         runHomeView.selectorHost.visibility = View.VISIBLE
         runHomeView.scenarioHost.visibility = View.VISIBLE
         runHomeView.manualSessionHost.visibility = View.GONE
+        renderExecutionContext(currentTestType)
     }
 
     private fun openActiveTask(stepId: StepId, action: TestAction) {
@@ -487,9 +510,20 @@ class MainActivity : ComponentActivity() {
                 resultSaved = false
                 pendingPhoneNumber = null
                 pendingTestName = null
+                voiceNameDraft = null
+                voicePhoneDraft = action.destination
             }
-            is TestAction.Sms -> guidedSmsViewModel.startAnother()
-            is TestAction.Data -> cellularDataViewModel.startAnother()
+            is TestAction.Sms -> {
+                guidedSmsViewModel.startAnother()
+                smsLabelDraft = null
+                smsDestinationDraft = action.destination
+                smsMessageDraft = action.message.orEmpty()
+            }
+            is TestAction.Data -> {
+                cellularDataViewModel.startAnother()
+                dataLabelDraft = null
+                dataUrlDraft = action.target
+            }
         }
         selectedActiveTaskId = stepId
         currentTestType = when (action) {
@@ -855,6 +889,7 @@ class MainActivity : ComponentActivity() {
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
                 selectedActiveTaskId = null
+                clearDraft(type)
                 currentTestType = type
                 updateTestTypeChips()
                 renderScenario(type)
@@ -876,6 +911,7 @@ class MainActivity : ComponentActivity() {
     private fun renderScenario(type: TestType) {
         if (!::testScenarioHost.isInitialized) return
         testScenarioHost.removeAllViews()
+        renderExecutionContext(type)
         when (type) {
             TestType.VOICE -> testScenarioHost.addView(createVoiceScenario())
             TestType.SMS -> testScenarioHost.addView(createGuidedSmsScenario())
@@ -883,6 +919,76 @@ class MainActivity : ComponentActivity() {
         }
         updateTestTypeChips()
     }
+
+    private fun renderExecutionContext(type: TestType) {
+        runHomeView.executionContextHost.removeAllViews()
+        val active = activeRunState.active ?: return
+        val task = active.tasks.singleOrNull { it.step.id == selectedActiveTaskId }
+        val stage = when {
+            type == TestType.VOICE && awaitingVoiceOutcome -> getString(R.string.execution_stage_observation)
+            type == TestType.VOICE && resultSaved -> getString(R.string.execution_stage_saved)
+            type == TestType.SMS && guidedSmsState.awaitingObservation -> getString(R.string.execution_stage_observation)
+            type == TestType.SMS && guidedSmsState.saved -> getString(R.string.execution_stage_saved)
+            type == TestType.DATA && cellularDataState.busy -> getString(R.string.execution_stage_running)
+            type == TestType.DATA && cellularDataState.saved -> getString(R.string.execution_stage_saved)
+            else -> getString(R.string.execution_stage_prepare)
+        }
+        val taskName = task?.step?.title ?: getString(R.string.execution_manual_test)
+        runHomeView.executionContextHost.addView(createCard {
+            contentDescription = getString(
+                R.string.execution_context_accessibility,
+                active.stored.scenario.name,
+                active.stored.run.id.value,
+                taskName,
+                stage,
+            )
+            addView(createMicroText(getString(
+                R.string.execution_run_context,
+                active.stored.scenario.name,
+                active.stored.run.id.value,
+            )))
+            addView(spaceVertical(dimen(4)))
+            addView(createStatusText(getString(R.string.execution_task_stage, taskName, stage)))
+        })
+    }
+
+    private fun clearDraft(type: TestType) {
+        when (type) {
+            TestType.VOICE -> { voiceNameDraft = null; voicePhoneDraft = null }
+            TestType.SMS -> { smsLabelDraft = null; smsDestinationDraft = null; smsMessageDraft = null }
+            TestType.DATA -> { dataLabelDraft = null; dataUrlDraft = null }
+        }
+    }
+
+    private fun EditText.trackDraft(onChanged: (String) -> Unit) {
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) =
+                onChanged(s?.toString().orEmpty())
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+    }
+
+    private fun optionalFields(label: String, content: LinearLayout.() -> Unit): View =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val fields = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                visibility = View.GONE
+                content()
+            }
+            addView(Button(this@MainActivity).apply {
+                text = label
+                isAllCaps = false
+                minHeight = dimen(48)
+                contentDescription = label
+                setOnClickListener {
+                    fields.visibility = if (fields.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+                    isSelected = fields.visibility == View.VISIBLE
+                }
+            })
+            addView(fields)
+        }
 
     private fun createCellularDataScenario(): View {
         val state = cellularDataState
@@ -910,14 +1016,21 @@ class MainActivity : ComponentActivity() {
             addView(spaceVertical(dimen(8)))
             addView(createBodyText(getString(R.string.data_card_description)))
             addView(spaceVertical(dimen(14)))
-            val label = createOptionalInput(getString(R.string.data_label_hint))
+            val label = createOptionalInput(getString(R.string.data_label_hint)).apply {
+                setText(dataLabelDraft.orEmpty())
+                trackDraft { dataLabelDraft = it }
+            }
             val url = createOptionalInput(getString(R.string.data_url_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-                (selectedTaskAction() as? TestAction.Data)?.let { setText(it.target) }
+                setText(dataUrlDraft ?: (selectedTaskAction() as? TestAction.Data)?.target.orEmpty())
+                trackDraft { dataUrlDraft = it }
             }
-            addView(label)
-            addView(spaceVertical(dimen(10)))
             addView(url)
+            addView(spaceVertical(dimen(8)))
+            addView(optionalFields(getString(R.string.execution_optional_details)) {
+                addView(spaceVertical(dimen(8)))
+                addView(label)
+            })
             state.error?.let {
                 addView(spaceVertical(dimen(10)))
                 addView(createStatusText(it).apply { setTextColor(ColorPalette.bad) })
@@ -970,22 +1083,32 @@ class MainActivity : ComponentActivity() {
             addView(spaceVertical(dimen(8)))
             addView(createBodyText(getString(R.string.sms_card_description)))
             addView(spaceVertical(dimen(14)))
-            val labelInput = createOptionalInput(getString(R.string.sms_label_hint))
-            val destinationInput = createPhoneInput(getString(R.string.sms_destination_hint))
+            val taskAction = selectedTaskAction() as? TestAction.Sms
+            val initialDestination = smsDestinationDraft ?: taskAction?.destination.orEmpty()
+            val initialMessage = smsMessageDraft ?: taskAction?.message.orEmpty()
+            val labelInput = createOptionalInput(getString(R.string.sms_label_hint)).apply {
+                setText(smsLabelDraft.orEmpty())
+                trackDraft { smsLabelDraft = it }
+            }
+            val destinationInput = createPhoneInput(getString(R.string.sms_destination_hint)).apply {
+                setText(initialDestination)
+                trackDraft { smsDestinationDraft = it }
+            }
             val messageInput = createOptionalInput(getString(R.string.sms_message_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                minLines = 3
+                minLines = 2
                 gravity = Gravity.TOP
+                setText(initialMessage)
+                trackDraft { smsMessageDraft = it }
             }
-            (selectedTaskAction() as? TestAction.Sms)?.let {
-                destinationInput.setText(it.destination)
-                messageInput.setText(it.message.orEmpty())
-            }
-            addView(labelInput)
-            addView(spaceVertical(dimen(10)))
             addView(destinationInput)
             addView(spaceVertical(dimen(10)))
             addView(messageInput)
+            addView(spaceVertical(dimen(8)))
+            addView(optionalFields(getString(R.string.execution_optional_details)) {
+                addView(spaceVertical(dimen(8)))
+                addView(labelInput)
+            })
             state.error?.let {
                 addView(spaceVertical(dimen(10)))
                 addView(createStatusText(it).apply { setTextColor(ColorPalette.bad) })
@@ -1105,11 +1228,17 @@ class MainActivity : ComponentActivity() {
             addView(createBodyText(getString(R.string.voice_card_description)))
             addView(spaceVertical(dimen(14)))
             voiceNameInput = createOptionalInput(getString(R.string.voice_name_hint))
-            addView(voiceNameInput)
-            addView(spaceVertical(dimen(12)))
+            voiceNameInput.setText(voiceNameDraft.orEmpty())
+            voiceNameInput.trackDraft { voiceNameDraft = it }
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
-            (selectedTaskAction() as? TestAction.Voice)?.let { voicePhoneInput.setText(it.destination) }
+            voicePhoneInput.setText(voicePhoneDraft ?: (selectedTaskAction() as? TestAction.Voice)?.destination.orEmpty())
+            voicePhoneInput.trackDraft { voicePhoneDraft = it }
             addView(voicePhoneInput)
+            addView(spaceVertical(dimen(8)))
+            addView(optionalFields(getString(R.string.execution_optional_details)) {
+                addView(spaceVertical(dimen(8)))
+                addView(voiceNameInput)
+            })
             addView(spaceVertical(dimen(14)))
             addView(createPrimaryActionButton())
             addView(spaceVertical(dimen(10)))
@@ -1461,6 +1590,13 @@ class MainActivity : ComponentActivity() {
         const val STATE_CURRENT_SECTION = "currentSection"
         const val STATE_CURRENT_TEST_TYPE = "currentTestType"
         const val STATE_ACTIVE_TASK_ID = "activeTaskId"
+        const val STATE_VOICE_NAME_DRAFT = "voiceNameDraft"
+        const val STATE_VOICE_PHONE_DRAFT = "voicePhoneDraft"
+        const val STATE_SMS_LABEL_DRAFT = "smsLabelDraft"
+        const val STATE_SMS_DESTINATION_DRAFT = "smsDestinationDraft"
+        const val STATE_SMS_MESSAGE_DRAFT = "smsMessageDraft"
+        const val STATE_DATA_LABEL_DRAFT = "dataLabelDraft"
+        const val STATE_DATA_URL_DRAFT = "dataUrlDraft"
     }
 
     private object ColorPalette {

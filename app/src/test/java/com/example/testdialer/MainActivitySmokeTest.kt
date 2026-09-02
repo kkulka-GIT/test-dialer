@@ -193,6 +193,56 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `planned execution keeps Run Task and stage visible with compact optional fields`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        val taskTitle = "SMS standard"
+        awaitButtonWithDescription(
+            activity,
+            activity.getString(R.string.task_open_accessibility, taskTitle),
+        ).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val context = descendants(root).first {
+            it.contentDescription?.toString()?.contains("Aktywny Run") == true &&
+                it.contentDescription?.toString()?.contains(taskTitle) == true
+        }
+        assertTrue(context.contentDescription.contains(activity.getString(R.string.execution_stage_prepare)))
+        val optionalButton = findButton(activity, activity.getString(R.string.execution_optional_details))
+        val labelInput = descendants(root).filterIsInstance<EditText>()
+            .first { it.hint == activity.getString(R.string.sms_label_hint) }
+        assertEquals(View.GONE, labelInput.parent.let { it as View }.visibility)
+
+        optionalButton.performClick()
+        assertTrue(labelInput.isShown)
+        assertSingleStatusStrip(activity)
+    }
+
+    @Test
+    fun `edited Scenario parameters survive rotation and remain executable`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        awaitButtonWithDescription(
+            activity,
+            activity.getString(R.string.task_open_accessibility, "SMS standard"),
+        ).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val inputs = descendants(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().toList()
+        inputs.first { it.hint == activity.getString(R.string.sms_destination_hint) }.setText("+48999888777")
+        inputs.first { it.hint == activity.getString(R.string.sms_message_hint) }.setText("Edytowana treść")
+
+        controller.configurationChange(Configuration())
+        val rotated = controller.get()
+        val rotatedInputs = descendants(rotated.findViewById(android.R.id.content)).filterIsInstance<EditText>().toList()
+        assertEquals("+48999888777", rotatedInputs.first { it.hint == rotated.getString(R.string.sms_destination_hint) }.text.toString())
+        assertEquals("Edytowana treść", rotatedInputs.first { it.hint == rotated.getString(R.string.sms_message_hint) }.text.toString())
+        assertNotNull(findButton(rotated, rotated.getString(R.string.sms_open_composer)))
+        assertSingleStatusStrip(rotated)
+    }
+
+    @Test
     fun `test section and status strip survive lifecycle restart and rotation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
