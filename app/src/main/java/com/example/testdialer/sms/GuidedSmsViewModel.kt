@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.persistence.TestRunRepository
+import com.example.testdialer.persistence.StoredTestRun
 import com.example.testdialer.domain.execution.SystemTimeProvider
 import com.example.testdialer.domain.execution.TimeProvider
 import java.util.concurrent.ExecutorService
@@ -18,6 +19,7 @@ data class GuidedSmsUiState(
     val composerOpen: Boolean = false,
     val awaitingObservation: Boolean = false,
     val saved: Boolean = false,
+    val completed: StoredTestRun? = null,
     val error: String? = null,
 )
 
@@ -54,7 +56,7 @@ class GuidedSmsViewModel(
         submit("Nie udało się zapisać wyniku SMS") {
             val stored = coordinator.recordAndComplete(outcome, observedAt)
             check(stored.run.status == TestRunStatus.COMPLETED)
-            GuidedSmsUiState(saved = true)
+            GuidedSmsUiState(saved = true, completed = stored)
         }
     }
 

@@ -57,15 +57,17 @@ class TestRunRecorder private constructor(
     }
 
     fun recordEvent(
+        action: com.example.testdialer.domain.TestAction? = null,
         observation: Observation? = null,
         correlation: CorrelationMetadata = CorrelationMetadata(),
     ): TestRun {
         requireRecordingState()
-        return recordEventAt(captureNext(), observation, correlation)
+        return recordEventAt(captureNext(), action, observation, correlation)
     }
 
     fun recordEventAt(
         capturedAt: CapturedTime,
+        action: com.example.testdialer.domain.TestAction? = null,
         observation: Observation? = null,
         correlation: CorrelationMetadata = CorrelationMetadata(),
     ): TestRun {
@@ -81,7 +83,7 @@ class TestRunRecorder private constructor(
             id = eventId,
             runId = currentRun.id,
             stepId = stepId,
-            action = step.action,
+            action = action ?: step.action,
             occurredAtMillis = capturedAt.epochMillis,
             observation = observation,
             correlation = correlation,

@@ -72,3 +72,8 @@
 - UIR-02 łączy wcześniejsze sekcje `Status` i `Test` w jeden ekran `Operacje`; główna nawigacja ma teraz dwa wejścia: `Operacje` i `Rejestr`.
 - Pasek statusu UIR-02 pokazuje osobno SIM, dostępność sieci komórkowej, ustawienie danych komórkowych i Wi-Fi, używając wyłącznie istniejących systemowych odczytów bez nowych uprawnień.
 - UIR-02 pozostaje zmianą warstwy prezentacji: nie tworzy Active Run, Scenario ani Tasków domenowych i nie modyfikuje wykonania Voice/SMS/Data ani trwałego zapisu.
+- UIR-03 utrzymuje dokładnie jeden Active Run w pamięci procesu i zapisuje każdy jego checkpoint przez istniejący `TestRunRepository`; zapisany RUNNING po śmierci procesu pozostaje historią read-only i nie jest automatycznie wznawiany.
+- Active Run może powstać jako pusty Run albo z lokalnego Scenario; techniczne kroki ręczne Voice/SMS/Data są ukrytymi slotami domenowymi i nie pojawiają się na liście zaplanowanych Tasków.
+- Taski Scenario są niezależne: mogą zostać wykonane w dowolnej kolejności albo pominięte; `DONE` wynika z Eventu kroku, a `SKIPPED` z zamknięcia kroku bez Eventu.
+- Parametry ze Scenario są wartościami początkowymi formularza, a Event przechowuje faktycznie użyte parametry. Validator wymaga zgodności typu usługi z krokiem, nie identyczności pełnej akcji.
+- Guided SMS i Cellular Data zachowują swoje dotychczasowe, samodzielne rekordy wykonawcze, a ich pojedynczy Event jest idempotentnie dołączany do Active Run przez referencję `sourceEventId`; legacy Voice pozostaje zapisane i równolegle tworzy Event Active Run.

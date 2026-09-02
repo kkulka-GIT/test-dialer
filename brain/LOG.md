@@ -16,3 +16,5 @@
 - UIR-01 przebudował ekran `Test` na Run-centered shell z neutralnym brakiem aktywnego Run, sekcją `Tasks` i lekkim paskiem Wi-Fi/Cellular/SIM, zachowując dotychczasowe przepływy oraz rotację.
 - UIR-01 został scalony do `main` jako `16b9ae584ca16b6ec283e41056007bb3511f5dc9`; build GitHub Actions #76 zakończył się sukcesem.
 - UIR-02 przygotował na branchu `feature/uir-02-operational-home` wspólny ekran `Operacje`, dwupozycyjną nawigację i zwarty pasek SIM/sieć/dane/Wi-Fi. Lokalny test JVM jest BLOCKED przez niedostępność sieci podczas pobierania Gradle; wynik kodu zweryfikuje CI po otwarciu Draft PR.
+- UIR-02 został scalony do `main` jako `c7e5c766`; build #79, testy i debug APK zakończyły się PASS.
+- UIR-03 dodał Active Run, pusty Run/lokalne Scenario, niezależne Taski i przypisywanie ręcznych Voice/SMS/Data do aktywnego Runu. Lokalny test JVM jest BLOCKED przed startem przez niedostępność pobrania Gradle; weryfikację przejmie CI Draft PR.

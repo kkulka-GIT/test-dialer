@@ -33,35 +33,46 @@ class TestRunScenarioValidatorTest {
     }
 
     @Test
-    fun reportsVoiceDestinationMismatch() {
-        assertActionMismatch(
+    fun acceptsEditedVoiceDestinationForSameServiceTask() {
+        assertActionAccepted(
             scenarioAction = TestAction.Voice("+48111"),
             eventAction = TestAction.Voice("+48222"),
         )
     }
 
     @Test
-    fun reportsSmsDestinationMismatch() {
-        assertActionMismatch(
+    fun acceptsEditedSmsDestinationForSameServiceTask() {
+        assertActionAccepted(
             scenarioAction = TestAction.Sms(destination = "+48111", message = "TEST"),
             eventAction = TestAction.Sms(destination = "+48222", message = "TEST"),
         )
     }
 
     @Test
-    fun reportsSmsMessageMismatch() {
-        assertActionMismatch(
+    fun acceptsEditedSmsMessageForSameServiceTask() {
+        assertActionAccepted(
             scenarioAction = TestAction.Sms(destination = "+48111", message = "TEST"),
             eventAction = TestAction.Sms(destination = "+48111", message = "OTHER"),
         )
     }
 
     @Test
-    fun reportsDataTargetMismatch() {
-        assertActionMismatch(
+    fun acceptsEditedDataTargetForSameServiceTask() {
+        assertActionAccepted(
             scenarioAction = TestAction.Data("https://example.test/rating"),
             eventAction = TestAction.Data("https://example.test/other"),
         )
+    }
+
+    @Test
+    fun reportsServiceTypeMismatch() {
+        val issues = TestRunScenarioValidator.validate(
+            runWith(event(stepId = STEP_ID, action = TestAction.Sms("+48111"))),
+            scenario(stepId = STEP_ID, action = TestAction.Voice("+48111")),
+        )
+
+        assertEquals(EventId("event-1"), issues.single().eventId)
+        assertEquals("Event service type does not match its scenario step", issues.single().message)
     }
 
     @Test
@@ -82,7 +93,7 @@ class TestRunScenarioValidatorTest {
         }
     }
 
-    private fun assertActionMismatch(
+    private fun assertActionAccepted(
         scenarioAction: TestAction,
         eventAction: TestAction,
     ) {
@@ -91,8 +102,7 @@ class TestRunScenarioValidatorTest {
             scenario(stepId = STEP_ID, action = scenarioAction),
         )
 
-        assertEquals(EventId("event-1"), issues.single().eventId)
-        assertEquals("Event action does not match its scenario step", issues.single().message)
+        assertEquals(emptyList<TestRunValidationIssue>(), issues)
     }
 
     private fun scenario(

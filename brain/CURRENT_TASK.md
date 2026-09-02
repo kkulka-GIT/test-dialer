@@ -2,27 +2,30 @@
 
 Status: IMPLEMENTATION COMPLETE — CI PENDING
 
-Feature: UIR-01 — Run-centered application shell
+Feature: UIR-03 — Active Run and Tasks
 
 Goal:
-Przebudować ekran `Test` w czytelny, operacyjny punkt startu pracy testera rating/billing bez zmiany istniejących przepływów wykonawczych.
+Wprowadzić rzeczywisty, jawnie widoczny Active Run jako kontekst wykonania testów Voice, SMS i Data.
 
 Scope:
-- Programmatic Android Views, bez migracji do Compose.
-- Neutralny panel `Brak aktywnego Run`, który sam nie tworzy ani nie zapisuje sesji.
-- CTA `Dodaj test` prowadzące użytkownika do sekcji `Tasks`.
-- Zachowanie wejść Voice, SMS, Data i ręcznej sesji oraz sekcji `Rejestr`.
-- Cienki pasek faktycznego stanu Wi-Fi, sieci komórkowej i SIM.
-- Zachowanie wybranej sekcji i typu testu po zmianie konfiguracji.
-- Podstawowa dostępność: nagłówki semantyczne, cele dotykowe 48 dp, stan zaznaczenia i komunikaty TalkBack.
+- Rozpoczęcie pustego Runu albo lokalnego Scenario Voice / SMS / Data.
+- Lista niezależnych Tasków ze stanami niewykonany, wykonany i pominięty.
+- Wstępne uzupełnienie formularzy parametrami Tasku z możliwością ich zmiany.
+- Zapis faktycznie użytej akcji jako Eventu aktywnego Runu.
+- Dodatkowe ręczne Voice / SMS / Data jako Eventy aktywnego Runu.
+- Zakończenie Runu i trwały zapis przez istniejące `TestRunRecorder` oraz Room.
+- Brak automatycznego wznowienia RUNNING po śmierci procesu.
 
 Out of scope:
-- Compose, migracja Room i zmiana legacy Voice JSON.
-- Produkcyjny `ActiveRun`, katalog scenariuszy i integracja tasków.
-- Zmiana wykonania lub znaczenia testów Voice, SMS i Data.
+- Przebudowa i skracanie formularzy wykonawczych UIR-04.
+- Docelowy Rejestr Runów / Eventów i wygaszenie legacy Voice z UIR-05.
+- Migracja Compose, schematu Room albo usuwanie dotychczasowych rekordów.
 
 Branch:
-`feature/run-centered-shell`
+`feature/uir-03-active-run-tasks`
 
 Verification:
-Testy Robolectric i smoke zostały uzupełnione. Pozostaje Draft PR, GitHub Actions, artefakt APK i niezależna recenzja.
+- Dodano testy koordynatora Active Run, walidacji zmienionych parametrów i zapisu faktycznie użytej akcji.
+- `git diff --check`: PASS.
+- Lokalny `testDebugUnitTest`: BLOCKED przed uruchomieniem testów przez niedostępność pobrania Gradle (`Network is unreachable`).
+- Pozostają Draft PR, GitHub Actions, artefakt APK i niezależna recenzja.

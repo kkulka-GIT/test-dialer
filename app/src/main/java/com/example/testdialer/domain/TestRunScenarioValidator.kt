@@ -33,9 +33,9 @@ object TestRunScenarioValidator {
                     eventId = event.id,
                     message = "Event references a step outside the scenario definition",
                 )
-                event.action != step.action -> issues += TestRunValidationIssue(
+                event.action.serviceType() != step.action.serviceType() -> issues += TestRunValidationIssue(
                     eventId = event.id,
-                    message = "Event action does not match its scenario step",
+                    message = "Event service type does not match its scenario step",
                 )
             }
         }
@@ -51,5 +51,11 @@ object TestRunScenarioValidator {
         require(issues.isEmpty()) {
             issues.joinToString(separator = "; ") { it.message }
         }
+    }
+
+    private fun TestAction.serviceType(): ServiceType = when (this) {
+        is TestAction.Voice -> ServiceType.VOICE
+        is TestAction.Sms -> ServiceType.SMS
+        is TestAction.Data -> ServiceType.DATA
     }
 }
