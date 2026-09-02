@@ -34,7 +34,7 @@ class ActiveRunCoordinatorTest {
         assertEquals(runId, completed.run.id)
         assertEquals(TestRunStatus.COMPLETED, completed.run.status)
         assertEquals(listOf(TestAction.Voice("+48111"), TestAction.Sms("+48222", "test")), completed.run.events.map { it.action })
-        assertEquals(2, repository.snapshots.single().run.events.size)
+        assertEquals(2, repository.snapshots.values.single().run.events.size)
         assertNull(coordinator.active())
     }
 
