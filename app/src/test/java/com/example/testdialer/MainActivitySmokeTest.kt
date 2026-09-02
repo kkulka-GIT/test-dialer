@@ -1,7 +1,11 @@
 package com.example.testdialer
 
 import android.content.res.Configuration
+import android.graphics.Rect
+import android.os.Looper
+import android.view.View
 import android.widget.Button
+import android.widget.ScrollView
 import com.example.testdialer.ui.RunHomeView
 import com.example.testdialer.ui.SystemStatusStripView
 import com.example.testdialer.persistence.TestRunRepository
@@ -13,6 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.util.concurrent.Executors
 
@@ -47,14 +52,35 @@ class MainActivitySmokeTest {
         findButton(activity, activity.getString(R.string.nav_test)).performClick()
         val repository = (activity.application as TestDialerApplication).testRunRepository
         val before = persistedRunCount(repository)
-
-        findButton(activity, activity.getString(R.string.run_add_test)).performClick()
-
         val runHome = descendants(activity.findViewById(android.R.id.content))
             .filterIsInstance<RunHomeView>()
             .single()
+        val scroll = generateSequence(runHome.parent) { it.parent }
+            .filterIsInstance<ScrollView>()
+            .first()
+        val viewportWidth = (360 * activity.resources.displayMetrics.density).toInt()
+        val viewportHeight = (240 * activity.resources.displayMetrics.density).toInt()
+        scroll.measure(
+            View.MeasureSpec.makeMeasureSpec(viewportWidth, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(viewportHeight, View.MeasureSpec.EXACTLY),
+        )
+        scroll.layout(0, 0, viewportWidth, viewportHeight)
+        val tasksBounds = Rect().also { bounds ->
+            runHome.tasksHeading.getDrawingRect(bounds)
+            scroll.offsetDescendantRectToMyCoords(runHome.tasksHeading, bounds)
+        }
+
+        assertEquals(0, scroll.scrollY)
+        assertTrue(tasksBounds.top >= scroll.height)
+
+        findButton(activity, activity.getString(R.string.run_add_test)).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         assertTrue(runHome.tasksHeading.hasFocus())
         assertEquals(activity.getString(R.string.run_tasks_title), runHome.tasksHeading.text.toString())
+        assertTrue(scroll.scrollY > 0)
+        assertTrue(tasksBounds.bottom > scroll.scrollY)
+        assertTrue(tasksBounds.top < scroll.scrollY + scroll.height)
         val after = persistedRunCount(repository)
         assertEquals(before, after)
     }
