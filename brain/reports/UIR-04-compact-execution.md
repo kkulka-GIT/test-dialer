@@ -21,6 +21,8 @@ Implementacja i testy regresyjne są zapisane lokalnie na branchu `feature/uir-0
 - istniejące primary actions i ścieżki wykonawcze zapisują faktycznie użyte wartości;
 - ręczne dodatkowe testy i trwałe konteksty async UIR-03 pozostały bez zmian;
 - techniczne określenie `manual billing session` nie jest eksponowane w normalnym UX.
+- podczas niezakończonego asynchronicznego SMS lub aktywnego pobierania Data wybrany ekran pozostaje zablokowany, dzięki czemu kontekst nie może pokazać Tasku ani etapu innego wykonania;
+- kontrolka opcjonalnej nazwy komunikuje TalkBackowi akcję `Pokaż`/`Ukryj` oraz stan `Zwinięte`/`Rozwinięte`.
 
 ## Poza zakresem
 
@@ -32,6 +34,7 @@ Implementacja i testy regresyjne są zapisane lokalnie na branchu `feature/uir-0
 
 - `git diff --check`: PASS;
 - dodane regresje Robolectric sprawdzają widoczny kontekst Run/Task/etap, domyślnie zwiniętą nazwę, TalkBack content description, prefille oraz edytowane dane po rotacji;
+- regresje po recenzji sprawdzają blokadę zmiany ekranu dla niezakończonego SMS i aktywnego Data oraz dynamiczną akcję i stan kontrolki opcjonalnej nazwy;
 - `./gradlew testDebugUnitTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem testów, ponieważ wrapper nie może pobrać Gradle 8.11.1 (`Network is unreachable`);
 - pełnego lokalnego builda Androida nie uruchamiano zgodnie z zasadami;
 - GitHub Actions: PENDING;

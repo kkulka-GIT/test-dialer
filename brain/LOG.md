@@ -20,3 +20,4 @@
 - UIR-03 dodał Active Run, pusty Run/lokalne Scenario, niezależne Taski i przypisywanie ręcznych Voice/SMS/Data do aktywnego Runu. Lokalny test JVM jest BLOCKED przed startem przez niedostępność pobrania Gradle; weryfikację przejmie CI Draft PR.
 - UIR-03 został scalony do `main` jako `bfbec34fc49f880bc6d07b22488f41923573506d` po zielonym CI i niezależnym odbiorze.
 - UIR-04 przygotował zwarte wykonanie Voice/SMS/Data z widocznym kontekstem Run/Task/etap, rozwijanymi polami opcjonalnymi i zachowaniem edycji przy rotacji. Lokalny test Robolectric jest BLOCKED przed startem przez niedostępność pobrania Gradle; weryfikację przejmie CI po publikacji brancha.
+- Po niezależnym odbiorze UIR-04 zablokowano zmianę typu testu podczas niezakończonego SMS lub aktywnego Data oraz uzupełniono komunikaty TalkBack dla zwijanej opcjonalnej nazwy; dodano regresje obu zachowań.

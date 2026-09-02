@@ -51,6 +51,9 @@
     <string name="execution_stage_observation">obserwacja</string>
     <string name="execution_stage_saved">wynik zapisany</string>
     <string name="execution_optional_details">Pokaż opcjonalną nazwę</string>
+    <string name="execution_optional_hide">Ukryj opcjonalną nazwę</string>
+    <string name="execution_optional_collapsed">Zwinięte</string>
+    <string name="execution_optional_expanded">Rozwinięte</string>
     <string name="voice_status_title">Pasek statusu</string>
     <string name="status_wifi_label">Wi-Fi</string>
     <string name="status_cellular_label">Dane</string>

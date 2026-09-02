@@ -213,10 +213,60 @@ class MainActivitySmokeTest {
         val labelInput = descendants(root).filterIsInstance<EditText>()
             .first { it.hint == activity.getString(R.string.sms_label_hint) }
         assertEquals(View.GONE, labelInput.parent.let { it as View }.visibility)
+        assertEquals(
+            activity.getString(R.string.execution_optional_collapsed),
+            optionalButton.stateDescription,
+        )
 
         optionalButton.performClick()
         assertTrue(labelInput.isShown)
+        assertEquals(activity.getString(R.string.execution_optional_hide), optionalButton.text.toString())
+        assertEquals(activity.getString(R.string.execution_optional_hide), optionalButton.contentDescription)
+        assertEquals(
+            activity.getString(R.string.execution_optional_expanded),
+            optionalButton.stateDescription,
+        )
         assertSingleStatusStrip(activity)
+    }
+
+    @Test
+    fun `unfinished asynchronous SMS keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.sms_type)).performClick()
+        MainActivity::class.java.getDeclaredField("guidedSmsState").apply {
+            isAccessible = true
+            set(activity, GuidedSmsUiState(awaitingObservation = true))
+        }
+        renderScenario(activity, "SMS")
+
+        val dataButton = findButton(activity, activity.getString(R.string.data_type))
+
+        assertFalse(dataButton.isEnabled)
+        dataButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.sms_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.sms_observation_title),
+        ))
+    }
+
+    @Test
+    fun `running Data keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.data_type)).performClick()
+        MainActivity::class.java.getDeclaredField("cellularDataState").apply {
+            isAccessible = true
+            set(activity, com.example.testdialer.data.CellularDataUiState(busy = true))
+        }
+        renderScenario(activity, "DATA")
+
+        val smsButton = findButton(activity, activity.getString(R.string.sms_type))
+
+        assertFalse(smsButton.isEnabled)
+        smsButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.data_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.data_running),
+        ))
     }
 
     @Test
@@ -280,6 +330,15 @@ class MainActivitySmokeTest {
 
     private fun collectText(root: android.view.View): String =
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
+
+    private fun renderScenario(activity: MainActivity, typeName: String) {
+        val typeClass = Class.forName("com.example.testdialer.ui.TestType")
+        val type = typeClass.enumConstants.first { (it as Enum<*>).name == typeName }
+        MainActivity::class.java.getDeclaredMethod("renderScenario", typeClass).apply {
+            isAccessible = true
+            invoke(activity, type)
+        }
+    }
 
     private fun persistedRunCount(repository: TestRunRepository): Int {
         val executor = Executors.newSingleThreadExecutor()

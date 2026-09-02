@@ -888,6 +888,7 @@ class MainActivity : ComponentActivity() {
             minHeight = dimen(48)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
+                if (isTestTypeSwitchLocked()) return@setOnClickListener
                 selectedActiveTaskId = null
                 clearDraft(type)
                 currentTestType = type
@@ -899,14 +900,23 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateTestTypeChips() {
+        val switchLocked = isTestTypeSwitchLocked()
         testTypeButtons.forEach { (type, button) ->
             val selected = type == currentTestType
             button.isSelected = selected
+            button.isEnabled = !switchLocked || selected
             button.alpha = if (selected) 1f else 0.92f
             button.background = pillBackground(if (selected) ColorPalette.accent else ColorPalette.button)
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
         }
     }
+
+    private fun isTestTypeSwitchLocked(): Boolean =
+        guidedSmsState.busy ||
+            guidedSmsState.composerRequested ||
+            guidedSmsState.composerOpen ||
+            guidedSmsState.awaitingObservation ||
+            cellularDataState.busy
 
     private fun renderScenario(type: TestType) {
         if (!::testScenarioHost.isInitialized) return
@@ -982,9 +992,17 @@ class MainActivity : ComponentActivity() {
                 isAllCaps = false
                 minHeight = dimen(48)
                 contentDescription = label
+                ViewCompat.setStateDescription(this, getString(R.string.execution_optional_collapsed))
                 setOnClickListener {
                     fields.visibility = if (fields.visibility == View.VISIBLE) View.GONE else View.VISIBLE
                     isSelected = fields.visibility == View.VISIBLE
+                    val expanded = fields.visibility == View.VISIBLE
+                    text = getString(if (expanded) R.string.execution_optional_hide else R.string.execution_optional_details)
+                    contentDescription = text
+                    ViewCompat.setStateDescription(
+                        this,
+                        getString(if (expanded) R.string.execution_optional_expanded else R.string.execution_optional_collapsed),
+                    )
                 }
             })
             addView(fields)
