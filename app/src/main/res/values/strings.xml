@@ -2,7 +2,7 @@
     <string name="app_name">Test Dialer</string>
     <string name="nav_status">Status</string>
     <string name="nav_test">Test</string>
-    <string name="nav_operations">Testy</string>
+    <string name="nav_operations">Operacje</string>
     <string name="nav_register">Rejestr</string>
     <string name="status_title">Status</string>
     <string name="status_description">Lekki podgląd gotowości do testów i miejsca na przyszłe podsumowania.</string>

@@ -31,7 +31,8 @@ class MainActivitySmokeTest {
         val buttons = descendants(root).filterIsInstance<Button>().toList()
         val allText = collectText(root)
 
-        assertTrue(buttons.any { it.text.toString() == activity.getString(R.string.nav_operations) })
+        assertEquals("Operacje", activity.getString(R.string.nav_operations))
+        assertTrue(buttons.any { it.text.toString() == "Operacje" })
         assertTrue(buttons.any { it.text.toString() == activity.getString(R.string.nav_register) })
         assertFalse(buttons.any { it.text.toString() == activity.getString(R.string.nav_status) })
         assertFalse(buttons.any { it.text.toString() == activity.getString(R.string.nav_test) })

@@ -32,11 +32,11 @@ UIR-02 łączy wcześniejsze sekcje `Status` i `Test` w jeden ekran `Operacje`. 
 - Inspekcja diff: PASS.
 - Czystość worktree po commicie implementacyjnym: PASS.
 - Lokalny `./gradlew testDebugUnitTest`: BLOCKED przed uruchomieniem testów, ponieważ Gradle wrapper nie mógł pobrać Gradle 8.11.1 (`Network is unreachable`).
-- GitHub Actions: NOT TESTED — wymaga opublikowania brancha i otwarcia PR.
-- Debug APK artifact: NOT TESTED.
+- GitHub Actions #77 (run `33624109842`) dla SHA `132c3d997cae20fd8f1bcc8417e82fff795ad77d`: PASS.
+- Debug APK artifact `test-dialer-debug-apk` (ID `9844179971`) dla SHA `132c3d997cae20fd8f1bcc8417e82fff795ad77d`: dostępny.
 
 ## Ryzyka i dalsze kroki
 
 - Wiarygodność odczytów systemowych pozostaje ograniczona możliwościami Android API; UIR-02 nie deklaruje VoWiFi ani szczegółowej jakości sygnału.
-- Po publikacji wymagane są: CI, artifact debug APK i niezależna recenzja regresji.
+- CI i artifact debug APK zostały potwierdzone; wymagana jest niezależna recenzja regresji po poprawkach.
 - UIR-03 może rozpocząć się dopiero po zakończeniu UIR-02 wynikiem PASS.
