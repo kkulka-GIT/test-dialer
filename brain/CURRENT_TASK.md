@@ -1,27 +1,28 @@
 # Current Task
 
-Status: IMPLEMENTATION — CHECKPOINT PUBLISHED
+Status: IMPLEMENTATION COMPLETE — CI PENDING
 
-Feature: F06 — Cellular Data Download Test
+Feature: UIR-01 — Run-centered application shell
 
 Goal:
-Zastąpić placeholder Data ograniczonym pobraniem HTTPS przez aktualnie aktywną sieć komórkową i zapisać dane korelacyjne rating/billing.
+Przebudować ekran `Test` w czytelny, operacyjny punkt startu pracy testera rating/billing bez zmiany istniejących przepływów wykonawczych.
 
 Scope:
-- Foreground HTTPS GET przez `activeNetwork` wyłącznie CELLULAR i bez VPN.
-- Preflight URL oraz sieci przed utworzeniem RUNNING snapshotu.
-- Limit 1 MiB, timeouty, brak redirect/auth/upload/cache/compression.
-- Terminalny TestEvent z bytes, duration, status, host, transport i czasami.
-- Anulowanie przez cancel + disconnect; dokładnie jedno zdarzenie terminalne.
-- Zachowanie Voice, SMS, ręcznych sesji i historii.
+- Programmatic Android Views, bez migracji do Compose.
+- Neutralny panel `Brak aktywnego Run`, który sam nie tworzy ani nie zapisuje sesji.
+- CTA `Dodaj test` prowadzące użytkownika do sekcji `Tasks`.
+- Zachowanie wejść Voice, SMS, Data i ręcznej sesji oraz sekcji `Rejestr`.
+- Cienki pasek faktycznego stanu Wi-Fi, sieci komórkowej i SIM.
+- Zachowanie wybranej sekcji i typu testu po zmianie konfiguracji.
+- Podstawowa dostępność: nagłówki semantyczne, cele dotykowe 48 dp, stan zaznaczenia i komunikaty TalkBack.
 
 Out of scope:
-- `requestNetwork`, process binding i przełączanie transportu.
-- Prywatne/lokalne hosty, upload, body, redirect, auth i backend.
-- Automatyczne wznowienie RUNNING po śmierci procesu.
+- Compose, migracja Room i zmiana legacy Voice JSON.
+- Produkcyjny `ActiveRun`, katalog scenariuszy i integracja tasków.
+- Zmiana wykonania lub znaczenia testów Voice, SMS i Data.
 
 Branch:
-`feature/cellular-data-download-test`
+`feature/run-centered-shell`
 
 Verification:
-Checkpoint opublikowany; fake-only testy, PR i GitHub Actions pending.
+Testy Robolectric i smoke zostały uzupełnione. Pozostaje Draft PR, GitHub Actions, artefakt APK i niezależna recenzja.

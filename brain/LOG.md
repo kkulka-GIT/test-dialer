@@ -13,3 +13,4 @@
 - Użytkownik potwierdził udany manualny test aplikacji na telefonie po instalacji końcowego APK etapu Voice i Rejestr.
 - F01 dodał czysty model scenariuszy, runów, zdarzeń i korelacji bez podłączania go do UI ani starego storage.
 - F02 dodał osobną oś wykonania, kontrolowane identyfikatory i czas, próby, stanowe przejścia oraz okna korelacji CDR; weryfikacja CI jest w toku.
+- UIR-01 przebudował ekran `Test` na Run-centered shell z neutralnym brakiem aktywnego Run, sekcją `Tasks` i lekkim paskiem Wi-Fi/Cellular/SIM, zachowując dotychczasowe przepływy oraz rotację.
