@@ -20,7 +20,7 @@ Out of scope:
 - Nowe funkcje sieciowe.
 
 Branch:
-`feature/uir-03-active-run-tasks`
+`feature/uir-04-compact-execution`
 
 Verification:
 - Dodano testy Robolectric kontekstu wykonania, zwiniętych pól opcjonalnych oraz zachowania edytowanych parametrów po rotacji.
