@@ -77,3 +77,6 @@
 - Taski Scenario są niezależne: mogą zostać wykonane w dowolnej kolejności albo pominięte; `DONE` wynika z Eventu kroku, a `SKIPPED` z zamknięcia kroku bez Eventu.
 - Parametry ze Scenario są wartościami początkowymi formularza, a Event przechowuje faktycznie użyte parametry. Validator wymaga zgodności typu usługi z krokiem, nie identyczności pełnej akcji.
 - Guided SMS i Cellular Data zachowują swoje dotychczasowe, samodzielne rekordy wykonawcze, a ich pojedynczy Event jest idempotentnie dołączany do Active Run przez referencję `sourceEventId`; legacy Voice pozostaje zapisane i równolegle tworzy Event Active Run.
+- UIR-04 zachowuje jeden wykonawczy przepływ Voice/SMS/Data i nie zmienia kontraktów zapisu UIR-03; jest wyłącznie zwartą przebudową warstwy Views.
+- Podczas wykonania aktywnego Runu interfejs stale pokazuje jego nazwę i ID, wybrany Task lub oznaczenie dodatkowego testu oraz etap: przygotowanie, wykonanie, obserwacja albo zapisany wynik.
+- Parametry wymagane są widoczne bezpośrednio, opcjonalna nazwa testu jest domyślnie zwinięta, a edytowane drafty są zachowywane przez `savedInstanceState` podczas rotacji.

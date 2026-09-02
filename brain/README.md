@@ -2,12 +2,14 @@
 
 ## Aktualny stan aplikacji
 
-Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów end-to-end systemów ratingowych i billingowych. W obecnym interfejsie działają przepływy Voice, Guided SMS i kontrolowanego Data; panel Run pozostaje prezentacyjnym stanem neutralnym do czasu UIR-03.
+Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów end-to-end systemów ratingowych i billingowych. W obecnym interfejsie działają przepływy Voice, Guided SMS i kontrolowanego Data osadzone w jawnym Active Runie z listą Tasków.
 
 ## Zaimplementowane elementy
 
 - Dwie główne sekcje aplikacji: `Operacje` i `Rejestr`; wcześniejsze `Status` i `Test` są połączone w jeden ekran operacyjny.
-- W `Operacje` dostępny jest lekki pasek statusu SIM/sieci/danych/Wi-Fi, neutralny panel Run oraz wybór `Voice`, `SMS`, `Data`.
+- W `Operacje` dostępny jest lekki pasek statusu SIM/sieci/danych/Wi-Fi, Active Run, lista Tasków oraz wybór dodatkowego `Voice`, `SMS`, `Data`.
+- Zwarte ekrany wykonania pokazują Run, Task i etap, eksponują wymagane parametry i główną akcję, a opcjonalną nazwę ukrywają pod rozwijanym sterowaniem.
+- Edytowane parametry formularza pozostają zachowane podczas zmiany konfiguracji i są używane przez istniejące ścieżki zapisu Eventów.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL` i nie rozpoczyna połączenia automatycznie.
 - Po powrocie z dialera użytkownik ręcznie wybiera wynik.
 - Wynik Voice jest zapisywany lokalnie wraz z datą, numerem i opcjonalną nazwą.
@@ -25,7 +27,7 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 
 - Brak backendu, kont i synchronizacji.
 - Istniejące wyniki Voice pozostają w niezmienionym magazynie lokalnym.
-- Nowy model domenowy i oś wykonania nie są jeszcze podłączone do UI ani trwałego zapisu sesji.
+- Model domenowy i oś wykonania są podłączone do Active Runu oraz trwałych checkpointów Room; sesje RUNNING nie są automatycznie wznawiane po śmierci procesu.
 - Czas monotoniczny nie jest trwałym znacznikiem i nie służy do porównań między restartami procesu.
 - UI jest budowane programowo w Android Views.
 - `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.
