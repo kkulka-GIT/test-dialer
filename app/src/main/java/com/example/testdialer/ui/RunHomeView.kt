@@ -25,6 +25,11 @@ internal class RunHomeView(
     val selectorHost = verticalHost()
     val scenarioHost = verticalHost()
     val manualSessionHost = verticalHost()
+    val tasksHeading = cardTitle(tasksTitle).apply {
+        ViewCompat.setAccessibilityHeading(this, true)
+        isFocusable = true
+        isFocusableInTouchMode = true
+    }
 
     init {
         orientation = VERTICAL
@@ -51,7 +56,7 @@ internal class RunHomeView(
             })
         })
         addView(space(18))
-        addView(cardTitle(tasksTitle).apply { ViewCompat.setAccessibilityHeading(this, true) })
+        addView(tasksHeading)
         addView(space(6))
         addView(body(tasksDescription))
         addView(space(12))
@@ -63,8 +68,8 @@ internal class RunHomeView(
     }
 
     fun announceTasks(message: String) {
-        selectorHost.requestFocus()
-        selectorHost.announceForAccessibility(message)
+        tasksHeading.requestFocus()
+        tasksHeading.announceForAccessibility(message)
     }
 
     private fun verticalHost() = LinearLayout(context).apply { orientation = VERTICAL }

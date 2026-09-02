@@ -2,7 +2,9 @@ package com.example.testdialer
 
 import android.content.res.Configuration
 import android.widget.Button
+import com.example.testdialer.ui.RunHomeView
 import com.example.testdialer.ui.SystemStatusStripView
+import com.example.testdialer.persistence.TestRunRepository
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,6 +14,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.util.concurrent.Executors
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -36,6 +39,24 @@ class MainActivitySmokeTest {
         val afterCta = collectText(activity.findViewById(android.R.id.content))
         assertTrue(afterCta.contains(activity.getString(R.string.run_empty_title)))
         assertFalse(afterCta.contains(activity.getString(R.string.manual_session_active, "")))
+    }
+
+    @Test
+    fun `add test focuses Tasks without creating a persisted run`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        val repository = (activity.application as TestDialerApplication).testRunRepository
+        val before = persistedRunCount(repository)
+
+        findButton(activity, activity.getString(R.string.run_add_test)).performClick()
+
+        val runHome = descendants(activity.findViewById(android.R.id.content))
+            .filterIsInstance<RunHomeView>()
+            .single()
+        assertTrue(runHome.tasksHeading.hasFocus())
+        assertEquals(activity.getString(R.string.run_tasks_title), runHome.tasksHeading.text.toString())
+        val after = persistedRunCount(repository)
+        assertEquals(before, after)
     }
 
     @Test
@@ -126,6 +147,15 @@ class MainActivitySmokeTest {
 
     private fun collectText(root: android.view.View): String =
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
+
+    private fun persistedRunCount(repository: TestRunRepository): Int {
+        val executor = Executors.newSingleThreadExecutor()
+        return try {
+            executor.submit<Int> { repository.listSummaries().size }.get()
+        } finally {
+            executor.shutdownNow()
+        }
+    }
 
     private fun descendants(root: android.view.View): Sequence<android.view.View> = sequence {
         yield(root)
