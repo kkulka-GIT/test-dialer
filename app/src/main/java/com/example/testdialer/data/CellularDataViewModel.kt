@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.testdialer.domain.execution.SystemTimeProvider
 import com.example.testdialer.domain.execution.TimeProvider
 import com.example.testdialer.persistence.TestRunRepository
+import com.example.testdialer.persistence.StoredTestRun
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -16,6 +17,7 @@ data class CellularDataUiState(
     val busy: Boolean = false,
     val saved: Boolean = false,
     val cancelled: Boolean = false,
+    val completed: StoredTestRun? = null,
     val error: String? = null,
 )
 
@@ -42,6 +44,7 @@ class CellularDataViewModel(
                         CellularDataUiState(
                             saved = true,
                             cancelled = stored.run.status.name == "ABORTED",
+                            completed = stored,
                         )
                     },
                     onFailure = { CellularDataUiState(error = it.message ?: "Nie udało się wykonać testu Data") },

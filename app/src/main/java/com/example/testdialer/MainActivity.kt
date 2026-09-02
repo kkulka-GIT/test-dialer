@@ -29,6 +29,12 @@ import com.example.testdialer.data.CellularDataInput
 import com.example.testdialer.data.CellularDataUiState
 import com.example.testdialer.data.CellularDataViewModel
 import com.example.testdialer.domain.RunId
+import com.example.testdialer.domain.StepId
+import com.example.testdialer.domain.TestAction
+import com.example.testdialer.active.ActiveRunUiState
+import com.example.testdialer.active.ActiveRunViewModel
+import com.example.testdialer.active.ActiveTaskStatus
+import com.example.testdialer.active.LocalScenarioCatalog
 import com.example.testdialer.domain.ServiceType
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.persistence.TestRunSummary
@@ -70,9 +76,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var manualSessionViewModel: ManualSessionViewModel
     private lateinit var guidedSmsViewModel: GuidedSmsViewModel
     private lateinit var cellularDataViewModel: CellularDataViewModel
+    private lateinit var activeRunViewModel: ActiveRunViewModel
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
+    private var activeRunState = ActiveRunUiState()
+    private var selectedActiveTaskId: StepId? = null
     private var pendingPhoneNumber: String? = null
     private var pendingTestName: String? = null
     private var dialerWasOpened = false
@@ -118,11 +127,16 @@ class MainActivity : ComponentActivity() {
             this,
             CellularDataViewModel.Factory(repository, connectivityManager),
         )[CellularDataViewModel::class.java]
+        activeRunViewModel = ViewModelProvider(
+            this,
+            ActiveRunViewModel.Factory(repository),
+        )[ActiveRunViewModel::class.java]
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
         awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
         resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
+        selectedActiveTaskId = savedInstanceState?.getString(STATE_ACTIVE_TASK_ID)?.let(::StepId)
         currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
             ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } }
             ?.takeUnless { it == AppSection.STATUS }
@@ -169,13 +183,23 @@ class MainActivity : ComponentActivity() {
             if (state.composerRequested) openSmsComposer(state)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
+                if (activeRunState.active != null) state.completed?.let { activeRunViewModel.recordExternal(selectedActiveTaskId, it) }
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
             }
         }
         cellularDataViewModel.state.observe(this) { state ->
             cellularDataState = state
             if (currentTestType == TestType.DATA) renderScenario(TestType.DATA)
-            if (state.saved) manualSessionViewModel.loadHistory()
+            if (state.saved) {
+                manualSessionViewModel.loadHistory()
+                if (activeRunState.active != null) state.completed?.let { activeRunViewModel.recordExternal(selectedActiveTaskId, it) }
+            }
+        }
+        activeRunViewModel.state.observe(this) { state ->
+            activeRunState = state
+            renderActiveRun()
+            state.message?.let { runHomeView.announceForAccessibility(it) }
+            if (state.active == null) selectedActiveTaskId = null
         }
         onBackPressedDispatcher.addCallback(this) {
             if (manualSessionState.selected != null) {
@@ -225,6 +249,7 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean(STATE_RESULT_SAVED, resultSaved)
         outState.putString(STATE_CURRENT_SECTION, currentSection.name)
         outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
+        outState.putString(STATE_ACTIVE_TASK_ID, selectedActiveTaskId?.value)
         super.onSaveInstanceState(outState)
     }
 
@@ -347,8 +372,121 @@ class MainActivity : ComponentActivity() {
         scroll.addView(content)
         renderScenario(currentTestType)
         renderManualSession()
+        renderActiveRun()
         return scroll
     }
+
+    private fun renderActiveRun() {
+        if (!::runHomeView.isInitialized) return
+        runHomeView.runHost.removeAllViews()
+        runHomeView.taskListHost.removeAllViews()
+        val state = activeRunState
+        state.error?.let { error ->
+            runHomeView.runHost.addView(createStatusText(error).apply { setTextColor(ColorPalette.bad) })
+            runHomeView.runHost.addView(spaceVertical(dimen(8)))
+        }
+        val active = state.active
+        if (active == null) {
+            runHomeView.runHost.addView(createCard {
+                addView(createCardTitle(getString(R.string.run_empty_title)))
+                addView(spaceVertical(dimen(6)))
+                addView(createBodyText(getString(R.string.run_start_description)))
+                addView(spaceVertical(dimen(12)))
+                val name = createOptionalInput(getString(R.string.run_name_hint))
+                addView(name)
+                addView(spaceVertical(dimen(10)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.run_start_empty)
+                    isAllCaps = false
+                    minHeight = dimen(50)
+                    isEnabled = !state.busy
+                    background = pillBackground(ColorPalette.accent)
+                    setTextColor(ColorPalette.onAccent)
+                    setOnClickListener { activeRunViewModel.startEmpty(name.text.toString()) }
+                })
+                addView(spaceVertical(dimen(8)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.run_start_scenario)
+                    isAllCaps = false
+                    minHeight = dimen(50)
+                    isEnabled = !state.busy
+                    setOnClickListener { activeRunViewModel.startScenario(LocalScenarioCatalog.smoke) }
+                })
+            })
+            runHomeView.selectorHost.visibility = View.GONE
+            runHomeView.scenarioHost.visibility = View.GONE
+            runHomeView.manualSessionHost.visibility = View.GONE
+            return
+        }
+
+        val run = active.stored.run
+        runHomeView.runHost.addView(createCard {
+            addView(createCardTitle(active.stored.scenario.name).apply { ViewCompat.setAccessibilityHeading(this, true) })
+            addView(spaceVertical(dimen(6)))
+            addView(createStatusText(getString(R.string.run_active_status)))
+            addView(spaceVertical(dimen(6)))
+            addView(createMicroText(getString(R.string.manual_session_run_id, run.id.value)).apply { setTextIsSelectable(true) })
+            addView(spaceVertical(dimen(10)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.run_complete)
+                isAllCaps = false
+                minHeight = dimen(48)
+                isEnabled = !state.busy
+                background = pillBackground(ColorPalette.ok)
+                setTextColor(ColorPalette.onAccent)
+                setOnClickListener { activeRunViewModel.complete() }
+            })
+        })
+        if (active.tasks.isEmpty()) {
+            runHomeView.taskListHost.addView(createBodyText(getString(R.string.run_no_planned_tasks)))
+        } else active.tasks.forEach { task ->
+            runHomeView.taskListHost.addView(createCard {
+                addView(createCardTitle(task.step.title))
+                addView(spaceVertical(dimen(4)))
+                addView(createStatusText(when (task.status) {
+                    ActiveTaskStatus.PENDING -> getString(R.string.task_pending)
+                    ActiveTaskStatus.DONE -> getString(R.string.task_done)
+                    ActiveTaskStatus.SKIPPED -> getString(R.string.task_skipped)
+                }))
+                if (task.status == ActiveTaskStatus.PENDING) {
+                    addView(spaceVertical(dimen(8)))
+                    addView(Button(this@MainActivity).apply {
+                        setText(R.string.task_open)
+                        isAllCaps = false
+                        minHeight = dimen(48)
+                        setOnClickListener { openActiveTask(task.step.id, task.step.action) }
+                    })
+                    addView(spaceVertical(dimen(6)))
+                    addView(Button(this@MainActivity).apply {
+                        setText(R.string.task_skip)
+                        isAllCaps = false
+                        minHeight = dimen(48)
+                        setOnClickListener { activeRunViewModel.skip(task.step.id) }
+                    })
+                }
+            })
+            runHomeView.taskListHost.addView(spaceVertical(dimen(8)))
+        }
+        runHomeView.selectorHost.visibility = View.VISIBLE
+        runHomeView.scenarioHost.visibility = View.VISIBLE
+        runHomeView.manualSessionHost.visibility = View.GONE
+    }
+
+    private fun openActiveTask(stepId: StepId, action: TestAction) {
+        selectedActiveTaskId = stepId
+        currentTestType = when (action) {
+            is TestAction.Voice -> TestType.VOICE
+            is TestAction.Sms -> TestType.SMS
+            is TestAction.Data -> TestType.DATA
+        }
+        updateTestTypeChips()
+        renderScenario(currentTestType)
+        runHomeView.announceTasks(getString(R.string.task_opened_announcement, currentTestType.name))
+    }
+
+    private fun selectedTaskAction(): TestAction? = activeRunState.active?.tasks
+        ?.singleOrNull { it.step.id == selectedActiveTaskId }
+        ?.step?.action
 
     private fun createRegisterSection(): View {
         val scroll = ScrollView(this).apply {
@@ -698,6 +836,7 @@ class MainActivity : ComponentActivity() {
             minHeight = dimen(48)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
+                selectedActiveTaskId = null
                 currentTestType = type
                 updateTestTypeChips()
                 renderScenario(type)
@@ -756,6 +895,7 @@ class MainActivity : ComponentActivity() {
             val label = createOptionalInput(getString(R.string.data_label_hint))
             val url = createOptionalInput(getString(R.string.data_url_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+                (selectedTaskAction() as? TestAction.Data)?.let { setText(it.target) }
             }
             addView(label)
             addView(spaceVertical(dimen(10)))
@@ -811,6 +951,10 @@ class MainActivity : ComponentActivity() {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 minLines = 3
                 gravity = Gravity.TOP
+            }
+            (selectedTaskAction() as? TestAction.Sms)?.let {
+                destinationInput.setText(it.destination)
+                messageInput.setText(it.message.orEmpty())
             }
             addView(labelInput)
             addView(spaceVertical(dimen(10)))
@@ -932,6 +1076,7 @@ class MainActivity : ComponentActivity() {
             addView(voiceNameInput)
             addView(spaceVertical(dimen(12)))
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
+            (selectedTaskAction() as? TestAction.Voice)?.let { voicePhoneInput.setText(it.destination) }
             addView(voicePhoneInput)
             addView(spaceVertical(dimen(14)))
             addView(createPrimaryActionButton())
@@ -990,6 +1135,9 @@ class MainActivity : ComponentActivity() {
                 testName = pendingTestName,
             ),
         )
+        if (activeRunState.active != null) {
+            activeRunViewModel.recordVoice(selectedActiveTaskId, phoneNumber, outcome)
+        }
         awaitingVoiceOutcome = false
         resultSaved = true
         renderRegister()
@@ -1274,6 +1422,7 @@ class MainActivity : ComponentActivity() {
         const val STATE_RESULT_SAVED = "resultSaved"
         const val STATE_CURRENT_SECTION = "currentSection"
         const val STATE_CURRENT_TEST_TYPE = "currentTestType"
+        const val STATE_ACTIVE_TASK_ID = "activeTaskId"
     }
 
     private object ColorPalette {

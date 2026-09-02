@@ -133,6 +133,19 @@ class TestRunRecorderTest {
     }
 
     @Test
+    fun recordsActuallyUsedActionWithoutChangingThePlannedStep() {
+        val recorder = recorder(times(7))
+        recorder.startStep(STEP_ID)
+        recorder.startAttempt()
+
+        val actualAction = TestAction.Voice("+48999888777")
+        val run = recorder.recordEvent(action = actualAction)
+
+        assertEquals(actualAction, run.events.single().action)
+        assertEquals(TestAction.Voice("+48123123123"), scenario().steps.single().action)
+    }
+
+    @Test
     fun rejectsSuppliedEventTimeBeforeActiveAttempt() {
         val recorder = recorder(times(4))
         recorder.startStep(STEP_ID)

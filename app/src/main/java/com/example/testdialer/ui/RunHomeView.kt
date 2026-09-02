@@ -22,6 +22,8 @@ internal class RunHomeView(
     onAddTest: () -> Unit,
 ) : LinearLayout(context) {
     val statusHost = verticalHost()
+    val runHost = verticalHost()
+    val taskListHost = verticalHost()
     val selectorHost = verticalHost()
     val scenarioHost = verticalHost()
     val manualSessionHost = verticalHost()
@@ -39,31 +41,29 @@ internal class RunHomeView(
         addView(space(10))
         addView(statusHost)
         addView(space(10))
-        addView(card().apply {
-            addView(cardTitle(emptyTitle))
-            addView(space(4))
-            addView(body(emptyDescription))
-            addView(space(8))
-            addView(Button(context).apply {
-                text = addTestLabel
-                isAllCaps = false
-                textSize = 16f
-                minHeight = dp(48)
-                contentDescription = addTestLabel
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(12).toFloat()
-                    setColor(0xFFF0F4F8.toInt())
-                    setStroke(dp(1), BORDER)
-                }
-                setTextColor(TEXT_PRIMARY)
-                setOnClickListener { onAddTest() }
-            })
-        })
+        addView(runHost)
         addView(space(14))
         addView(tasksHeading)
         addView(space(6))
         addView(body(tasksDescription))
         addView(space(12))
+        addView(taskListHost)
+        addView(space(8))
+        addView(Button(context).apply {
+            text = addTestLabel
+            isAllCaps = false
+            textSize = 16f
+            minHeight = dp(48)
+            contentDescription = addTestLabel
+            background = GradientDrawable().apply {
+                cornerRadius = dp(12).toFloat()
+                setColor(0xFFF0F4F8.toInt())
+                setStroke(dp(1), BORDER)
+            }
+            setTextColor(TEXT_PRIMARY)
+            setOnClickListener { onAddTest() }
+        })
+        addView(space(8))
         addView(selectorHost)
         addView(space(12))
         addView(scenarioHost)
