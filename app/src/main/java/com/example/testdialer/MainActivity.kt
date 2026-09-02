@@ -183,17 +183,19 @@ class MainActivity : ComponentActivity() {
             if (state.composerRequested) openSmsComposer(state)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
-                if (activeRunState.active != null) state.completed?.let { activeRunViewModel.recordExternal(selectedActiveTaskId, it) }
+                state.completed?.let { activeRunViewModel.recordExternal(ServiceType.SMS, it) }
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
             }
+            if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.SMS)
         }
         cellularDataViewModel.state.observe(this) { state ->
             cellularDataState = state
             if (currentTestType == TestType.DATA) renderScenario(TestType.DATA)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
-                if (activeRunState.active != null) state.completed?.let { activeRunViewModel.recordExternal(selectedActiveTaskId, it) }
+                state.completed?.let { activeRunViewModel.recordExternal(ServiceType.DATA, it) }
             }
+            if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.DATA)
         }
         activeRunViewModel.state.observe(this) { state ->
             activeRunState = state
@@ -452,6 +454,7 @@ class MainActivity : ComponentActivity() {
                     addView(spaceVertical(dimen(8)))
                     addView(Button(this@MainActivity).apply {
                         setText(R.string.task_open)
+                        contentDescription = getString(R.string.task_open_accessibility, task.step.title)
                         isAllCaps = false
                         minHeight = dimen(48)
                         setOnClickListener { openActiveTask(task.step.id, task.step.action) }
@@ -459,6 +462,7 @@ class MainActivity : ComponentActivity() {
                     addView(spaceVertical(dimen(6)))
                     addView(Button(this@MainActivity).apply {
                         setText(R.string.task_skip)
+                        contentDescription = getString(R.string.task_skip_accessibility, task.step.title)
                         isAllCaps = false
                         minHeight = dimen(48)
                         setOnClickListener { activeRunViewModel.skip(task.step.id) }
@@ -473,6 +477,20 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openActiveTask(stepId: StepId, action: TestAction) {
+        if (activeRunViewModel.executionInProgress()) {
+            Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+            return
+        }
+        when (action) {
+            is TestAction.Voice -> {
+                awaitingVoiceOutcome = false
+                resultSaved = false
+                pendingPhoneNumber = null
+                pendingTestName = null
+            }
+            is TestAction.Sms -> guidedSmsViewModel.startAnother()
+            is TestAction.Data -> cellularDataViewModel.startAnother()
+        }
         selectedActiveTaskId = stepId
         currentTestType = when (action) {
             is TestAction.Voice -> TestType.VOICE
@@ -914,6 +932,13 @@ class MainActivity : ComponentActivity() {
                 background = pillBackground(ColorPalette.accent)
                 setTextColor(ColorPalette.onAccent)
                 setOnClickListener {
+                    activeRunState.active?.let {
+                        runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.DATA) }
+                            .getOrElse { error ->
+                                Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_LONG).show()
+                                return@setOnClickListener
+                            }
+                    }
                     cellularDataViewModel.start(
                         CellularDataInput(
                             url = url.text.toString(),
@@ -985,6 +1010,13 @@ class MainActivity : ComponentActivity() {
                     if (intent.resolveActivity(packageManager) == null) {
                         Toast.makeText(this@MainActivity, R.string.sms_composer_unavailable, Toast.LENGTH_LONG).show()
                         return@setOnClickListener
+                    }
+                    activeRunState.active?.let {
+                        runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.SMS) }
+                            .getOrElse { error ->
+                                Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_LONG).show()
+                                return@setOnClickListener
+                            }
                     }
                     guidedSmsViewModel.start(
                         GuidedSmsInput(
@@ -1135,9 +1167,7 @@ class MainActivity : ComponentActivity() {
                 testName = pendingTestName,
             ),
         )
-        if (activeRunState.active != null) {
-            activeRunViewModel.recordVoice(selectedActiveTaskId, phoneNumber, outcome)
-        }
+        activeRunViewModel.recordVoice(phoneNumber, outcome)
         awaitingVoiceOutcome = false
         resultSaved = true
         renderRegister()
@@ -1206,10 +1236,18 @@ class MainActivity : ComponentActivity() {
                     pendingPhoneNumber = number
                     pendingTestName = voiceNameInput.text.toString().trim().takeIf(String::isNotEmpty)
                     resultSaved = false
+                    activeRunState.active?.let {
+                        runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.VOICE) }
+                            .getOrElse { error ->
+                                Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_LONG).show()
+                                return@setOnClickListener
+                            }
+                    }
                     try {
                         dialerWasOpened = true
                         startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
                     } catch (_: android.content.ActivityNotFoundException) {
+                        activeRunViewModel.cancelExecution(ServiceType.VOICE)
                         dialerWasOpened = false
                         pendingPhoneNumber = null
                         pendingTestName = null

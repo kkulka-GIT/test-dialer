@@ -5,6 +5,7 @@ import android.graphics.Rect
 import android.os.Looper
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ScrollView
 import com.example.testdialer.ui.RunHomeView
 import com.example.testdialer.ui.SystemStatusStripView
@@ -20,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.util.concurrent.Executors
+import com.example.testdialer.sms.GuidedSmsUiState
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -167,6 +169,30 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `planned Task actions name the Task for accessibility and reopen a fresh prefilled form`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        val smsTitle = "SMS standard"
+        val openDescription = activity.getString(R.string.task_open_accessibility, smsTitle)
+        val skipDescription = activity.getString(R.string.task_skip_accessibility, smsTitle)
+        val openSms = awaitButtonWithDescription(activity, openDescription)
+
+        assertNotNull(awaitButtonWithDescription(activity, skipDescription))
+        MainActivity::class.java.getDeclaredField("guidedSmsState").apply {
+            isAccessible = true
+            set(activity, GuidedSmsUiState(saved = true))
+        }
+
+        openSms.performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val inputs = descendants(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().toList()
+        assertTrue(inputs.any { it.text.toString() == "+48123456789" })
+        assertTrue(inputs.any { it.text.toString() == "Test Dialer" })
+        assertNotNull(findButton(activity, activity.getString(R.string.sms_open_composer)))
+    }
+
+    @Test
     fun `test section and status strip survive lifecycle restart and rotation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
@@ -189,6 +215,17 @@ class MainActivitySmokeTest {
     private fun findButton(activity: MainActivity, text: String): Button {
         val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         return descendants(root).filterIsInstance<Button>().first { it.text.toString() == text }
+    }
+
+    private fun awaitButtonWithDescription(activity: MainActivity, description: String): Button {
+        repeat(100) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            descendants(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+                .firstOrNull { it.contentDescription?.toString() == description }
+                ?.let { return it }
+            Thread.sleep(10)
+        }
+        error("Button not found: $description")
     }
 
     private fun collectText(root: android.view.View): String =

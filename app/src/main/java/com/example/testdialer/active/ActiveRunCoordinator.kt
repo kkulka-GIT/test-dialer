@@ -5,6 +5,7 @@ import com.example.testdialer.domain.CorrelationReference
 import com.example.testdialer.domain.Observation
 import com.example.testdialer.domain.ObservationSource
 import com.example.testdialer.domain.ObservationStatus
+import com.example.testdialer.domain.RunId
 import com.example.testdialer.domain.ScenarioDefinition
 import com.example.testdialer.domain.ScenarioId
 import com.example.testdialer.domain.ScenarioStepDefinition
@@ -13,6 +14,7 @@ import com.example.testdialer.domain.StepId
 import com.example.testdialer.domain.TestAction
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.domain.execution.TestRunRecorder
+import com.example.testdialer.domain.execution.CapturedTime
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import com.example.testdialer.persistence.StoredTestRun
 import com.example.testdialer.persistence.TestRunRepository
@@ -30,6 +32,12 @@ data class ActiveRun(
     val tasks: List<ActiveTask>,
 )
 
+data class ActiveExecutionContext(
+    val runId: RunId,
+    val stepId: StepId?,
+    val serviceType: ServiceType,
+)
+
 /** Owns exactly one in-process Run. Persisted RUNNING history is never resumed. */
 class ActiveRunCoordinator(private val repository: TestRunRepository) {
     private data class Session(
@@ -39,6 +47,24 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
     )
 
     private var session: Session? = null
+    private var activeExecution: ActiveExecutionContext? = null
+
+    @Synchronized
+    fun beginExecution(stepId: StepId?, serviceType: ServiceType): ActiveExecutionContext {
+        val current = requireNotNull(session) { "Brak aktywnego Run" }
+        check(activeExecution == null) { "Inny test jest już wykonywany" }
+        resolveTargetStep(current, stepId, serviceType)
+        return ActiveExecutionContext(current.recorder.snapshot().id, stepId, serviceType)
+            .also { activeExecution = it }
+    }
+
+    @Synchronized
+    fun cancelExecution(context: ActiveExecutionContext) {
+        if (activeExecution == context) activeExecution = null
+    }
+
+    @Synchronized
+    fun executionInProgress(): Boolean = activeExecution != null
 
     fun startEmpty(name: String): ActiveRun = start(
         name = name.trim().ifBlank { "Pusty Run" },
@@ -54,11 +80,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         correlation: CorrelationMetadata = CorrelationMetadata(),
     ): ActiveRun {
         val current = requireNotNull(session) { "Brak aktywnego Run" }
-        val targetStep = stepId?.let { requested ->
-            current.scenario.steps.singleOrNull { it.id == requested && !it.isManualSlot() }
-                ?: error("Task nie należy do aktywnego Run")
-        } ?: current.scenario.steps.single { it.id == manualStepId(action.serviceType()) }
-        require(targetStep.action.serviceType() == action.serviceType()) { "Typ testu nie pasuje do Tasku" }
+        val targetStep = resolveTargetStep(current, stepId, action.serviceType())
         return persistOrInvalidate(current) {
             current.recorder.startStep(targetStep.id)
             current.recorder.startAttempt()
@@ -68,21 +90,57 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         }
     }
 
-    fun recordExternal(stepId: StepId?, source: StoredTestRun): ActiveRun {
+    @Synchronized
+    fun record(
+        context: ActiveExecutionContext,
+        action: TestAction,
+        observation: Observation,
+        correlation: CorrelationMetadata = CorrelationMetadata(),
+        occurredAtMillis: Long? = null,
+    ): ActiveRun = try {
+        val current = requireNotNull(session) { "Run wykonania nie jest już aktywny" }
+        check(activeExecution == context) { "Kontekst wykonania nie jest aktywny" }
+        check(current.recorder.snapshot().id == context.runId) { "Wynik należy do innego Runu" }
+        check(action.serviceType() == context.serviceType) { "Typ wyniku nie pasuje do rozpoczętego testu" }
+        val targetStep = resolveTargetStep(current, context.stepId, context.serviceType)
+        persistOrInvalidate(current) {
+            current.recorder.startStep(targetStep.id)
+            current.recorder.startAttempt()
+            if (occurredAtMillis == null) {
+                current.recorder.recordEvent(action, observation, correlation)
+            } else {
+                val monotonic = current.recorder.snapshot().timeline.last().capturedAt.monotonicNanos
+                current.recorder.recordEventAt(CapturedTime(occurredAtMillis, monotonic), action, observation, correlation)
+            }
+            current.recorder.finishAttempt()
+            current.recorder.finishStep()
+        }
+    } finally {
+        activeExecution = null
+    }
+
+    @Synchronized
+    fun recordExternal(context: ActiveExecutionContext, source: StoredTestRun): ActiveRun = try {
         val event = source.run.events.singleOrNull() ?: error("Test źródłowy nie zawiera jednego zdarzenia")
         val sourceReference = CorrelationReference("sourceEventId", event.id.value)
         val current = requireNotNull(session) { "Brak aktywnego Run" }
-        if (current.recorder.snapshot().events.any { sourceReference in it.correlation.references }) return snapshot(current)
-        return record(
-            stepId = stepId,
-            action = event.action,
-            observation = event.observation ?: Observation(
-                ObservationStatus.NOT_VERIFIED,
-                ObservationSource.APPLICATION,
-                "SOURCE_EVENT_WITHOUT_OBSERVATION",
-            ),
-            correlation = event.correlation.copy(references = event.correlation.references + sourceReference),
-        )
+        if (current.recorder.snapshot().events.any { sourceReference in it.correlation.references }) {
+            snapshot(current)
+        } else {
+            record(
+                context = context,
+                action = event.action,
+                observation = event.observation ?: Observation(
+                    ObservationStatus.NOT_VERIFIED,
+                    ObservationSource.APPLICATION,
+                    "SOURCE_EVENT_WITHOUT_OBSERVATION",
+                ),
+                correlation = event.correlation.copy(references = event.correlation.references + sourceReference),
+                occurredAtMillis = event.occurredAtMillis,
+            )
+        }
+    } finally {
+        activeExecution = null
     }
 
     fun skip(stepId: StepId): ActiveRun {
@@ -94,8 +152,10 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         }
     }
 
+    @Synchronized
     fun complete(): StoredTestRun {
         val current = requireNotNull(session) { "Brak aktywnego Run" }
+        check(activeExecution == null) { "Trwający test musi zostać zakończony przed zakończeniem Runu" }
         return try {
             current.recorder.complete()
             repository.saveSnapshot(current.scenario, current.recorder.snapshot(), current.revision)
@@ -106,6 +166,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         }
     }
 
+    @Synchronized
     fun active(): ActiveRun? = session?.let(::snapshot)
 
     private fun start(name: String, plannedSteps: List<ScenarioStepDefinition>): ActiveRun {
@@ -150,6 +211,14 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
                 it.kind == TimelineEntryKind.STEP_FINISHED && it.stepId == stepId
             }) ActiveTaskStatus.SKIPPED else ActiveTaskStatus.PENDING
     }
+
+    private fun resolveTargetStep(current: Session, stepId: StepId?, serviceType: ServiceType) =
+        stepId?.let { requested ->
+            current.scenario.steps.singleOrNull { it.id == requested && !it.isManualSlot() }
+                ?: error("Task nie należy do aktywnego Run")
+        }?.also {
+            require(it.action.serviceType() == serviceType) { "Typ testu nie pasuje do Tasku" }
+        } ?: current.scenario.steps.single { it.id == manualStepId(serviceType) }
 
     private fun ScenarioStepDefinition.isManualSlot() = id.value.startsWith(MANUAL_PREFIX)
 

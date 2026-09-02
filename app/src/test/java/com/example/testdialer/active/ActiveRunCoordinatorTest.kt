@@ -15,6 +15,7 @@ import com.example.testdialer.persistence.TestRunSummary
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ActiveRunCoordinatorTest {
@@ -65,7 +66,63 @@ class ActiveRunCoordinatorTest {
         assertEquals(TestRunStatus.RUNNING, repository.get(persisted.run.id)?.run?.status)
     }
 
+    @Test
+    fun `async result stays bound to Run and Task selected when execution began`() {
+        val coordinator = ActiveRunCoordinator(repository)
+        val active = coordinator.startScenario(LocalScenarioCatalog.smoke)
+        val sms = active.tasks[1]
+        val context = coordinator.beginExecution(sms.step.id, ServiceType.SMS)
+
+        assertThrows(IllegalStateException::class.java) { coordinator.complete() }
+        assertThrows(IllegalStateException::class.java) {
+            coordinator.beginExecution(active.tasks[2].step.id, ServiceType.DATA)
+        }
+
+        val updated = coordinator.record(
+            context,
+            TestAction.Sms("+48999", "actual"),
+            observation("SMS"),
+        )
+
+        assertEquals(sms.step.id, updated.stored.run.events.single().stepId)
+        assertEquals(ActiveTaskStatus.DONE, updated.tasks[1].status)
+        assertEquals(ActiveTaskStatus.PENDING, updated.tasks[2].status)
+        assertEquals(TestRunStatus.COMPLETED, coordinator.complete().run.status)
+    }
+
+    @Test
+    fun `external Event preserves source correlation time`() {
+        val coordinator = ActiveRunCoordinator(repository)
+        val active = coordinator.startScenario(LocalScenarioCatalog.smoke)
+        val data = active.tasks[2]
+        val context = coordinator.beginExecution(data.step.id, ServiceType.DATA)
+        val source = sourceRun(
+            action = TestAction.Data("https://example.com/result"),
+            occurredAtMillis = 1_234_567L,
+        )
+
+        val imported = coordinator.recordExternal(context, source)
+
+        assertEquals(1_234_567L, imported.stored.run.events.single().occurredAtMillis)
+        assertEquals(data.step.id, imported.stored.run.events.single().stepId)
+    }
+
     private fun observation(code: String) = Observation(ObservationStatus.NOT_VERIFIED, ObservationSource.TESTER, code)
+
+    private fun sourceRun(action: TestAction, occurredAtMillis: Long): StoredTestRun {
+        val sourceRepository = MemoryRepository()
+        val sourceCoordinator = ActiveRunCoordinator(sourceRepository)
+        sourceCoordinator.startEmpty("source")
+        val context = sourceCoordinator.beginExecution(null, action.serviceTypeForTest())
+        sourceCoordinator.record(context, action, observation("SOURCE"), occurredAtMillis = occurredAtMillis)
+        return sourceCoordinator.complete()
+    }
+
+    private fun TestAction.serviceTypeForTest() = when (this) {
+        is TestAction.Voice -> ServiceType.VOICE
+        is TestAction.Sms -> ServiceType.SMS
+        is TestAction.Data -> ServiceType.DATA
+    }
 
     private class MemoryRepository : TestRunRepository {
         val snapshots = linkedMapOf<RunId, StoredTestRun>()
