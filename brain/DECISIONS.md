@@ -69,3 +69,6 @@
 - Stan Wi-Fi, sieci komórkowej i SIM jest prezentowany w jednym lekkim pasku i odświeżany tylko w aktywnym lifecycle Activity przez istniejące API systemowe.
 - Wybór sekcji i typu testu jest stanem nawigacyjnym zachowywanym przez `savedInstanceState`; UIR-01 nie zmienia stanu domenowego żadnego testu.
 - Istniejące przepływy Voice, Guided SMS, Cellular Data, ręczne sesje i Rejestr pozostają wykonawczo niezmienione pod nową powłoką.
+- UIR-02 łączy wcześniejsze sekcje `Status` i `Test` w jeden ekran `Operacje`; główna nawigacja ma teraz dwa wejścia: `Operacje` i `Rejestr`.
+- Pasek statusu UIR-02 pokazuje osobno SIM, dostępność sieci komórkowej, ustawienie danych komórkowych i Wi-Fi, używając wyłącznie istniejących systemowych odczytów bez nowych uprawnień.
+- UIR-02 pozostaje zmianą warstwy prezentacji: nie tworzy Active Run, Scenario ani Tasków domenowych i nie modyfikuje wykonania Voice/SMS/Data ani trwałego zapisu.

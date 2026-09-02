@@ -2,17 +2,17 @@
 
 ## Aktualny stan aplikacji
 
-Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów end-to-end systemów ratingowych i billingowych. W obecnym interfejsie aktywny jest przepływ Voice, a SMS i Data są pokazane jako placeholdery.
+Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów end-to-end systemów ratingowych i billingowych. W obecnym interfejsie działają przepływy Voice, Guided SMS i kontrolowanego Data; panel Run pozostaje prezentacyjnym stanem neutralnym do czasu UIR-03.
 
 ## Zaimplementowane elementy
 
-- Trzy główne sekcje aplikacji: `Status`, `Test`, `Rejestr`.
-- W `Test` dostępny jest wybór `Voice`, `SMS`, `Data`.
+- Dwie główne sekcje aplikacji: `Operacje` i `Rejestr`; wcześniejsze `Status` i `Test` są połączone w jeden ekran operacyjny.
+- W `Operacje` dostępny jest lekki pasek statusu SIM/sieci/danych/Wi-Fi, neutralny panel Run oraz wybór `Voice`, `SMS`, `Data`.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL` i nie rozpoczyna połączenia automatycznie.
 - Po powrocie z dialera użytkownik ręcznie wybiera wynik.
 - Wynik Voice jest zapisywany lokalnie wraz z datą, numerem i opcjonalną nazwą.
 - `Rejestr` pokazuje lokalną historię wyników Voice, najnowsze wpisy na górze.
-- `Status` pokazuje gotowość Wi-Fi, danych komórkowych i SIM oraz ostatni wynik Voice.
+- Stan urządzenia jest prezentowany w zwartym pasku na ekranie operacyjnym, bez osobnego dashboardu `Status`.
 - Czysty model domenowy oddziela definicję scenariusza i kroku od wykonania testu i jego zdarzeń.
 - Model wspiera akcje Voice, SMS i Data, niezależne oczekiwania i obserwacje oraz jawne referencje korelacyjne.
 - Validator sprawdza powiązanie runu z wersją scenariusza, krokami i typami usług.
