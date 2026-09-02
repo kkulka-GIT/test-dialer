@@ -64,3 +64,8 @@
 - Walidacja DNS jest kontrolą pre-connect, ale nie usuwa całkowicie okna TOCTOU ani ryzyka DNS rebinding między walidacją a rozwiązywaniem wykonanym wewnętrznie przez stos HTTP.
 - Limit odpowiedzi wykonuje precheck Content-Length; przy braku długości czyta maksymalnie pozostały limit i jeden bajt kontrolny po dokładnie 1 MiB.
 - Wynik zapisuje kontrolowany `resultCode` oraz opcjonalny status HTTP; surowe wyjątki, pełny URL i dane wrażliwe nie trafiają do korelacji.
+- UIR-01 wprowadza Run-centered shell wyłącznie jako warstwę prezentacji; napis `Brak aktywnego Run` jest prawdziwym stanem neutralnym i nie tworzy rekordu w Room.
+- CTA `Dodaj test` kieruje do istniejących wejść `Tasks`; nie jest jeszcze katalogiem scenariuszy ani mechanizmem tworzenia `ActiveRun`.
+- Stan Wi-Fi, sieci komórkowej i SIM jest prezentowany w jednym lekkim pasku i odświeżany tylko w aktywnym lifecycle Activity przez istniejące API systemowe.
+- Wybór sekcji i typu testu jest stanem nawigacyjnym zachowywanym przez `savedInstanceState`; UIR-01 nie zmienia stanu domenowego żadnego testu.
+- Istniejące przepływy Voice, Guided SMS, Cellular Data, ręczne sesje i Rejestr pozostają wykonawczo niezmienione pod nową powłoką.

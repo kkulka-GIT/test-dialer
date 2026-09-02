@@ -1,5 +1,5 @@
 # Co robimy teraz
 
-Ukończyć fake-only testy F06, opublikować regularny PR i uruchomić GitHub Actions: URL/preflight, koordynator, ViewModel, regresje UI/Room oraz debug APK.
+Opublikować końcowy checkpoint UIR-01, otworzyć Draft PR i zweryfikować testy oraz debug APK w GitHub Actions.
 
-Po zielonym CI koordynator wykonuje niezależną recenzję F06. Nie dodawać przełączania sieci, prywatnych hostów, backendu ani eksportu.
+Po zielonym CI wykonać niezależną recenzję regresji Voice/SMS/Data/manual/Rejestr oraz dostępności. Nie rozpoczynać produkcyjnego `ActiveRun` ani katalogu scenariuszy w ramach UIR-01.

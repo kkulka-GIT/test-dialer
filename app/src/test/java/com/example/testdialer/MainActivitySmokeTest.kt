@@ -2,8 +2,10 @@ package com.example.testdialer
 
 import android.content.res.Configuration
 import android.widget.Button
+import com.example.testdialer.ui.SystemStatusStripView
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -23,11 +25,17 @@ class MainActivitySmokeTest {
 
         assertTrue(allText.contains(activity.getString(R.string.run_empty_title)))
         assertTrue(allText.contains(activity.getString(R.string.run_tasks_title)))
-        assertNotNull(findButton(activity, activity.getString(R.string.run_add_test)))
+        val addTest = findButton(activity, activity.getString(R.string.run_add_test))
+        assertNotNull(addTest)
         assertNotNull(findButton(activity, activity.getString(R.string.voice_type)))
         assertNotNull(findButton(activity, activity.getString(R.string.sms_type)))
         assertNotNull(findButton(activity, activity.getString(R.string.data_type)))
         assertNotNull(findButton(activity, activity.getString(R.string.manual_session_start)))
+
+        addTest.performClick()
+        val afterCta = collectText(activity.findViewById(android.R.id.content))
+        assertTrue(afterCta.contains(activity.getString(R.string.run_empty_title)))
+        assertFalse(afterCta.contains(activity.getString(R.string.manual_session_active, "")))
     }
 
     @Test
@@ -86,7 +94,29 @@ class MainActivitySmokeTest {
         assertTrue(collectText(rotated.findViewById(android.R.id.content)).contains(
             rotated.getString(R.string.data_card_title),
         ))
-        assertEquals(1f, findButton(rotated, rotated.getString(R.string.data_type)).alpha)
+        val dataButton = findButton(rotated, rotated.getString(R.string.data_type))
+        assertEquals(1f, dataButton.alpha)
+        assertTrue(dataButton.isSelected)
+    }
+
+    @Test
+    fun `test section and status strip survive lifecycle restart and rotation`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+
+        controller.pause().stop().start().resume()
+        controller.configurationChange(Configuration())
+        val restored = controller.get()
+
+        assertTrue(collectText(restored.findViewById(android.R.id.content)).contains(
+            restored.getString(R.string.run_home_title),
+        ))
+        val strip = descendants(restored.findViewById(android.R.id.content))
+            .filterIsInstance<SystemStatusStripView>()
+            .single()
+        assertTrue(strip.contentDescription.contains(restored.getString(R.string.status_wifi_label)))
+        assertNotNull(findButton(restored, restored.getString(R.string.run_add_test)))
     }
 
     private fun findButton(activity: MainActivity, text: String): Button {

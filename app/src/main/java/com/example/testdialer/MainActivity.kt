@@ -771,7 +771,9 @@ class MainActivity : ComponentActivity() {
 
     private fun createTestTypeSelectorCard(): View {
         return createCard {
-            addView(createCardTitle(getString(R.string.test_selector_title)))
+            addView(createCardTitle(getString(R.string.test_selector_title)).apply {
+                ViewCompat.setAccessibilityHeading(this, true)
+            })
             addView(spaceVertical(dimen(12)))
             val row = LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -790,7 +792,7 @@ class MainActivity : ComponentActivity() {
             text = label
             isAllCaps = false
             textSize = 14f
-            minHeight = dimen(42)
+            minHeight = dimen(48)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             setOnClickListener {
                 currentTestType = type
@@ -804,6 +806,7 @@ class MainActivity : ComponentActivity() {
     private fun updateTestTypeChips() {
         testTypeButtons.forEach { (type, button) ->
             val selected = type == currentTestType
+            button.isSelected = selected
             button.alpha = if (selected) 1f else 0.92f
             button.background = pillBackground(if (selected) ColorPalette.accent else ColorPalette.button)
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
