@@ -16,6 +16,14 @@
     <string name="data_type">Data</string>
     <string name="test_title">Test</string>
     <string name="test_description">Wybierz typ testu i uruchom odpowiedni scenariusz.</string>
+    <string name="run_home_title">Run testowy</string>
+    <string name="run_home_description">Operacyjny punkt startu testów ratingowych i billingowych.</string>
+    <string name="run_empty_title">Brak aktywnego Run</string>
+    <string name="run_empty_description">Rozpoczęcie nastąpi dopiero po wybraniu konkretnego testu. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
+    <string name="run_add_test">Dodaj test</string>
+    <string name="run_tasks_title">Tasks</string>
+    <string name="run_tasks_description">Wybierz Voice, SMS lub Data albo dodaj ręczne zdarzenie do korelacji.</string>
+    <string name="run_tasks_announcement">Sekcja Tasks. Wybierz typ testu.</string>
     <string name="test_selector_title">Wybór testu</string>
     <string name="voice_status_title">Pasek statusu</string>
     <string name="status_wifi_label">Wi-Fi</string>

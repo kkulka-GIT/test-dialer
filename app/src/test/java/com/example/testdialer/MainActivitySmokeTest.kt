@@ -3,6 +3,7 @@ package com.example.testdialer
 import android.content.res.Configuration
 import android.widget.Button
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,6 +14,22 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class MainActivitySmokeTest {
+    @Test
+    fun `run centered shell is neutral and keeps all task entry points`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        val allText = collectText(activity.findViewById(android.R.id.content))
+
+        assertTrue(allText.contains(activity.getString(R.string.run_empty_title)))
+        assertTrue(allText.contains(activity.getString(R.string.run_tasks_title)))
+        assertNotNull(findButton(activity, activity.getString(R.string.run_add_test)))
+        assertNotNull(findButton(activity, activity.getString(R.string.voice_type)))
+        assertNotNull(findButton(activity, activity.getString(R.string.sms_type)))
+        assertNotNull(findButton(activity, activity.getString(R.string.data_type)))
+        assertNotNull(findButton(activity, activity.getString(R.string.manual_session_start)))
+    }
+
     @Test
     fun `legacy voice UI remains reachable after ComponentActivity migration`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
@@ -54,6 +71,22 @@ class MainActivitySmokeTest {
 
         findButton(activity, activity.getString(R.string.voice_type)).performClick()
         assertNotNull(findButton(activity, activity.getString(R.string.dial_test)))
+    }
+
+    @Test
+    fun `selected task survives rotation in run centered shell`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.data_type)).performClick()
+
+        controller.configurationChange(Configuration())
+        val rotated = controller.get()
+
+        assertTrue(collectText(rotated.findViewById(android.R.id.content)).contains(
+            rotated.getString(R.string.data_card_title),
+        ))
+        assertEquals(1f, findButton(rotated, rotated.getString(R.string.data_type)).alpha)
     }
 
     private fun findButton(activity: MainActivity, text: String): Button {

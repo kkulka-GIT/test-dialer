@@ -40,25 +40,17 @@ import com.example.testdialer.sms.GuidedSmsUiState
 import com.example.testdialer.sms.GuidedSmsViewModel
 import com.example.testdialer.sms.SmsComposerIntentFactory
 import com.example.testdialer.domain.execution.TimelineEntryKind
+import com.example.testdialer.ui.AppSection
+import com.example.testdialer.ui.RunHomeView
+import com.example.testdialer.ui.SystemStatusStripView
+import com.example.testdialer.ui.TestType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
-    private enum class Section {
-        STATUS,
-        TEST,
-        REGISTER,
-    }
-
-    private enum class TestType {
-        VOICE,
-        SMS,
-        DATA,
-    }
-
-    private val sectionButtons = mutableMapOf<Section, Button>()
+    private val sectionButtons = mutableMapOf<AppSection, Button>()
     private val testTypeButtons = mutableMapOf<TestType, Button>()
     private lateinit var contentHost: FrameLayout
     private lateinit var statusSection: View
@@ -66,16 +58,15 @@ class MainActivity : ComponentActivity() {
     private lateinit var registerSection: View
     private lateinit var registerListHost: LinearLayout
     private lateinit var manualSessionHost: LinearLayout
-    private lateinit var wifiBadge: LinearLayout
-    private lateinit var cellularBadge: LinearLayout
-    private lateinit var simBadge: LinearLayout
+    private lateinit var systemStatusStrip: SystemStatusStripView
+    private lateinit var runHomeView: RunHomeView
     private lateinit var testScenarioHost: LinearLayout
     private lateinit var voiceStatusText: TextView
     private lateinit var voicePhoneInput: EditText
     private lateinit var voiceNameInput: EditText
     private lateinit var voiceSummaryText: TextView
     private var networkCallbackRegistered = false
-    private var currentSection = Section.STATUS
+    private var currentSection = AppSection.STATUS
     private var currentTestType = TestType.VOICE
     private lateinit var voiceResultStore: VoiceResultStore
     private lateinit var manualSessionViewModel: ManualSessionViewModel
@@ -135,7 +126,7 @@ class MainActivity : ComponentActivity() {
         awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
         resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
         currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
-            ?.let { saved -> Section.entries.firstOrNull { it.name == saved } } ?: Section.STATUS
+            ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } } ?: AppSection.STATUS
         currentTestType = savedInstanceState?.getString(STATE_CURRENT_TEST_TYPE)
             ?.let { saved -> TestType.entries.firstOrNull { it.name == saved } } ?: TestType.VOICE
 
@@ -265,11 +256,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun showSection(section: Section) {
+    private fun showSection(section: AppSection) {
         currentSection = section
-        statusSection.visibility = if (section == Section.STATUS) View.VISIBLE else View.GONE
-        testSection.visibility = if (section == Section.TEST) View.VISIBLE else View.GONE
-        registerSection.visibility = if (section == Section.REGISTER) View.VISIBLE else View.GONE
+        statusSection.visibility = if (section == AppSection.STATUS) View.VISIBLE else View.GONE
+        testSection.visibility = if (section == AppSection.TEST) View.VISIBLE else View.GONE
+        registerSection.visibility = if (section == AppSection.REGISTER) View.VISIBLE else View.GONE
 
         sectionButtons.forEach { (current, button) ->
             val selected = current == section
@@ -279,11 +270,11 @@ class MainActivity : ComponentActivity() {
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
         }
 
-        if (section == Section.STATUS) {
+        if (section == AppSection.STATUS) {
             refreshVoiceSummary()
-        } else if (section == Section.TEST) {
+        } else if (section == AppSection.TEST) {
             refreshVoiceStatusBar()
-        } else if (section == Section.REGISTER) {
+        } else if (section == AppSection.REGISTER) {
             renderRegister()
         }
     }
@@ -300,20 +291,20 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        nav.addView(createSectionButton(Section.STATUS, getString(R.string.nav_status)))
+        nav.addView(createSectionButton(AppSection.STATUS, getString(R.string.nav_status)))
         nav.addView(spaceHorizontal(dimen(8)))
-        nav.addView(createSectionButton(Section.TEST, getString(R.string.nav_test)))
+        nav.addView(createSectionButton(AppSection.TEST, getString(R.string.nav_test)))
         nav.addView(spaceHorizontal(dimen(8)))
-        nav.addView(createSectionButton(Section.REGISTER, getString(R.string.nav_register)))
+        nav.addView(createSectionButton(AppSection.REGISTER, getString(R.string.nav_register)))
         return nav
     }
 
-    private fun createSectionButton(section: Section, label: String): Button {
+    private fun createSectionButton(section: AppSection, label: String): Button {
         return Button(this@MainActivity).apply {
             text = label
             isAllCaps = false
             textSize = 14f
-            minHeight = dimen(44)
+            minHeight = dimen(48)
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             background = pillBackground(ColorPalette.button)
             setTextColor(ColorPalette.textPrimary)
@@ -430,26 +421,25 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        content.addView(createSectionHeader(
-            getString(R.string.test_title),
-            getString(R.string.test_description),
-        ))
-        content.addView(spaceVertical(dimen(16)))
-        content.addView(createVoiceStatusBarCard())
-        content.addView(spaceVertical(dimen(14)))
-        content.addView(createTestTypeSelectorCard())
-        content.addView(spaceVertical(dimen(14)))
-        content.addView(createCard {
-            testScenarioHost = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            addView(testScenarioHost)
-        })
-        content.addView(spaceVertical(dimen(14)))
-        manualSessionHost = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        content.addView(manualSessionHost)
+        runHomeView = RunHomeView(
+            context = this,
+            title = getString(R.string.run_home_title),
+            description = getString(R.string.run_home_description),
+            emptyTitle = getString(R.string.run_empty_title),
+            emptyDescription = getString(R.string.run_empty_description),
+            addTestLabel = getString(R.string.run_add_test),
+            tasksTitle = getString(R.string.run_tasks_title),
+            tasksDescription = getString(R.string.run_tasks_description),
+            onAddTest = {
+                runHomeView.announceTasks(getString(R.string.run_tasks_announcement))
+            },
+        )
+        systemStatusStrip = createSystemStatusStrip()
+        runHomeView.statusHost.addView(systemStatusStrip)
+        runHomeView.selectorHost.addView(createTestTypeSelectorCard())
+        testScenarioHost = runHomeView.scenarioHost
+        manualSessionHost = runHomeView.manualSessionHost
+        content.addView(runHomeView)
 
         scroll.addView(content)
         renderScenario(currentTestType)
@@ -842,7 +832,7 @@ class MainActivity : ComponentActivity() {
                 setText(R.string.go_to_register)
                 isAllCaps = false
                 minHeight = dimen(52)
-                setOnClickListener { showSection(Section.REGISTER) }
+                setOnClickListener { showSection(AppSection.REGISTER) }
             })
             addView(spaceVertical(dimen(10)))
             addView(Button(this@MainActivity).apply {
@@ -1013,7 +1003,7 @@ class MainActivity : ComponentActivity() {
             setText(R.string.go_to_register)
             isAllCaps = false
             minHeight = dimen(52)
-            setOnClickListener { showSection(Section.REGISTER) }
+            setOnClickListener { showSection(AppSection.REGISTER) }
         })
         addView(spaceVertical(dimen(10)))
         addView(Button(this@MainActivity).apply {
@@ -1115,7 +1105,7 @@ class MainActivity : ComponentActivity() {
                 minHeight = dimen(52)
                 background = pillBackground(ColorPalette.accent)
                 setTextColor(ColorPalette.onAccent)
-                setOnClickListener { showSection(Section.REGISTER) }
+                setOnClickListener { showSection(AppSection.REGISTER) }
             })
             addView(spaceVertical(dimen(12)))
             addView(Button(this@MainActivity).apply {
@@ -1206,60 +1196,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createVoiceStatusBarCard(): View {
-        return createCard {
-            addView(createCardTitle(getString(R.string.voice_status_title)))
-            addView(spaceVertical(dimen(12)))
-            val row = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.HORIZONTAL
-            }
-            wifiBadge = createStatusBadge(getString(R.string.status_wifi_symbol), getString(R.string.status_wifi_label))
-            cellularBadge = createStatusBadge(getString(R.string.status_cellular_symbol), getString(R.string.status_cellular_label))
-            simBadge = createStatusBadge(getString(R.string.status_sim_symbol), getString(R.string.status_sim_label))
-            row.addView(wifiBadge)
-            row.addView(spaceHorizontal(dimen(8)))
-            row.addView(cellularBadge)
-            row.addView(spaceHorizontal(dimen(8)))
-            row.addView(simBadge)
-            addView(row)
-            refreshVoiceStatusBar()
-        }
-    }
-
-    private fun createStatusBadge(symbol: String, label: String): LinearLayout {
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(dimen(10), dimen(10), dimen(10), dimen(10))
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            background = pillBackground(ColorPalette.bad)
-            val symbolView = TextView(this@MainActivity).apply {
-                text = symbol
-                textSize = 18f
-                typeface = Typeface.DEFAULT_BOLD
-                setTextColor(ColorPalette.onAccent)
-                gravity = Gravity.CENTER_HORIZONTAL
-            }
-            val labelView = TextView(this@MainActivity).apply {
-                text = label
-                textSize = 12f
-                setTextColor(ColorPalette.onAccent)
-                gravity = Gravity.CENTER_HORIZONTAL
-            }
-            addView(symbolView)
-            addView(labelView)
-        }
+    private fun createSystemStatusStrip(): SystemStatusStripView = SystemStatusStripView(
+        context = this,
+        wifiLabel = getString(R.string.status_wifi_label),
+        cellularLabel = getString(R.string.status_cellular_label),
+        simLabel = getString(R.string.status_sim_label),
+        wifiSymbol = getString(R.string.status_wifi_symbol),
+        cellularSymbol = getString(R.string.status_cellular_symbol),
+        simSymbol = getString(R.string.status_sim_symbol),
+    ).also {
+        it.render(isWifiConnected(), isCellularConnected(), isSimReady())
     }
 
     private fun refreshVoiceStatusBar() {
-        if (!::wifiBadge.isInitialized || !::cellularBadge.isInitialized || !::simBadge.isInitialized) return
-        setStatusBadge(wifiBadge, isWifiConnected(), ColorPalette.bad, ColorPalette.ok)
-        setStatusBadge(cellularBadge, isCellularConnected(), ColorPalette.ok, ColorPalette.bad)
-        setStatusBadge(simBadge, isSimReady(), ColorPalette.ok, ColorPalette.bad)
-    }
-
-    private fun setStatusBadge(view: LinearLayout, isOk: Boolean, trueColor: Int, falseColor: Int) {
-        view.background = pillBackground(if (isOk) trueColor else falseColor)
+        if (!::systemStatusStrip.isInitialized) return
+        systemStatusStrip.render(isWifiConnected(), isCellularConnected(), isSimReady())
     }
 
     private fun isWifiConnected(): Boolean {
