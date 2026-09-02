@@ -1,5 +1,5 @@
 # Co robimy teraz
 
-Opublikować końcowy checkpoint UIR-01, otworzyć Draft PR i zweryfikować testy oraz debug APK w GitHub Actions.
+Opublikować checkpoint UIR-02 z brancha `feature/uir-02-operational-home`, otworzyć Draft PR i zweryfikować testy oraz debug APK w GitHub Actions.
 
-Po zielonym CI wykonać niezależną recenzję regresji Voice/SMS/Data/manual/Rejestr oraz dostępności. Nie rozpoczynać produkcyjnego `ActiveRun` ani katalogu scenariuszy w ramach UIR-01.
+Po zielonym CI wykonać niezależną recenzję połączenia `Status` i `Test`, zwartego paska statusu, regresji Voice/SMS/Data/Rejestr, zachowania po rotacji i dostępności. Nie rozpoczynać UIR-03 ani produkcyjnego `ActiveRun` przed zakończeniem przeglądu UIR-02.

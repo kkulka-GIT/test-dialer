@@ -11,63 +11,79 @@ import android.widget.TextView
 
 internal class SystemStatusStripView(
     context: Context,
-    wifiLabel: String,
-    cellularLabel: String,
     simLabel: String,
-    wifiSymbol: String,
-    cellularSymbol: String,
+    networkLabel: String,
+    cellularLabel: String,
     simSymbol: String,
+    networkSymbol: String,
+    cellularSymbol: String,
+    wifiLabel: String,
+    wifiSymbol: String,
 ) : LinearLayout(context) {
-    private val wifiBadge = createBadge(wifiSymbol, wifiLabel)
-    private val cellularBadge = createBadge(cellularSymbol, cellularLabel)
     private val simBadge = createBadge(simSymbol, simLabel)
+    private val networkBadge = createBadge(networkSymbol, networkLabel)
+    private val cellularBadge = createBadge(cellularSymbol, cellularLabel)
+    private val wifiBadge = createBadge(wifiSymbol, wifiLabel)
 
     init {
         orientation = HORIZONTAL
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
-        addView(wifiBadge)
+        background = GradientDrawable().apply {
+            cornerRadius = dp(12).toFloat()
+            setColor(STRIP_BACKGROUND)
+            setStroke(dp(1), BORDER)
+        }
+        setPadding(dp(4), dp(4), dp(4), dp(4))
+        addView(simBadge)
+        addSpacer()
+        addView(networkBadge)
         addSpacer()
         addView(cellularBadge)
         addSpacer()
-        addView(simBadge)
+        addView(wifiBadge)
     }
 
-    fun render(wifiAvailable: Boolean, cellularAvailable: Boolean, simReady: Boolean) {
-        updateBadge(wifiBadge, wifiAvailable)
-        updateBadge(cellularBadge, cellularAvailable)
+    fun render(simReady: Boolean, networkAvailable: Boolean, cellularDataEnabled: Boolean, wifiAvailable: Boolean) {
         updateBadge(simBadge, simReady)
+        updateBadge(networkBadge, networkAvailable)
+        updateBadge(cellularBadge, cellularDataEnabled)
+        updateBadge(wifiBadge, wifiAvailable)
         contentDescription = listOf(
-            badgeDescription(wifiBadge, wifiAvailable),
-            badgeDescription(cellularBadge, cellularAvailable),
             badgeDescription(simBadge, simReady),
+            badgeDescription(networkBadge, networkAvailable),
+            badgeDescription(cellularBadge, cellularDataEnabled),
+            badgeDescription(wifiBadge, wifiAvailable),
         ).joinToString(". ")
     }
 
     private fun createBadge(symbol: String, label: String): LinearLayout = LinearLayout(context).apply {
         orientation = HORIZONTAL
         gravity = Gravity.CENTER
-        minimumHeight = dp(48)
-        setPadding(dp(10), dp(8), dp(10), dp(8))
+        minimumHeight = dp(36)
+        setPadding(dp(6), dp(4), dp(6), dp(4))
         layoutParams = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         tag = label
         addView(TextView(context).apply {
             text = symbol
-            textSize = 16f
+            textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(ON_STATUS)
+            setTextColor(TEXT)
         })
         addView(TextView(context).apply {
-            text = "  $label"
-            textSize = 12f
-            setTextColor(ON_STATUS)
+            text = " $label"
+            textSize = 11f
+            setTextColor(TEXT)
         })
     }
 
     private fun updateBadge(badge: LinearLayout, available: Boolean) {
         badge.background = GradientDrawable().apply {
-            cornerRadius = dp(16).toFloat()
-            setColor(if (available) AVAILABLE else UNAVAILABLE)
+            cornerRadius = dp(9).toFloat()
+            setColor(if (available) AVAILABLE_BACKGROUND else UNAVAILABLE_BACKGROUND)
+        }
+        repeat(badge.childCount) { index ->
+            (badge.getChildAt(index) as? TextView)?.setTextColor(if (available) AVAILABLE else UNAVAILABLE)
         }
         badge.contentDescription = badgeDescription(badge, available)
     }
@@ -76,14 +92,18 @@ internal class SystemStatusStripView(
         "${badge.tag}: ${if (available) "dostępne" else "niedostępne"}"
 
     private fun addSpacer() {
-        addView(View(context).apply { layoutParams = LayoutParams(dp(8), 1) })
+        addView(View(context).apply { layoutParams = LayoutParams(dp(2), 1) })
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private companion object {
-        const val AVAILABLE = 0xFF2E7D32.toInt()
-        const val UNAVAILABLE = 0xFFC62828.toInt()
-        const val ON_STATUS = 0xFFFFFFFF.toInt()
+        const val AVAILABLE = 0xFF236B3A.toInt()
+        const val UNAVAILABLE = 0xFF66788A.toInt()
+        const val AVAILABLE_BACKGROUND = 0xFFE8F5EC.toInt()
+        const val UNAVAILABLE_BACKGROUND = 0xFFF0F3F6.toInt()
+        const val STRIP_BACKGROUND = 0xFFF8FAFC.toInt()
+        const val BORDER = 0xFFD7E1EE.toInt()
+        const val TEXT = 0xFF102A43.toInt()
     }
 }

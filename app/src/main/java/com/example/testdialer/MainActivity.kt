@@ -53,7 +53,6 @@ class MainActivity : ComponentActivity() {
     private val sectionButtons = mutableMapOf<AppSection, Button>()
     private val testTypeButtons = mutableMapOf<TestType, Button>()
     private lateinit var contentHost: FrameLayout
-    private lateinit var statusSection: View
     private lateinit var testSection: View
     private lateinit var registerSection: View
     private lateinit var registerListHost: LinearLayout
@@ -64,9 +63,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var voiceStatusText: TextView
     private lateinit var voicePhoneInput: EditText
     private lateinit var voiceNameInput: EditText
-    private lateinit var voiceSummaryText: TextView
     private var networkCallbackRegistered = false
-    private var currentSection = AppSection.STATUS
+    private var currentSection = AppSection.TEST
     private var currentTestType = TestType.VOICE
     private lateinit var voiceResultStore: VoiceResultStore
     private lateinit var manualSessionViewModel: ManualSessionViewModel
@@ -126,7 +124,9 @@ class MainActivity : ComponentActivity() {
         awaitingVoiceOutcome = savedInstanceState?.getBoolean(STATE_AWAITING_OUTCOME) ?: false
         resultSaved = savedInstanceState?.getBoolean(STATE_RESULT_SAVED) ?: false
         currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
-            ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } } ?: AppSection.STATUS
+            ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } }
+            ?.takeUnless { it == AppSection.STATUS }
+            ?: AppSection.TEST
         currentTestType = savedInstanceState?.getString(STATE_CURRENT_TEST_TYPE)
             ?.let { saved -> TestType.entries.firstOrNull { it.name == saved } } ?: TestType.VOICE
 
@@ -147,11 +147,9 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        statusSection = createStatusSection()
         testSection = createTestSection()
         registerSection = createRegisterSection()
 
-        contentHost.addView(statusSection)
         contentHost.addView(testSection)
         contentHost.addView(registerSection)
 
@@ -257,24 +255,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showSection(section: AppSection) {
-        currentSection = section
-        statusSection.visibility = if (section == AppSection.STATUS) View.VISIBLE else View.GONE
-        testSection.visibility = if (section == AppSection.TEST) View.VISIBLE else View.GONE
-        registerSection.visibility = if (section == AppSection.REGISTER) View.VISIBLE else View.GONE
+        val operationalSection = if (section == AppSection.STATUS) AppSection.TEST else section
+        currentSection = operationalSection
+        testSection.visibility = if (operationalSection == AppSection.TEST) View.VISIBLE else View.GONE
+        registerSection.visibility = if (operationalSection == AppSection.REGISTER) View.VISIBLE else View.GONE
 
         sectionButtons.forEach { (current, button) ->
-            val selected = current == section
+            val selected = current == operationalSection
             button.isEnabled = true
             button.alpha = if (selected) 1f else 0.86f
             button.background = pillBackground(if (selected) ColorPalette.accent else ColorPalette.button)
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
         }
 
-        if (section == AppSection.STATUS) {
-            refreshVoiceSummary()
-        } else if (section == AppSection.TEST) {
+        if (operationalSection == AppSection.TEST) {
             refreshVoiceStatusBar()
-        } else if (section == AppSection.REGISTER) {
+        } else if (operationalSection == AppSection.REGISTER) {
             renderRegister()
         }
     }
@@ -291,9 +287,7 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        nav.addView(createSectionButton(AppSection.STATUS, getString(R.string.nav_status)))
-        nav.addView(spaceHorizontal(dimen(8)))
-        nav.addView(createSectionButton(AppSection.TEST, getString(R.string.nav_test)))
+        nav.addView(createSectionButton(AppSection.TEST, getString(R.string.nav_operations)))
         nav.addView(spaceHorizontal(dimen(8)))
         nav.addView(createSectionButton(AppSection.REGISTER, getString(R.string.nav_register)))
         return nav
@@ -310,97 +304,6 @@ class MainActivity : ComponentActivity() {
             setTextColor(ColorPalette.textPrimary)
             setOnClickListener { showSection(section) }
             sectionButtons[section] = this
-        }
-    }
-
-    private fun createStatusSection(): View {
-        val scroll = ScrollView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
-
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dimen(20), dimen(18), dimen(20), dimen(28))
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        }
-
-        content.addView(createSectionHeader(
-            getString(R.string.status_title),
-            getString(R.string.status_description),
-        ))
-        content.addView(spaceVertical(dimen(16)))
-        content.addView(createCard {
-            addView(createCardTitle(getString(R.string.status_dashboard_title)))
-            addView(spaceVertical(dimen(8)))
-            addView(createBodyText(getString(R.string.status_dashboard_body)))
-            addView(spaceVertical(dimen(16)))
-            addView(createSummaryRow())
-        })
-
-        scroll.addView(content)
-        return scroll
-    }
-
-    private fun createSummaryRow(): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        }
-
-        row.addView(createVoiceSummaryTile())
-        row.addView(spaceHorizontal(dimen(8)))
-        row.addView(createSummaryTile(getString(R.string.sms_type), getString(R.string.status_summary_placeholder)))
-        row.addView(spaceHorizontal(dimen(8)))
-        row.addView(createSummaryTile(getString(R.string.data_type), getString(R.string.status_summary_placeholder)))
-        return row
-    }
-
-    private fun createVoiceSummaryTile(): View {
-        return createCard {
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
-            addView(createTinyLabel(getString(R.string.voice_type)))
-            addView(spaceVertical(dimen(6)))
-            voiceSummaryText = createMicroText(getString(R.string.status_voice_no_results))
-            addView(voiceSummaryText)
-            refreshVoiceSummary()
-        }
-    }
-
-    private fun refreshVoiceSummary() {
-        if (!::voiceSummaryText.isInitialized) return
-        val latest = voiceResultStore.loadAll().firstOrNull()
-        voiceSummaryText.text = if (latest == null) {
-            getString(R.string.status_voice_no_results)
-        } else {
-            val outcome = when (latest.outcome) {
-                VoiceTestResult.Outcome.SUCCESS -> getString(R.string.outcome_success)
-                VoiceTestResult.Outcome.FAILURE -> getString(R.string.outcome_failure)
-                VoiceTestResult.Outcome.NOT_CHECKED -> getString(R.string.outcome_not_checked)
-            }
-            val date = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
-                .format(Date(latest.timestampMillis))
-            getString(R.string.status_voice_latest, outcome, date)
-        }
-        voiceSummaryText.contentDescription = getString(R.string.status_voice_summary_accessibility, voiceSummaryText.text)
-    }
-
-    private fun createSummaryTile(title: String, body: String): View {
-        return createCard {
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
-            addView(createTinyLabel(title))
-            addView(spaceVertical(dimen(6)))
-            addView(createMicroText(body))
         }
     }
 
@@ -1090,7 +993,6 @@ class MainActivity : ComponentActivity() {
         awaitingVoiceOutcome = false
         resultSaved = true
         renderRegister()
-        refreshVoiceSummary()
         Toast.makeText(this@MainActivity, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)
     }
@@ -1201,19 +1103,21 @@ class MainActivity : ComponentActivity() {
 
     private fun createSystemStatusStrip(): SystemStatusStripView = SystemStatusStripView(
         context = this,
-        wifiLabel = getString(R.string.status_wifi_label),
-        cellularLabel = getString(R.string.status_cellular_label),
         simLabel = getString(R.string.status_sim_label),
-        wifiSymbol = getString(R.string.status_wifi_symbol),
-        cellularSymbol = getString(R.string.status_cellular_symbol),
+        networkLabel = getString(R.string.status_network_label),
+        cellularLabel = getString(R.string.status_cellular_label),
         simSymbol = getString(R.string.status_sim_symbol),
+        networkSymbol = getString(R.string.status_network_symbol),
+        cellularSymbol = getString(R.string.status_cellular_symbol),
+        wifiLabel = getString(R.string.status_wifi_label),
+        wifiSymbol = getString(R.string.status_wifi_symbol),
     ).also {
-        it.render(isWifiConnected(), isCellularConnected(), isSimReady())
+        it.render(isSimReady(), isCellularConnected(), isMobileDataEnabled(), isWifiConnected())
     }
 
     private fun refreshVoiceStatusBar() {
         if (!::systemStatusStrip.isInitialized) return
-        systemStatusStrip.render(isWifiConnected(), isCellularConnected(), isSimReady())
+        systemStatusStrip.render(isSimReady(), isCellularConnected(), isMobileDataEnabled(), isWifiConnected())
     }
 
     private fun isWifiConnected(): Boolean {
@@ -1236,6 +1140,10 @@ class MainActivity : ComponentActivity() {
         return runCatching {
             telephonyManager.simState == TelephonyManager.SIM_STATE_READY && telephonyManager.hasIccCard()
         }.getOrDefault(false)
+    }
+
+    private fun isMobileDataEnabled(): Boolean {
+        return runCatching { telephonyManager.isDataEnabled }.getOrDefault(false)
     }
 
     private fun createSectionHeader(title: String, description: String): View {

@@ -25,10 +25,27 @@ import java.util.concurrent.Executors
 @Config(sdk = [35])
 class MainActivitySmokeTest {
     @Test
+    fun `operations home replaces separate Status and Test navigation`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val buttons = descendants(root).filterIsInstance<Button>().toList()
+        val allText = collectText(root)
+
+        assertEquals("Operacje", activity.getString(R.string.nav_operations))
+        assertTrue(buttons.any { it.text.toString() == "Operacje" })
+        assertTrue(buttons.any { it.text.toString() == activity.getString(R.string.nav_register) })
+        assertFalse(buttons.any { it.text.toString() == activity.getString(R.string.nav_status) })
+        assertFalse(buttons.any { it.text.toString() == activity.getString(R.string.nav_test) })
+        assertFalse(allText.contains(activity.getString(R.string.status_dashboard_title)))
+        assertFalse(allText.contains("Ręczna sesja billingowa"))
+        assertTrue(allText.contains(activity.getString(R.string.run_home_title)))
+    }
+
+    @Test
     fun `run centered shell is neutral and keeps all task entry points`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
 
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
         val allText = collectText(activity.findViewById(android.R.id.content))
 
         assertTrue(allText.contains(activity.getString(R.string.run_empty_title)))
@@ -49,7 +66,7 @@ class MainActivitySmokeTest {
     @Test
     fun `add test focuses Tasks without creating a persisted run`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
         val repository = (activity.application as TestDialerApplication).testRunRepository
         val before = persistedRunCount(repository)
         val runHome = descendants(activity.findViewById(android.R.id.content))
@@ -90,7 +107,7 @@ class MainActivitySmokeTest {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
 
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
 
         assertNotNull(findButton(activity, activity.getString(R.string.dial_test)))
         assertTrue(activity.findViewById<android.view.View>(android.R.id.content).isShown)
@@ -100,7 +117,7 @@ class MainActivitySmokeTest {
     @Test
     fun `manual session and history entry points are visible`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
         assertNotNull(findButton(activity, activity.getString(R.string.manual_session_start)))
 
         findButton(activity, activity.getString(R.string.nav_register)).performClick()
@@ -112,27 +129,30 @@ class MainActivitySmokeTest {
     @Test
     fun `guided SMS and cellular Data remain reachable without hiding Voice`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
 
         findButton(activity, activity.getString(R.string.sms_type)).performClick()
         var allText = collectText(activity.findViewById(android.R.id.content))
         assertTrue(allText.contains(activity.getString(R.string.sms_card_title)))
         assertNotNull(findButton(activity, activity.getString(R.string.sms_open_composer)))
+        assertSingleStatusStrip(activity)
 
         findButton(activity, activity.getString(R.string.data_type)).performClick()
         allText = collectText(activity.findViewById(android.R.id.content))
         assertTrue(allText.contains(activity.getString(R.string.data_card_title)))
         assertNotNull(findButton(activity, activity.getString(R.string.data_start)))
+        assertSingleStatusStrip(activity)
 
         findButton(activity, activity.getString(R.string.voice_type)).performClick()
         assertNotNull(findButton(activity, activity.getString(R.string.dial_test)))
+        assertSingleStatusStrip(activity)
     }
 
     @Test
     fun `selected task survives rotation in run centered shell`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
         findButton(activity, activity.getString(R.string.data_type)).performClick()
 
         controller.configurationChange(Configuration())
@@ -150,7 +170,7 @@ class MainActivitySmokeTest {
     fun `test section and status strip survive lifecycle restart and rotation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
-        findButton(activity, activity.getString(R.string.nav_test)).performClick()
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
 
         controller.pause().stop().start().resume()
         controller.configurationChange(Configuration())
@@ -181,6 +201,17 @@ class MainActivitySmokeTest {
         } finally {
             executor.shutdownNow()
         }
+    }
+
+    private fun assertSingleStatusStrip(activity: MainActivity) {
+        val strips = descendants(activity.findViewById(android.R.id.content))
+            .filterIsInstance<SystemStatusStripView>()
+            .toList()
+        assertEquals(1, strips.size)
+        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_sim_label)))
+        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_network_label)))
+        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_cellular_label)))
+        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_wifi_label)))
     }
 
     private fun descendants(root: android.view.View): Sequence<android.view.View> = sequence {

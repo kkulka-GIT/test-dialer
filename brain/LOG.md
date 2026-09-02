@@ -14,3 +14,5 @@
 - F01 dodał czysty model scenariuszy, runów, zdarzeń i korelacji bez podłączania go do UI ani starego storage.
 - F02 dodał osobną oś wykonania, kontrolowane identyfikatory i czas, próby, stanowe przejścia oraz okna korelacji CDR; weryfikacja CI jest w toku.
 - UIR-01 przebudował ekran `Test` na Run-centered shell z neutralnym brakiem aktywnego Run, sekcją `Tasks` i lekkim paskiem Wi-Fi/Cellular/SIM, zachowując dotychczasowe przepływy oraz rotację.
+- UIR-01 został scalony do `main` jako `16b9ae584ca16b6ec283e41056007bb3511f5dc9`; build GitHub Actions #76 zakończył się sukcesem.
+- UIR-02 przygotował na branchu `feature/uir-02-operational-home` wspólny ekran `Operacje`, dwupozycyjną nawigację i zwarty pasek SIM/sieć/dane/Wi-Fi. Lokalny test JVM jest BLOCKED przez niedostępność sieci podczas pobierania Gradle; wynik kodu zweryfikuje CI po otwarciu Draft PR.

@@ -33,29 +33,33 @@ internal class RunHomeView(
 
     init {
         orientation = VERTICAL
-        addView(card().apply {
-            addView(header(title))
-            addView(space(8))
-            addView(body(description))
-        })
-        addView(space(12))
+        addView(header(title))
+        addView(space(4))
+        addView(body(description))
+        addView(space(10))
         addView(statusHost)
-        addView(space(12))
+        addView(space(10))
         addView(card().apply {
             addView(cardTitle(emptyTitle))
-            addView(space(6))
+            addView(space(4))
             addView(body(emptyDescription))
-            addView(space(12))
+            addView(space(8))
             addView(Button(context).apply {
                 text = addTestLabel
                 isAllCaps = false
                 textSize = 16f
                 minHeight = dp(48)
                 contentDescription = addTestLabel
+                background = GradientDrawable().apply {
+                    cornerRadius = dp(12).toFloat()
+                    setColor(0xFFF0F4F8.toInt())
+                    setStroke(dp(1), BORDER)
+                }
+                setTextColor(TEXT_PRIMARY)
                 setOnClickListener { onAddTest() }
             })
         })
-        addView(space(18))
+        addView(space(14))
         addView(tasksHeading)
         addView(space(6))
         addView(body(tasksDescription))
@@ -76,13 +80,13 @@ internal class RunHomeView(
 
     private fun card() = LinearLayout(context).apply {
         orientation = VERTICAL
-        setPadding(dp(18), dp(18), dp(18), dp(18))
+        setPadding(dp(14), dp(14), dp(14), dp(14))
         background = GradientDrawable().apply {
-            cornerRadius = dp(18).toFloat()
+            cornerRadius = dp(14).toFloat()
             setColor(SURFACE)
             setStroke(dp(1), BORDER)
         }
-        elevation = dp(4).toFloat()
+        elevation = dp(1).toFloat()
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
