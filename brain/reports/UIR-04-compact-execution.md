@@ -2,7 +2,7 @@
 
 ## Stan
 
-Implementacja znajduje się na Draft PR #13. CI #84 zakończyło się PASS dla wcześniejszego SHA. Po niezależnej recenzji dodano lokalny checkpoint naprawczy; dla nowego SHA nadal wymagane są publikacja, nowe CI, APK i ponowna niezależna recenzja.
+Implementacja znajduje się na Draft PR #13. Kodowy tree został zweryfikowany przez GitHub Actions #86, artifact debug APK oraz niezależne recenzje kodu i UX. Końcowa recenzja Sol potwierdziła PASS kodu; zablokowana pozostała wyłącznie nieaktualna dokumentacja. Ostatnia czynność przed merge to publikacja dokumentacji i finalne CI dla tego commit-u dokumentacyjnego.
 
 ## Baza i checkpoint
 
@@ -11,7 +11,11 @@ Implementacja znajduje się na Draft PR #13. CI #84 zakończyło się PASS dla w
 - wcześniejszy checkpoint po poprawkach: `3484ba1b14bb45daf42521816f60fc3fc949b834`;
 - checkpoint blokady mutacji podczas wykonania: `244910c`;
 - Draft PR: #13;
-- checkpoint `244910c` pozostaje lokalny zgodnie z poleceniem nadzorcy.
+- kodowy HEAD przed docs: `55e9810e874fd16ef335d6b224fae58d35f17595`;
+- kodowy tree: `4d775d9bef2c6a00087149171bc4cfff7931ce1a`;
+- PR #13 head: `bc52973c22ea74d9272c58a08d07ad575931da07` (identyczny tree);
+- GitHub Actions #86, run id `33952560270`: PASS;
+- artifact `test-dialer-debug-apk`, id `9965332198`, SHA-256 `f4dbf14f55cb8fcb6bb6160549daf2207500efd0c08faa15f80c48e8b3091036`.
 
 ## Wykonany zakres
 
@@ -43,13 +47,13 @@ Implementacja znajduje się na Draft PR #13. CI #84 zakończyło się PASS dla w
 - dodane regresje Robolectric sprawdzają widoczny kontekst Run/Task/etap, domyślnie zwiniętą nazwę, TalkBack content description, prefille oraz edytowane dane po rotacji;
 - regresje po recenzji sprawdzają blokadę zmiany ekranu dla niezakończonego SMS i aktywnego Data oraz dynamiczną akcję i stan kontrolki opcjonalnej nazwy;
 - regresja `ActiveRunViewModelTest` sprawdza: rozpoczęty Voice blokuje Pomiń i Zakończ Run, wynik trafia do pierwotnego Tasku, a pozostały Task i Run zachowują poprawny stan;
-- `./gradlew testDebugUnitTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem testów, ponieważ wrapper nie może pobrać Gradle 8.11.1 (`Network is unreachable`);
+- `./gradlew testDebugUnitTest --tests com.example.testdialer.MainActivitySmokeTest`: lokalnie BLOCKED przed uruchomieniem testów, ponieważ wrapper nie może pobrać Gradle 8.11.1 (`Network is unreachable`); zdalne CI #86: PASS;
 - pełnego lokalnego builda Androida nie uruchamiano zgodnie z zasadami;
-- GitHub Actions #84: PASS dla wcześniejszego SHA `3484ba1`; NOT TESTED dla nowego checkpointu `244910c`;
-- debug APK: dostępne dla wcześniejszego SHA; PENDING dla nowego checkpointu;
-- niezależna recenzja: wcześniejsza recenzja wskazała finding naprawiony w `244910c`; ponowna recenzja nowego SHA: PENDING.
+- GitHub Actions #86: PASS dla kodowego tree `4d775d9bef2c6a00087149171bc4cfff7931ce1a`;
+- debug APK: dostępne jako artifact `test-dialer-debug-apk` id `9965332198`, SHA-256 podany wyżej;
+- niezależne recenzje kodu i UX oraz końcowa recenzja Sol: PASS.
 
 ## Ryzyka i następny krok
 
 - Stan rozwinięcia pola opcjonalnego jest prezentacyjny i po rotacji wraca do bezpiecznego stanu zwiniętego; wpisana wartość pozostaje zachowana.
-- Po publikacji `244910c` wymagane są nowe CI, artifact APK oraz niezależna recenzja dokładnego SHA przed rozpoczęciem UIR-05. PASS z CI #84 nie może być użyty jako dowód dla tej poprawki.
+- Po publikacji dokumentacji wymagane jest finalne CI dla commit-u dokumentacyjnego. Nie należy twierdzić, że ten commit ma już CI: PASS #86 i APK dotyczą wyłącznie wcześniejszego kodowego tree. Po zielonym finalnym CI oznaczyć PR jako Ready, wykonać merge i sprawdzić build `main`.
