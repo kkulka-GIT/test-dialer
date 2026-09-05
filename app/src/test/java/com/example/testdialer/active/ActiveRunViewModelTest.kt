@@ -23,7 +23,7 @@ class ActiveRunViewModelTest {
     @get:Rule val instant = InstantTaskExecutorRule()
 
     @Test
-    fun `result arriving while busy is queued and releases execution context`() {
+    fun `active execution blocks Run mutations and result remains attached to original Task`() {
         val repository = MemoryRepository()
         val coordinator = ActiveRunCoordinator(repository)
         val executor = QueuedExecutorService()
@@ -35,24 +35,29 @@ class ActiveRunViewModelTest {
         val voice = active.tasks[0]
         val data = active.tasks[2]
         viewModel.beginExecution(voice.step.id, ServiceType.VOICE)
+        assertTrue(viewModel.state.value!!.executionInProgress)
 
         viewModel.skip(data.step.id)
-        assertTrue(viewModel.state.value!!.busy)
+        viewModel.complete()
+        assertEquals(0, executor.queuedCount)
+        assertEquals(ActiveTaskStatus.PENDING, viewModel.state.value!!.active!!.tasks[2].status)
         viewModel.recordVoice("+48999", VoiceTestResult.Outcome.SUCCESS)
 
-        assertEquals(2, executor.queuedCount)
-        executor.runNext()
+        assertEquals(1, executor.queuedCount)
         executor.runNext()
 
         assertFalse(viewModel.executionInProgress())
+        assertFalse(viewModel.state.value!!.executionInProgress)
         val stored = repository.snapshots.values.single()
         assertEquals(voice.step.id, stored.run.events.single().stepId)
         assertEquals(TestAction.Voice("+48999"), stored.run.events.single().action)
+        assertEquals(ActiveTaskStatus.DONE, viewModel.state.value!!.active!!.tasks[0].status)
+        assertEquals(ActiveTaskStatus.PENDING, viewModel.state.value!!.active!!.tasks[2].status)
         assertFalse(viewModel.state.value!!.busy)
     }
 
     @Test
-    fun `failed earlier queued operation cannot retain context or prevent a new Run`() {
+    fun `failed result persistence releases context and does not prevent a new Run`() {
         val repository = MemoryRepository()
         val coordinator = ActiveRunCoordinator(repository)
         val executor = QueuedExecutorService()
@@ -63,12 +68,12 @@ class ActiveRunViewModelTest {
         viewModel.beginExecution(active.tasks[0].step.id, ServiceType.VOICE)
 
         repository.failNext = true
-        viewModel.skip(active.tasks[2].step.id)
         viewModel.recordVoice("+48999", VoiceTestResult.Outcome.SUCCESS)
-        executor.runNext()
         executor.runNext()
 
         assertFalse(viewModel.executionInProgress())
+        assertFalse(viewModel.state.value!!.executionInProgress)
+        assertTrue(viewModel.state.value!!.error!!.contains("simulated save failure"))
         viewModel.startEmpty("Run after failure")
         executor.runNext()
         assertTrue(viewModel.state.value!!.active != null)

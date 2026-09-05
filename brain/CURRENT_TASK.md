@@ -1,6 +1,6 @@
 # Current Task
 
-Status: IMPLEMENTATION COMPLETE — CI PENDING
+Status: REVIEW FIX IMPLEMENTED — NEW CI PENDING
 
 Feature: UIR-04 — Compact execution screens
 
@@ -26,4 +26,6 @@ Verification:
 - Dodano testy Robolectric kontekstu wykonania, zwiniętych pól opcjonalnych oraz zachowania edytowanych parametrów po rotacji.
 - `git diff --check`: PASS.
 - Lokalny `testDebugUnitTest`: BLOCKED przed uruchomieniem testów przez niedostępność pobrania Gradle (`Network is unreachable`).
-- Pozostają publikacja brancha, Draft PR, GitHub Actions, artefakt APK i niezależna recenzja.
+- Draft PR #13 istnieje, a CI #84 zakończyło się PASS dla wcześniejszego SHA.
+- Po recenzji dodano checkpoint `244910c`, który blokuje mutacje Runu i Tasków podczas trwającego wykonania oraz natychmiast publikuje stan wykonania do UI.
+- Nowy checkpoint nie ma jeszcze wyniku CI ani niezależnej recenzji; wcześniejszy PASS nie jest przenoszony na nowe SHA.

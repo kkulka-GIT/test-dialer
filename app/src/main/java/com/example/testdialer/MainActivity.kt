@@ -423,7 +423,7 @@ class MainActivity : ComponentActivity() {
                     setText(R.string.run_start_empty)
                     isAllCaps = false
                     minHeight = dimen(50)
-                    isEnabled = !state.busy
+                    isEnabled = !state.busy && !state.executionInProgress
                     background = pillBackground(ColorPalette.accent)
                     setTextColor(ColorPalette.onAccent)
                     setOnClickListener { activeRunViewModel.startEmpty(name.text.toString()) }
@@ -433,7 +433,7 @@ class MainActivity : ComponentActivity() {
                     setText(R.string.run_start_scenario)
                     isAllCaps = false
                     minHeight = dimen(50)
-                    isEnabled = !state.busy
+                    isEnabled = !state.busy && !state.executionInProgress
                     setOnClickListener { activeRunViewModel.startScenario(LocalScenarioCatalog.smoke) }
                 })
             })
@@ -455,7 +455,7 @@ class MainActivity : ComponentActivity() {
                 setText(R.string.run_complete)
                 isAllCaps = false
                 minHeight = dimen(48)
-                isEnabled = !state.busy
+                isEnabled = !state.busy && !state.executionInProgress
                 background = pillBackground(ColorPalette.ok)
                 setTextColor(ColorPalette.onAccent)
                 setOnClickListener { activeRunViewModel.complete() }
@@ -479,6 +479,7 @@ class MainActivity : ComponentActivity() {
                         contentDescription = getString(R.string.task_open_accessibility, task.step.title)
                         isAllCaps = false
                         minHeight = dimen(48)
+                        isEnabled = !state.busy && !state.executionInProgress
                         setOnClickListener { openActiveTask(task.step.id, task.step.action) }
                     })
                     addView(spaceVertical(dimen(6)))
@@ -487,6 +488,7 @@ class MainActivity : ComponentActivity() {
                         contentDescription = getString(R.string.task_skip_accessibility, task.step.title)
                         isAllCaps = false
                         minHeight = dimen(48)
+                        isEnabled = !state.busy && !state.executionInProgress
                         setOnClickListener { activeRunViewModel.skip(task.step.id) }
                     })
                 }

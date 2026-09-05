@@ -19,6 +19,7 @@ import java.util.Collections
 
 data class ActiveRunUiState(
     val busy: Boolean = false,
+    val executionInProgress: Boolean = false,
     val active: ActiveRun? = null,
     val message: String? = null,
     val error: String? = null,
@@ -34,20 +35,30 @@ class ActiveRunViewModel(
 
     fun beginExecution(stepId: StepId?, serviceType: ServiceType) {
         executions[serviceType] = coordinator.beginExecution(stepId, serviceType)
+        val current = mutableState.value ?: ActiveRunUiState()
+        mutableState.value = current.copy(executionInProgress = true, message = null, error = null)
     }
 
     fun cancelExecution(serviceType: ServiceType) {
         executions.remove(serviceType)?.let(coordinator::cancelExecution)
+        val current = mutableState.value ?: ActiveRunUiState()
+        mutableState.value = current.copy(executionInProgress = coordinator.executionInProgress())
     }
 
     fun executionInProgress() = coordinator.executionInProgress()
 
-    fun startEmpty(name: String) = submit("Nie udało się rozpocząć Runu") {
-        copy(active = coordinator.startEmpty(name), message = "Run rozpoczęty")
+    fun startEmpty(name: String) {
+        if (coordinator.executionInProgress()) return
+        submit("Nie udało się rozpocząć Runu") {
+            copy(active = coordinator.startEmpty(name), message = "Run rozpoczęty")
+        }
     }
 
-    fun startScenario(scenario: LocalScenario) = submit("Nie udało się rozpocząć Scenario") {
-        copy(active = coordinator.startScenario(scenario), message = "Scenario rozpoczęte")
+    fun startScenario(scenario: LocalScenario) {
+        if (coordinator.executionInProgress()) return
+        submit("Nie udało się rozpocząć Scenario") {
+            copy(active = coordinator.startScenario(scenario), message = "Scenario rozpoczęte")
+        }
     }
 
     fun recordVoice(number: String, outcome: com.example.testdialer.VoiceTestResult.Outcome) {
@@ -82,13 +93,19 @@ class ActiveRunViewModel(
         }
     }
 
-    fun skip(stepId: StepId) = submit("Nie udało się pominąć Tasku") {
-        copy(active = coordinator.skip(stepId), message = "Task pominięty")
+    fun skip(stepId: StepId) {
+        if (coordinator.executionInProgress()) return
+        submit("Nie udało się pominąć Tasku") {
+            copy(active = coordinator.skip(stepId), message = "Task pominięty")
+        }
     }
 
-    fun complete() = submit("Nie udało się zakończyć Runu") {
-        coordinator.complete()
-        copy(active = null, message = "Run zakończony")
+    fun complete() {
+        if (coordinator.executionInProgress()) return
+        submit("Nie udało się zakończyć Runu") {
+            coordinator.complete()
+            copy(active = null, message = "Run zakończony")
+        }
     }
 
     private fun submitCompletion(
@@ -103,6 +120,7 @@ class ActiveRunViewModel(
             val current = mutableState.value ?: ActiveRunUiState()
             mutableState.value = current.copy(
                 busy = false,
+                executionInProgress = false,
                 active = coordinator.active(),
                 error = "$errorPrefix: executor odrzucił zapis wyniku",
             )
@@ -119,10 +137,17 @@ class ActiveRunViewModel(
         if (!before.busy) mutableState.value = before.copy(busy = true, message = null, error = null)
         executor.execute {
             mutableState.postValue(runCatching { before.operation() }.fold(
-                onSuccess = { it.copy(busy = false, error = null) },
+                onSuccess = {
+                    it.copy(
+                        busy = false,
+                        executionInProgress = coordinator.executionInProgress(),
+                        error = null,
+                    )
+                },
                 onFailure = { failure ->
                     before.copy(
                         busy = false,
+                        executionInProgress = coordinator.executionInProgress(),
                         active = coordinator.active(),
                         error = "$errorPrefix: ${failure.message ?: failure.javaClass.simpleName}",
                     )

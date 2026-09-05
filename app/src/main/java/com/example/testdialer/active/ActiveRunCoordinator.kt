@@ -143,8 +143,10 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         activeExecution = null
     }
 
+    @Synchronized
     fun skip(stepId: StepId): ActiveRun {
         val current = requireNotNull(session) { "Brak aktywnego Run" }
+        check(activeExecution == null) { "Trwający test musi zostać zakończony przed zmianą Tasków" }
         require(taskStatus(current, stepId) == ActiveTaskStatus.PENDING) { "Task nie jest oczekujący" }
         return persistOrInvalidate(current) {
             current.recorder.startStep(stepId)
@@ -169,7 +171,9 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
     @Synchronized
     fun active(): ActiveRun? = session?.let(::snapshot)
 
+    @Synchronized
     private fun start(name: String, plannedSteps: List<ScenarioStepDefinition>): ActiveRun {
+        check(activeExecution == null) { "Trwający test musi zostać zakończony przed rozpoczęciem Runu" }
         require(session == null) { "Run jest już aktywny" }
         val scenario = ScenarioDefinition(
             id = ScenarioId("active-${UUID.randomUUID()}"),
