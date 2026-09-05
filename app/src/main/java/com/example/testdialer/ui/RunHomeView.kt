@@ -25,6 +25,7 @@ internal class RunHomeView(
     val runHost = verticalHost()
     val taskListHost = verticalHost()
     val selectorHost = verticalHost()
+    val executionContextHost = verticalHost()
     val scenarioHost = verticalHost()
     val manualSessionHost = verticalHost()
     val tasksHeading = cardTitle(tasksTitle).apply {
@@ -65,7 +66,9 @@ internal class RunHomeView(
         })
         addView(space(8))
         addView(selectorHost)
-        addView(space(12))
+        addView(space(8))
+        addView(executionContextHost)
+        addView(space(8))
         addView(scenarioHost)
         addView(space(12))
         addView(manualSessionHost)

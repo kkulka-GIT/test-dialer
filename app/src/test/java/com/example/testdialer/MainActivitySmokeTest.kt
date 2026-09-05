@@ -193,6 +193,125 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `planned execution keeps Run Task and stage visible with compact optional fields`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        val taskTitle = "SMS standard"
+        awaitButtonWithDescription(
+            activity,
+            activity.getString(R.string.task_open_accessibility, taskTitle),
+        ).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val context = descendants(root).first {
+            it.contentDescription?.toString()?.contains("Aktywny Run") == true &&
+                it.contentDescription?.toString()?.contains(taskTitle) == true
+        }
+        assertTrue(context.contentDescription.contains(activity.getString(R.string.execution_stage_prepare)))
+        val optionalButton = findButton(activity, activity.getString(R.string.execution_optional_details))
+        val labelInput = descendants(root).filterIsInstance<EditText>()
+            .first { it.hint == activity.getString(R.string.sms_label_hint) }
+        assertEquals(View.GONE, labelInput.parent.let { it as View }.visibility)
+        assertEquals(
+            activity.getString(R.string.execution_optional_collapsed),
+            optionalButton.stateDescription,
+        )
+
+        optionalButton.performClick()
+        assertTrue(labelInput.isShown)
+        assertEquals(activity.getString(R.string.execution_optional_hide), optionalButton.text.toString())
+        assertEquals(activity.getString(R.string.execution_optional_hide), optionalButton.contentDescription)
+        assertEquals(
+            activity.getString(R.string.execution_optional_expanded),
+            optionalButton.stateDescription,
+        )
+        assertSingleStatusStrip(activity)
+    }
+
+    @Test
+    fun `unfinished asynchronous SMS keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.sms_type)).performClick()
+        MainActivity::class.java.getDeclaredField("guidedSmsState").apply {
+            isAccessible = true
+            set(activity, GuidedSmsUiState(awaitingObservation = true))
+        }
+        renderScenario(activity, "SMS")
+
+        val dataButton = findButton(activity, activity.getString(R.string.data_type))
+
+        assertFalse(dataButton.isEnabled)
+        dataButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.sms_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.sms_observation_title),
+        ))
+    }
+
+    @Test
+    fun `unfinished Voice observation keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+            setBoolean(activity, true)
+        }
+        renderScenario(activity, "VOICE")
+
+        val smsButton = findButton(activity, activity.getString(R.string.sms_type))
+
+        assertFalse(smsButton.isEnabled)
+        smsButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.voice_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.voice_outcome_title),
+        ))
+    }
+
+    @Test
+    fun `running Data keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        findButton(activity, activity.getString(R.string.data_type)).performClick()
+        MainActivity::class.java.getDeclaredField("cellularDataState").apply {
+            isAccessible = true
+            set(activity, com.example.testdialer.data.CellularDataUiState(busy = true))
+        }
+        renderScenario(activity, "DATA")
+
+        val smsButton = findButton(activity, activity.getString(R.string.sms_type))
+
+        assertFalse(smsButton.isEnabled)
+        smsButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.data_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.data_running),
+        ))
+    }
+
+    @Test
+    fun `edited Scenario parameters survive rotation and remain executable`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        awaitButtonWithDescription(
+            activity,
+            activity.getString(R.string.task_open_accessibility, "SMS standard"),
+        ).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val inputs = descendants(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().toList()
+        inputs.first { it.hint == activity.getString(R.string.sms_destination_hint) }.setText("+48999888777")
+        inputs.first { it.hint == activity.getString(R.string.sms_message_hint) }.setText("Edytowana treść")
+
+        controller.configurationChange(Configuration())
+        val rotated = controller.get()
+        val rotatedInputs = descendants(rotated.findViewById(android.R.id.content)).filterIsInstance<EditText>().toList()
+        assertEquals("+48999888777", rotatedInputs.first { it.hint == rotated.getString(R.string.sms_destination_hint) }.text.toString())
+        assertEquals("Edytowana treść", rotatedInputs.first { it.hint == rotated.getString(R.string.sms_message_hint) }.text.toString())
+        assertNotNull(findButton(rotated, rotated.getString(R.string.sms_open_composer)))
+        assertSingleStatusStrip(rotated)
+    }
+
+    @Test
     fun `test section and status strip survive lifecycle restart and rotation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
@@ -230,6 +349,15 @@ class MainActivitySmokeTest {
 
     private fun collectText(root: android.view.View): String =
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
+
+    private fun renderScenario(activity: MainActivity, typeName: String) {
+        val typeClass = Class.forName("com.example.testdialer.ui.TestType")
+        val type = typeClass.enumConstants.first { (it as Enum<*>).name == typeName }
+        MainActivity::class.java.getDeclaredMethod("renderScenario", typeClass).apply {
+            isAccessible = true
+            invoke(activity, type)
+        }
+    }
 
     private fun persistedRunCount(repository: TestRunRepository): Int {
         val executor = Executors.newSingleThreadExecutor()
