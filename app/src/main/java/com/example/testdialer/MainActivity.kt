@@ -912,7 +912,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isTestTypeSwitchLocked(): Boolean =
-        guidedSmsState.busy ||
+        awaitingVoiceOutcome ||
+            dialerWasOpened ||
+            guidedSmsState.busy ||
             guidedSmsState.composerRequested ||
             guidedSmsState.composerOpen ||
             guidedSmsState.awaitingObservation ||

@@ -250,6 +250,25 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `unfinished Voice observation keeps its execution screen selected`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+            setBoolean(activity, true)
+        }
+        renderScenario(activity, "VOICE")
+
+        val smsButton = findButton(activity, activity.getString(R.string.sms_type))
+
+        assertFalse(smsButton.isEnabled)
+        smsButton.performClick()
+        assertTrue(findButton(activity, activity.getString(R.string.voice_type)).isSelected)
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.voice_outcome_title),
+        ))
+    }
+
+    @Test
     fun `running Data keeps its execution screen selected`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         findButton(activity, activity.getString(R.string.data_type)).performClick()
