@@ -1,11 +1,38 @@
 # Current Task
 
-Status: IMPLEMENTATION AND REVIEW COMPLETE — DOCS PUBLICATION PENDING
+Status: IMPLEMENTATION COMPLETE — VERIFICATION/DOCS HANDOFF PENDING
 
-Feature: UIR-04 — Compact execution screens
+Feature: UIR-05 — Run/Event register
 
 Goal:
-Uprościć wykonanie Voice, SMS i Data bez zmiany kontraktów wykonawczych Active Runu.
+ Zbudować spójny, czytelny Rejestr Runów i Eventów bez naruszania istniejącego storage legacy Voice.
+
+Scope:
+- Lista Room-backed Runów z nazwą Scenario, czasem, statusem i liczbą Eventów.
+- Nawigacja lista Runów → szczegóły Runu → lista Eventów → szczegóły Eventu.
+- Faktycznie użyte parametry, obserwacja/wynik, identyfikatory i dane korelacyjne.
+- Dostępność TalkBack, etykiety przycisków, back navigation i odtworzenie szczegółów po rotacji.
+- Osobna, wyjaśniona sekcja historycznych wyników legacy Voice.
+- Minimalne rozszerzenie repository API o eventCount oraz read-only RegisterViewModel.
+
+Out of scope:
+- Eksport, rozbudowane filtry, nowe testy sieciowe, Compose/rewrite i migracja Room.
+- Usuwanie lub migracja `VoiceResultStore`.
+
+Branch:
+`feature/uir-05-run-event-register`
+
+Base:
+`d398eaf27c23ea5ff30ea4ab5fa43d7a5d6c258a`
+
+Verification:
+- `git diff --check`: PASS.
+- Lokalny `:app:testDebugUnitTest --offline`: BLOCKED przed uruchomieniem przez brak dystrybucji Gradle i `Network is unreachable`.
+- CI oraz końcowy review pozostają do wykonania przez nadzorcę.
+
+## Poprzedni etap UIR-04
+
+Zakres UIR-04 pozostaje zachowany poniżej jako historia poprzedniego etapu:
 
 Scope:
 - Widoczny kontekst nazwy/ID Runu, Tasku i etapu wykonania.

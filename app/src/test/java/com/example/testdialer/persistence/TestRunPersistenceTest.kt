@@ -66,6 +66,7 @@ class TestRunPersistenceTest {
         assertEquals(0L, stored.revision)
         assertEquals(StoredTestRun(scenario, run, 0L), loaded)
         assertEquals(listOf(run.id), repository.listSummaries().map { it.runId })
+        assertEquals(run.events.size, repository.listSummaries().single().eventCount)
     }
 
     @Test

@@ -79,4 +79,8 @@
 - Guided SMS i Cellular Data zachowują swoje dotychczasowe, samodzielne rekordy wykonawcze, a ich pojedynczy Event jest idempotentnie dołączany do Active Run przez referencję `sourceEventId`; legacy Voice pozostaje zapisane i równolegle tworzy Event Active Run.
 - UIR-04 zachowuje jeden wykonawczy przepływ Voice/SMS/Data i nie zmienia kontraktów zapisu UIR-03; jest wyłącznie zwartą przebudową warstwy Views.
 - Podczas wykonania aktywnego Runu interfejs stale pokazuje jego nazwę i ID, wybrany Task lub oznaczenie dodatkowego testu oraz etap: przygotowanie, wykonanie, obserwacja albo zapisany wynik.
+- UIR-05 traktuje Room-backed `TestRun` jako jedyne źródło nowego Rejestru: lista pokazuje Runy, a szczegóły prowadzą do Eventów i ich danych korelacyjnych.
+- `TestRunSummary.eventCount` jest wyliczany z istniejących Eventów DAO; schemat Room i dane historyczne nie są migrowane.
+- Rejestr nawigacyjny jest read-only i asynchroniczny (`RegisterViewModel`); wybór Runu/Eventu jest stanem UI zachowywanym przez ViewModel podczas rotacji.
+- `VoiceResultStore` pozostaje osobnym storage legacy. Wygaszanie legacy polega wyłącznie na odseparowanej sekcji z jasnym wyjaśnieniem, bez usuwania ani migracji rekordów.
 - Parametry wymagane są widoczne bezpośrednio, opcjonalna nazwa testu jest domyślnie zwinięta, a edytowane drafty są zachowywane przez `savedInstanceState` podczas rotacji.

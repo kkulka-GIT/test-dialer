@@ -29,6 +29,7 @@ import com.example.testdialer.data.CellularDataInput
 import com.example.testdialer.data.CellularDataUiState
 import com.example.testdialer.data.CellularDataViewModel
 import com.example.testdialer.domain.RunId
+import com.example.testdialer.domain.EventId
 import com.example.testdialer.domain.StepId
 import com.example.testdialer.domain.TestAction
 import com.example.testdialer.active.ActiveRunUiState
@@ -38,6 +39,11 @@ import com.example.testdialer.active.LocalScenarioCatalog
 import com.example.testdialer.domain.ServiceType
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.persistence.TestRunSummary
+import com.example.testdialer.persistence.StoredTestRun
+import com.example.testdialer.domain.TestEvent
+import com.example.testdialer.domain.ObservationStatus
+import com.example.testdialer.register.RegisterUiState
+import com.example.testdialer.register.RegisterViewModel
 import com.example.testdialer.session.ManualSessionUiState
 import com.example.testdialer.session.ManualSessionViewModel
 import com.example.testdialer.sms.GuidedSmsInput
@@ -77,10 +83,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var guidedSmsViewModel: GuidedSmsViewModel
     private lateinit var cellularDataViewModel: CellularDataViewModel
     private lateinit var activeRunViewModel: ActiveRunViewModel
+    private lateinit var registerViewModel: RegisterViewModel
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
     private var activeRunState = ActiveRunUiState()
+    private var registerState = RegisterUiState()
     private var selectedActiveTaskId: StepId? = null
     private var pendingPhoneNumber: String? = null
     private var pendingTestName: String? = null
@@ -122,6 +130,10 @@ class MainActivity : ComponentActivity() {
 
         voiceResultStore = VoiceResultStore(this)
         val repository = (application as TestDialerApplication).testRunRepository
+        registerViewModel = ViewModelProvider(
+            this,
+            RegisterViewModel.Factory(repository),
+        )[RegisterViewModel::class.java]
         manualSessionViewModel = ViewModelProvider(
             this,
             ManualSessionViewModel.Factory(repository),
@@ -189,6 +201,7 @@ class MainActivity : ComponentActivity() {
             manualSessionState = state
             renderManualSession()
             renderRegister()
+            registerViewModel.load()
             state.message?.let { manualSessionHost.announceForAccessibility(it) }
         }
         guidedSmsViewModel.state.observe(this) { state ->
@@ -197,6 +210,7 @@ class MainActivity : ComponentActivity() {
             if (state.composerRequested) openSmsComposer(state)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
+                registerViewModel.load()
                 state.completed?.let { activeRunViewModel.recordExternal(ServiceType.SMS, it) }
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
             }
@@ -207,6 +221,7 @@ class MainActivity : ComponentActivity() {
             if (currentTestType == TestType.DATA) renderScenario(TestType.DATA)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
+                registerViewModel.load()
                 state.completed?.let { activeRunViewModel.recordExternal(ServiceType.DATA, it) }
             }
             if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.DATA)
@@ -216,9 +231,18 @@ class MainActivity : ComponentActivity() {
             renderActiveRun()
             state.message?.let { runHomeView.announceForAccessibility(it) }
             if (state.active == null) selectedActiveTaskId = null
+            registerViewModel.load()
+        }
+        registerViewModel.state.observe(this) { state ->
+            registerState = state
+            renderRegister()
         }
         onBackPressedDispatcher.addCallback(this) {
-            if (manualSessionState.selected != null) {
+            if (registerState.selectedEventId != null) {
+                registerViewModel.clearEvent()
+            } else if (registerState.selectedRun != null) {
+                registerViewModel.clearRun()
+            } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
             } else {
                 isEnabled = false
@@ -226,6 +250,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         manualSessionViewModel.loadHistory()
+        registerViewModel.load()
 
         showSection(currentSection)
     }
@@ -678,8 +703,14 @@ class MainActivity : ComponentActivity() {
     private fun renderRegister() {
         if (!::registerListHost.isInitialized) return
         registerListHost.removeAllViews()
-        manualSessionState.selected?.let { selected ->
-            registerListHost.addView(createManualSessionDetail(selected))
+        registerState.selectedRun?.let { selected ->
+            if (registerState.selectedEventId != null) {
+                selected.run.events.singleOrNull { it.id == registerState.selectedEventId }
+                    ?.let { event -> registerListHost.addView(createEventDetail(selected, event)) }
+                    ?: registerListHost.addView(createRegisterError(getString(R.string.register_event_missing)))
+            } else {
+                registerListHost.addView(createRunDetail(selected))
+            }
             return
         }
 
@@ -688,25 +719,41 @@ class MainActivity : ComponentActivity() {
                 ViewCompat.setAccessibilityHeading(this, true)
             })
             addView(spaceVertical(dimen(8)))
-            addView(createBodyText(getString(R.string.manual_history_description)))
+            addView(createBodyText(getString(R.string.register_runs_description)))
         })
-        val summaries = manualSessionState.history
+        registerState.error?.let { error ->
+            registerListHost.addView(spaceVertical(dimen(12)))
+            registerListHost.addView(createRegisterError(error))
+        }
+        if (registerState.busy && registerState.runs.isEmpty()) {
+            registerListHost.addView(spaceVertical(dimen(12)))
+            registerListHost.addView(createBodyText(getString(R.string.register_loading)))
+        }
+        val summaries = registerState.runs
         if (summaries.isEmpty()) {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createCard {
-                addView(createBodyText(getString(R.string.manual_history_empty)))
+                addView(createCardTitle(getString(R.string.register_runs_empty_title)))
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.register_runs_empty_body)))
             })
         } else {
             summaries.forEach { summary ->
                 registerListHost.addView(spaceVertical(dimen(12)))
-                registerListHost.addView(createManualSummaryCard(summary))
+                registerListHost.addView(createRunSummaryCard(summary))
             }
         }
         registerListHost.addView(spaceVertical(dimen(20)))
         registerListHost.addView(createCard {
-            addView(createCardTitle(getString(R.string.legacy_voice_history_title)).apply {
+            elevation = 0f
+            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
+            addView(createStatusText(getString(R.string.legacy_voice_history_title)).apply {
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
                 ViewCompat.setAccessibilityHeading(this, true)
             })
+            addView(spaceVertical(dimen(6)))
+            addView(createStatusText(getString(R.string.legacy_voice_history_description)))
         })
         registerListHost.addView(spaceVertical(dimen(12)))
         val results = voiceResultStore.loadAll()
@@ -722,6 +769,226 @@ class MainActivity : ComponentActivity() {
             if (index > 0) registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createVoiceResultCard(result))
         }
+    }
+
+    private fun createRegisterError(message: String): View = createCard {
+        addView(createStatusText(message).apply {
+            setTextColor(ColorPalette.bad)
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
+        })
+    }
+
+    private fun createRunSummaryCard(summary: TestRunSummary): View {
+        val status = localizeRunStatus(summary.status)
+        val date = formatDate(summary.startedAtMillis)
+        return createCard {
+            isClickable = true
+            isFocusable = true
+            minimumHeight = dimen(96)
+            contentDescription = getString(
+                R.string.register_run_item_accessibility,
+                summary.scenarioName,
+                status,
+                date,
+                summary.eventCount,
+            )
+            addView(createCardTitle(summary.scenarioName))
+            addView(spaceVertical(dimen(6)))
+            addView(createBodyText(getString(R.string.register_run_item_status, status)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.register_run_item_started, date)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.register_run_item_events, summary.eventCount)))
+            addView(spaceVertical(dimen(8)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.register_open_run)
+                isAllCaps = false
+                minHeight = dimen(48)
+                contentDescription = getString(R.string.register_open_run_accessibility, summary.scenarioName)
+                setOnClickListener { registerViewModel.selectRun(summary.runId) }
+            })
+            setOnClickListener { registerViewModel.selectRun(summary.runId) }
+        }
+    }
+
+    private fun createRunDetail(stored: StoredTestRun): View {
+        val run = stored.run
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.register_back_to_runs)
+                isAllCaps = false
+                minHeight = dimen(48)
+                contentDescription = getString(R.string.register_back_to_runs_accessibility)
+                setOnClickListener { registerViewModel.clearRun() }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createHeaderText(stored.scenario.name).apply {
+                    ViewCompat.setAccessibilityHeading(this, true)
+                })
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.register_run_detail_status, localizeRunStatus(run.status))))
+                addView(spaceVertical(dimen(5)))
+                addView(createBodyText(getString(R.string.register_run_detail_started, formatDateWithMillis(run.startedAtMillis))))
+                run.completedAtMillis?.let {
+                    addView(spaceVertical(dimen(5)))
+                    addView(createBodyText(getString(R.string.register_run_detail_completed, formatDateWithMillis(it))))
+                }
+                addView(spaceVertical(dimen(8)))
+                addView(createMicroText(getString(R.string.register_run_detail_id, run.id.value)).apply {
+                    setTextIsSelectable(true)
+                })
+                addView(spaceVertical(dimen(4)))
+                addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createCardTitle(getString(R.string.register_events_title)).apply {
+                    ViewCompat.setAccessibilityHeading(this, true)
+                })
+                addView(spaceVertical(dimen(6)))
+                addView(createBodyText(getString(R.string.register_events_description)))
+            })
+            if (run.events.isEmpty()) {
+                addView(spaceVertical(dimen(12)))
+                addView(createCard { addView(createBodyText(getString(R.string.register_events_empty))) })
+            } else {
+                run.events.forEachIndexed { index, event ->
+                    addView(spaceVertical(dimen(12)))
+                    addView(createEventSummaryCard(event, index))
+                }
+            }
+        }
+    }
+
+    private fun createEventSummaryCard(event: TestEvent, index: Int): View {
+        val type = eventTypeLabel(event)
+        val result = event.observation?.let { observationLabel(it.status) }
+            ?: getString(R.string.register_observation_none)
+        return createCard {
+            isClickable = true
+            isFocusable = true
+            contentDescription = getString(
+                R.string.register_event_item_accessibility,
+                index + 1,
+                type,
+                formatDateWithMillis(event.occurredAtMillis),
+                result,
+            )
+            addView(createCardTitle(getString(R.string.register_event_number, index + 1)))
+            addView(spaceVertical(dimen(5)))
+            addView(createBodyText(getString(R.string.register_event_item_type, type)))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.register_event_item_time, formatDateWithMillis(event.occurredAtMillis))))
+            addView(spaceVertical(dimen(4)))
+            addView(createBodyText(getString(R.string.register_event_item_result, result)))
+            addView(spaceVertical(dimen(8)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.register_open_event)
+                isAllCaps = false
+                minHeight = dimen(48)
+                contentDescription = getString(R.string.register_open_event_accessibility, type)
+                setOnClickListener { registerViewModel.selectEvent(event.id) }
+            })
+            setOnClickListener { registerViewModel.selectEvent(event.id) }
+        }
+    }
+
+    private fun createEventDetail(stored: StoredTestRun, event: TestEvent): View {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.register_back_to_run)
+                isAllCaps = false
+                minHeight = dimen(48)
+                contentDescription = getString(R.string.register_back_to_run_accessibility)
+                setOnClickListener { registerViewModel.clearEvent() }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createHeaderText(getString(R.string.register_event_detail_title)).apply {
+                    ViewCompat.setAccessibilityHeading(this, true)
+                })
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.register_event_detail_type, eventTypeLabel(event))))
+                addView(spaceVertical(dimen(5)))
+                addView(createBodyText(getString(R.string.register_event_detail_time, formatDateWithMillis(event.occurredAtMillis))))
+                addView(spaceVertical(dimen(10)))
+                addView(createMicroText(getString(R.string.register_event_detail_event_id, event.id.value)).apply { setTextIsSelectable(true) })
+                addView(spaceVertical(dimen(4)))
+                addView(createMicroText(getString(R.string.register_event_detail_run_id, event.runId.value)).apply { setTextIsSelectable(true) })
+                addView(spaceVertical(dimen(4)))
+                addView(createMicroText(getString(R.string.register_event_detail_step_id, event.stepId.value)).apply { setTextIsSelectable(true) })
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createCardTitle(getString(R.string.register_parameters_title)).apply { ViewCompat.setAccessibilityHeading(this, true) })
+                addView(spaceVertical(dimen(8)))
+                eventParameters(event).forEachIndexed { index, parameter ->
+                    if (index > 0) addView(spaceVertical(dimen(6)))
+                    addView(createBodyText(parameter))
+                }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createCardTitle(getString(R.string.register_observation_title)).apply { ViewCompat.setAccessibilityHeading(this, true) })
+                addView(spaceVertical(dimen(8)))
+                val observation = event.observation
+                if (observation == null) {
+                    addView(createBodyText(getString(R.string.register_observation_none)))
+                } else {
+                    addView(createBodyText(getString(R.string.register_observation_status, observationLabel(observation.status))))
+                    addView(spaceVertical(dimen(5)))
+                    addView(createBodyText(getString(R.string.register_observation_source, observation.source.name)))
+                    addView(spaceVertical(dimen(5)))
+                    addView(createBodyText(getString(R.string.register_observation_code, observation.code)))
+                    observation.description?.let {
+                        addView(spaceVertical(dimen(5)))
+                        addView(createBodyText(getString(R.string.register_observation_description, it)))
+                    }
+                }
+            })
+            addView(spaceVertical(dimen(12)))
+            addView(createCard {
+                addView(createCardTitle(getString(R.string.register_correlation_title)).apply { ViewCompat.setAccessibilityHeading(this, true) })
+                addView(spaceVertical(dimen(8)))
+                val correlation = event.correlation
+                addView(createBodyText(getString(R.string.register_correlation_source, correlation.sourceAddress ?: getString(R.string.register_value_missing))))
+                addView(spaceVertical(dimen(5)))
+                addView(createBodyText(getString(R.string.register_correlation_destination, correlation.destinationAddress ?: getString(R.string.register_value_missing))))
+                addView(spaceVertical(dimen(5)))
+                addView(createBodyText(getString(R.string.register_correlation_subscriber, correlation.subscriberAlias ?: getString(R.string.register_value_missing))))
+                if (correlation.references.isEmpty()) {
+                    addView(spaceVertical(dimen(5)))
+                    addView(createBodyText(getString(R.string.register_correlation_references_none)))
+                } else correlation.references.forEach { reference ->
+                    addView(spaceVertical(dimen(5)))
+                    addView(createBodyText(getString(R.string.register_correlation_reference, reference.namespace, reference.value)))
+                }
+            })
+        }
+    }
+
+    private fun eventParameters(event: TestEvent): List<String> = when (val action = event.action) {
+        is TestAction.Voice -> listOf(getString(R.string.register_parameter_destination, action.destination))
+        is TestAction.Sms -> buildList {
+            add(getString(R.string.register_parameter_destination, action.destination))
+            add(getString(R.string.register_parameter_message, action.message ?: getString(R.string.register_value_missing)))
+        }
+        is TestAction.Data -> listOf(getString(R.string.register_parameter_target, action.target))
+    }
+
+    private fun eventTypeLabel(event: TestEvent): String = when (event.action.serviceType) {
+        ServiceType.VOICE -> getString(R.string.voice_type)
+        ServiceType.SMS -> getString(R.string.sms_type)
+        ServiceType.DATA -> getString(R.string.data_type)
+    }
+
+    private fun observationLabel(status: ObservationStatus): String = when (status) {
+        ObservationStatus.CONFIRMED -> getString(R.string.register_observation_confirmed)
+        ObservationStatus.NOT_CONFIRMED -> getString(R.string.register_observation_not_confirmed)
+        ObservationStatus.NOT_VERIFIED -> getString(R.string.register_observation_not_verified)
     }
 
     private fun createManualSummaryCard(summary: TestRunSummary): View {
@@ -841,21 +1108,26 @@ class MainActivity : ComponentActivity() {
         val formattedDate = SimpleDateFormat(getString(R.string.result_date_pattern), Locale.getDefault())
             .format(Date(result.timestampMillis))
         return createCard {
+            elevation = 0f
+            setPadding(dimen(14), dimen(14), dimen(14), dimen(14))
             contentDescription = buildString {
                 append(getString(R.string.result_accessibility, outcomeLabel, formattedDate, result.phoneNumber))
                 result.testName?.let { append(getString(R.string.result_accessibility_name, it)) }
             }
             addView(TextView(this@MainActivity).apply {
                 text = outcomeLabel
-                textSize = 18f
+                textSize = 15f
                 typeface = Typeface.DEFAULT_BOLD
                 setTextColor(ColorPalette.onAccent)
-                setPadding(dimen(12), dimen(8), dimen(12), dimen(8))
+                setPadding(dimen(10), dimen(6), dimen(10), dimen(6))
                 background = pillBackground(outcomeColor)
             })
-            addView(spaceVertical(dimen(12)))
-            addView(createCardTitle(result.testName ?: getString(R.string.result_unnamed)))
-            addView(spaceVertical(dimen(8)))
+            addView(spaceVertical(dimen(10)))
+            addView(createStatusText(result.testName ?: getString(R.string.result_unnamed)).apply {
+                textSize = 16f
+                typeface = Typeface.DEFAULT_BOLD
+            })
+            addView(spaceVertical(dimen(6)))
             addView(createBodyText(getString(R.string.result_type_value)))
             addView(spaceVertical(dimen(4)))
             addView(createBodyText(getString(R.string.result_phone_value, result.phoneNumber)))
