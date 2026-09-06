@@ -23,6 +23,7 @@ Rejestr ma jeden spójny świat nowych danych: lista Runów prowadzi do szczegó
 - Systemowy Back obsługuje wybór Rejestru tylko wtedy, gdy aktywna sekcja to `REGISTER`.
 - Komunikat błędu jest renderowany również przy szczegółach Runu i Eventu. Kontener błędu ma tekstową treść dla TalkBack, jawny `contentDescription` i asertywny live region.
 - Dodano deterministyczne regresje: scalanie odświeżeń podczas busy, ochronę przed przywróceniem Runu/Eventu po clear, kolejkę nawigacji oraz widoczność/dostępność błędu w obu poziomach szczegółów.
+- Gdy odświeżenie staje się nawigacyjnie nieaktualne i repository kończy się wyjątkiem, ViewModel zachowuje nowszą nawigację oraz publikuje komunikat błędu; dodano deterministyczny test tej ścieżki.
 
 ## Zakres wyłączony
 
@@ -31,10 +32,9 @@ Nie dodano eksportu, rozbudowanych filtrów, nowych testów sieciowych, migracji
 ## Weryfikacja
 
 - `git diff --check`: PASS.
-- PR #14 został zweryfikowany dla remote tree `9501a071...` przez GitHub Actions CI #89 (run `34023996057`): PASS.
-- Artifact `test-dialer-debug-apk` ma ID `9986490363`.
-- Powyższy PASS dotyczy wyłącznie remote tree `9501a071...`; nie przypisuje się go zmianom naprawczym opisanym w tym uzupełnieniu.
-- Po tych lokalnych zmianach wymagane jest nowe CI dla nowego tree oraz ponowny odbiór findingów Sol. Do czasu tego przebiegu nie oznacza się bieżącego drzewa jako ponownie zweryfikowanego.
+- PR #14 został zweryfikowany dla finalnego remote tree przed ostatnią poprawką `f52eaee5903342a8d43dbc162530b7192f7a0291` (PR head `05886c0a18a7230932d7cdf740d4d31973c0b2c1`) przez GitHub Actions CI #90 (run `34025125406`): PASS.
+- Artifact `test-dialer-debug-apk` ma ID `9986840777` i dotyczy wyłącznie tego remote tree.
+- Lokalny commit z poprawką po CI #90 ma nowe drzewo; wymaga CI #91/nowego builda oraz ponownego odbioru findingów Sol. Nie przypisuje się CI #90 ani artifactu `9986840777` nowemu drzewu.
 - `./gradlew :app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem testów. Wrapper próbował pobrać Gradle 8.11.1, ale środowisko zwróciło `java.net.SocketException: Network is unreachable`.
 - Nie uruchamiano pełnego lokalnego buildu Androida.
 

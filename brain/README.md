@@ -32,4 +32,5 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - Czas monotoniczny nie jest trwałym znacznikiem i nie służy do porównań między restartami procesu.
 - UI jest budowane programowo w Android Views.
 - `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.
-- Po PR #14 remote tree `9501a071...` miał PASS w CI #89 (run `34023996057`) i artifact `9986490363`; lokalne poprawki po tej weryfikacji wymagają nowego CI i ponownego review.
+- Finalny remote tree PR #14 przed ostatnią lokalną poprawką to `f52eaee5903342a8d43dbc162530b7192f7a0291`, z headem PR `05886c0a18a7230932d7cdf740d4d31973c0b2c1`, CI #90 (run `34025125406`) PASS i artifactem `9986840777`.
+- Lokalny commit naprawczy po CI #90 zmienia tree; wymaga CI #91 (nowego builda) i ponownego odbioru. CI #90 nie jest przypisywane nowemu drzewu.

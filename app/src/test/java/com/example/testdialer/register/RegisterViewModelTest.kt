@@ -124,6 +124,27 @@ class RegisterViewModelTest {
     }
 
     @Test
+    fun `stale refresh preserves newer navigation and publishes repository error`() {
+        val executor = QueueExecutorService()
+        val repository = FakeRepository()
+        val viewModel = RegisterViewModel(repository, executor)
+
+        viewModel.selectRun(RunId("run-1"))
+        executor.runNext()
+        viewModel.selectEvent(EventId("event-1"))
+
+        viewModel.load()
+        viewModel.clearEvent()
+        repository.failListSummaries = true
+        executor.runNext()
+
+        assertEquals(RunId("run-1"), viewModel.state.value!!.selectedRun?.run?.id)
+        assertNull(viewModel.state.value!!.selectedEventId)
+        assertTrue(viewModel.state.value!!.error!!.contains("Nie udało się wczytać Rejestru"))
+        executor.shutdown()
+    }
+
+    @Test
     fun `stale run selection cannot restore a run cleared during the read`() {
         val executor = QueueExecutorService()
         val viewModel = RegisterViewModel(FakeRepository(), executor)
@@ -159,6 +180,7 @@ class RegisterViewModelTest {
 
     private class FakeRepository(private val empty: Boolean = false) : TestRunRepository {
         var listSummariesCalls = 0
+        var failListSummaries = false
 
         private val scenario = ScenarioDefinition(
             id = ScenarioId("register-test"),
@@ -198,6 +220,7 @@ class RegisterViewModelTest {
         override fun get(runId: RunId): StoredTestRun? = stored.takeUnless { empty || it.run.id != runId }
         override fun listSummaries(): List<TestRunSummary> {
             listSummariesCalls += 1
+            if (failListSummaries) error("repository unavailable")
             return if (empty) emptyList() else listOf(
                 TestRunSummary(
                     runId = stored.run.id,

@@ -123,9 +123,20 @@ class RegisterViewModel(
                     // Navigation state is newer than this read. Keep the
                     // refreshed list, but never replace the newer selection.
                     if (work.first is Request.Refresh) {
-                        result.getOrNull()?.let { refreshed ->
-                            currentState.copy(runs = refreshed.runs, busy = false)
-                        } ?: currentState.copy(busy = false)
+                        result.fold(
+                            onSuccess = { refreshed ->
+                                currentState.copy(runs = refreshed.runs, busy = false)
+                            },
+                            onFailure = { failure ->
+                                // Stale navigation must not hide a repository
+                                // failure: preserve the newer selection and
+                                // publish the error for the current screen.
+                                currentState.copy(
+                                    busy = false,
+                                    error = errorMessage(work.first, failure),
+                                )
+                            },
+                        )
                     } else {
                         currentState.copy(busy = false)
                     }

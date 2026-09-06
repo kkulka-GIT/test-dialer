@@ -22,13 +22,13 @@
 - `TestRunRecorder` pilnuje jednej aktywnej próby w jednym aktywnym kroku, zamykania prób przed krokiem i braku zmian po stanie terminalnym.
 - Okna korelacji CDR mają jawny margines przed i po zdarzeniu oraz bezpieczną obsługę granic Long.
 - [SUPERSEDED by UIR-02] Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`; zapis zachowany jako decyzja historyczna.
-- W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`.
+- [SUPERSEDED by UIR-03, F05 i F06] W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`; zapis zachowany jako decyzja historyczna.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL`; aplikacja nie wykonuje połączenia automatycznie.
 - Obecny wynik Voice jest ręczną deklaracją użytkownika.
 - Aplikacja nie potwierdza technicznie zestawienia połączenia.
 - Istniejący `VoiceResultStore`, jego JSON i zapisane rekordy pozostają bez zmian.
 - Jednokierunkowy adapter legacy zachowuje stare wartości jako neutralne kody `LEGACY_SUCCESS`, `LEGACY_FAILURE` i `NOT_VERIFIED`, bez interpretacji technicznego stanu połączenia.
-- `Data` pozostaje placeholderem; `SMS` używa kontrolowanego scenariusza Guided SMS.
+- [SUPERSEDED by F06] `Data` pozostaje placeholderem; `SMS` używa kontrolowanego scenariusza Guided SMS; zapis zachowany jako decyzja historyczna.
 - UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
 - Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.
 - GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.

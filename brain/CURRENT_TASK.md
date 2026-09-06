@@ -1,6 +1,6 @@
 # Current Task
 
-Status: REVIEW-FIXES IMPLEMENTED LOCALLY — NEW CI/RE-REVIEW PENDING
+Status: FINAL SOL-FIX IMPLEMENTED LOCALLY — CI #91/RE-REVIEW PENDING
 
 Feature: UIR-05 — Run/Event register
 
@@ -27,10 +27,10 @@ Base:
 
 Verification:
 - `git diff --check`: PASS.
-- PR #14 / remote tree `9501a071...`: CI #89 (run `34023996057`) PASS; artifact `test-dialer-debug-apk`, ID `9986490363`.
-- Ten PASS dotyczy wyłącznie remote tree sprzed lokalnych poprawek i nie jest dowodem dla bieżącego drzewa.
+- PR #14 / finalny remote tree przed ostatnią poprawką: `f52eaee5903342a8d43dbc162530b7192f7a0291`, PR head `05886c0a18a7230932d7cdf740d4d31973c0b2c1`; CI #90 (run `34025125406`) PASS; artifact `test-dialer-debug-apk`, ID `9986840777`.
+- Ten PASS dotyczy wyłącznie remote tree `f52eaee5903342a8d43dbc162530b7192f7a0291`; lokalny commit po CI #90 wymaga CI #91/nowego builda i nie dziedziczy tego wyniku.
 - Lokalne celowane `:app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem przez brak dystrybucji Gradle i `Network is unreachable`.
-- Po lokalnych poprawkach konieczne są nowe CI oraz ponowny odbiór findingów Sol.
+- Po ostatniej lokalnej poprawce konieczne są CI #91 (nowy build) oraz ponowny odbiór findingów Sol.
 
 ## Poprzedni etap UIR-04
 
