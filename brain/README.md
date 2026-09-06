@@ -32,13 +32,14 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - Czas monotoniczny nie jest trwałym znacznikiem i nie służy do porównań między restartami procesu.
 - UI jest budowane programowo w Android Views.
 - `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.
-- PR #14 ma potwierdzony head `efa199277e2dadaace5185990d06e91eaf4e32f0` i tree `0601804b44198b58c70e16fd46ea722a440dbe4e`.
-- CI #91 (run `34025599732`) zakończyło wszystkie kroki statusem `success` i `PASS`; artefakt APK `test-dialer-debug-apk` ma ID `9986983362`.
-- Kod oraz końcowy odbiór findingów Sol mają status `PASS`. Dokumentacja po tej weryfikacji jest lokalnym domknięciem i po jej publikacji wymaga finalnego CI; wynik CI #91 nie jest przypisywany przyszłemu commitowi dokumentacyjnemu.
+- PR #14 został squash-merged do `main`; aktualny commit `20e36eba94a90f330736c0fe788162affa0357a6`.
+- Main CI #93 (run `34026128334`) zakończyło wszystkie kroki statusem `success` i `PASS`.
+- Artefakt APK `test-dialer-debug-apk` ma ID `9987140914` i digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
+- UIR-02–UIR-05 są zakończone. Brak aktywnego zadania; następny feature wymaga nowej decyzji produktowej.
 
 ## Obserwowalność pracy
 
 - Luna: implementacja UIR-05, poprawki po uwagach oraz rutynowy przegląd dokumentacji i stanu.
-- Sol: jedna końcowa bramka odbioru oraz celowane ponowne sprawdzenie findingów po poprawkach.
+- Sol: jedna końcowa bramka/re-review findingów po poprawkach.
 - Czas pracy, koszt i procentowy udział modeli: `UNKNOWN` — brak wiarygodnych danych pomiarowych w repozytorium.
 - Rework obejmował poprawki rejestru i jego odświeżania/nawigacji oraz późniejsze celowane poprawki po review; nie przypisuje się mu nieudokumentowanych metryk.

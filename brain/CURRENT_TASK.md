@@ -1,6 +1,6 @@
 # Current Task
 
-Status: DOCS FINAL CLOSURE LOCALLY — READY FOR FINAL CI AND MERGE
+Status: MILESTONE UIR-02–UIR-05 COMPLETED
 
 Feature: UIR-05 — Run/Event register
 
@@ -20,18 +20,22 @@ Out of scope:
 - Usuwanie lub migracja `VoiceResultStore`.
 
 Branch:
-`feature/uir-05-run-event-register`
+`main` (po scaleniu PR #14)
 
-Base:
-`d398eaf27c23ea5ff30ea4ab5fa43d7a5d6c258a`
+Main commit po merge:
+`20e36eba94a90f330736c0fe788162affa0357a6`
 
 Verification:
 - `git diff --check`: PASS.
-- PR #14 head: `efa199277e2dadaace5185990d06e91eaf4e32f0`; tree: `0601804b44198b58c70e16fd46ea722a440dbe4e`.
-- CI #91 (run `34025599732`): `PASS`; wszystkie kroki zakończone `success`; artifact `test-dialer-debug-apk`, ID `9986983362`.
+- PR #14: squash merged.
+- Main CI #93 (run `34026128334`): `PASS`; wszystkie kroki zakończone `success`.
+- Main APK artifact `test-dialer-debug-apk`, ID `9987140914`, digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
 - Kod i końcowy odbiór findingów Sol: `PASS`.
-- Dokumentacja jest teraz domykana lokalnie. Po jej publikacji należy wykonać finalne CI dla nowego docs commit, a następnie merge; CI #91 nie jest przypisywane temu przyszłemu commitowi.
 - Lokalne celowane `:app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem przez brak dystrybucji Gradle i `Network is unreachable`.
+
+## Następny krok
+
+Milestone UIR-02–UIR-05 jest zakończony. Brak aktywnego zadania; następny feature wymaga nowej decyzji produktowej.
 
 ## Obserwowalność
 

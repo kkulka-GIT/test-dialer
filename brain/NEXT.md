@@ -1,15 +1,11 @@
 # Co robimy teraz
 
-UIR-05 jest zaimplementowany na `feature/uir-05-run-event-register` od bazy `d398eaf27c23ea5ff30ea4ab5fa43d7a5d6c258a`. PR #14 head `efa199277e2dadaace5185990d06e91eaf4e32f0` ma tree `0601804b44198b58c70e16fd46ea722a440dbe4e`; CI #91 (run `34025599732`) zakończyło wszystkie kroki `success`/`PASS`, a artifact ma ID `9986983362`. Kod i końcowy odbiór Sol są `PASS`.
+Milestone UIR-02–UIR-05 jest zakończony. PR #14 został squash-merged do `main` w commicie `20e36eba94a90f330736c0fe788162affa0357a6`. Main CI #93 (run `34026128334`) zakończyło wszystkie kroki `success`/`PASS`. APK artifact `test-dialer-debug-apk` ma ID `9987140914` i digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
 
-Nadzorca powinien:
+Brak aktywnego zadania. Następny feature wymaga nowej decyzji produktowej.
 
-- opublikować niniejsze domknięcie dokumentacji;
-- uruchomić finalne CI dla nowego commit dokumentacyjnego (lokalnie Gradle jest niedostępny);
-- po PASS wykonać merge zgodnie z workflow.
-
-CI #91 dotyczy obecnego drzewa kodu i nie jest przypisywane przyszłemu commitowi dokumentacyjnemu.
+Weryfikacja merge i CI dla aktualnego `main` są zakończone.
 
 Obserwowalność: Luna wykonała implementację, poprawki i rutynowy review; Sol wykonał jedną końcową bramkę oraz celowane re-review. Czasy i koszt pozostają `UNKNOWN`; nie dopisano procentów ani nieudokumentowanego reworku.
 
-Nie wykonywać migracji Room, usuwania legacy Voice ani pushu z tego etapu bez osobnej decyzji.
+Nie wykonywać migracji Room ani usuwania legacy Voice bez osobnej decyzji.

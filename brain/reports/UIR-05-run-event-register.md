@@ -32,11 +32,11 @@ Nie dodano eksportu, rozbudowanych filtrów, nowych testów sieciowych, migracji
 ## Weryfikacja
 
 - `git diff --check`: PASS.
-- PR #14 head `efa199277e2dadaace5185990d06e91eaf4e32f0` wskazuje tree `0601804b44198b58c70e16fd46ea722a440dbe4e`.
-- GitHub Actions CI #91 (run `34025599732`) dla tego drzewa zakończyło wszystkie kroki statusem `success`: `PASS`.
-- Artifact `test-dialer-debug-apk` ma ID `9986983362` i dotyczy tego zweryfikowanego drzewa.
+- PR #14 został squash-merged do `main` jako commit `20e36eba94a90f330736c0fe788162affa0357a6`.
+- Main GitHub Actions CI #93 (run `34026128334`) zakończyło wszystkie kroki statusem `success`: `PASS`.
+- Main artifact `test-dialer-debug-apk` ma ID `9987140914` i digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
 - Kod oraz końcowy odbiór findingów Sol: `PASS`.
-- Po publikacji aktualizacji dokumentacji trzeba uruchomić finalne CI dla nowego docs commit i dopiero potem wykonać merge. CI #91 i artifact `9986983362` nie są przypisywane przyszłemu commitowi dokumentacyjnemu.
+- Weryfikacja po merge dotyczy aktualnego `main`; nie ma oczekującego merge ani finalnego CI.
 - `./gradlew :app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem testów. Wrapper próbował pobrać Gradle 8.11.1, ale środowisko zwróciło `java.net.SocketException: Network is unreachable`.
 - Nie uruchamiano pełnego lokalnego buildu Androida.
 
@@ -50,3 +50,4 @@ Brak wymaganej decyzji produktowej. Jedyna istotna uwaga: aktualne dane legacy V
 - Sol: jedna końcowa bramka oraz celowane re-review findingów po poprawkach — końcowy odbiór `PASS`.
 - Rework: obejmował faktyczne poprawki rejestru, odświeżania i ochrony nawigacji oraz poprawki wynikające z review; brak podstaw do dalszego kwantyfikowania.
 - Czasy i koszt: `UNKNOWN`; repozytorium nie zawiera wiarygodnych pomiarów, więc nie podaje się procentów.
+- UIR-02–UIR-05 stanowią zamknięty milestone. Następny feature wymaga nowej decyzji produktowej.
