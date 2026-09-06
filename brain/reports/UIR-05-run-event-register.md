@@ -32,12 +32,21 @@ Nie dodano eksportu, rozbudowanych filtrów, nowych testów sieciowych, migracji
 ## Weryfikacja
 
 - `git diff --check`: PASS.
-- PR #14 został zweryfikowany dla finalnego remote tree przed ostatnią poprawką `f52eaee5903342a8d43dbc162530b7192f7a0291` (PR head `05886c0a18a7230932d7cdf740d4d31973c0b2c1`) przez GitHub Actions CI #90 (run `34025125406`): PASS.
-- Artifact `test-dialer-debug-apk` ma ID `9986840777` i dotyczy wyłącznie tego remote tree.
-- Lokalny commit z poprawką po CI #90 ma nowe drzewo; wymaga CI #91/nowego builda oraz ponownego odbioru findingów Sol. Nie przypisuje się CI #90 ani artifactu `9986840777` nowemu drzewu.
+- PR #14 head `efa199277e2dadaace5185990d06e91eaf4e32f0` wskazuje tree `0601804b44198b58c70e16fd46ea722a440dbe4e`.
+- GitHub Actions CI #91 (run `34025599732`) dla tego drzewa zakończyło wszystkie kroki statusem `success`: `PASS`.
+- Artifact `test-dialer-debug-apk` ma ID `9986983362` i dotyczy tego zweryfikowanego drzewa.
+- Kod oraz końcowy odbiór findingów Sol: `PASS`.
+- Po publikacji aktualizacji dokumentacji trzeba uruchomić finalne CI dla nowego docs commit i dopiero potem wykonać merge. CI #91 i artifact `9986983362` nie są przypisywane przyszłemu commitowi dokumentacyjnemu.
 - `./gradlew :app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem testów. Wrapper próbował pobrać Gradle 8.11.1, ale środowisko zwróciło `java.net.SocketException: Network is unreachable`.
 - Nie uruchamiano pełnego lokalnego buildu Androida.
 
 ## Decyzja / ryzyko
 
 Brak wymaganej decyzji produktowej. Jedyna istotna uwaga: aktualne dane legacy Voice są celowo widoczne osobno; ich późniejsze połączenie z Run/Event wymagałoby jawnej decyzji o mapowaniu danych, więc UIR-05 nie wykonuje ryzykownej migracji.
+
+## Obserwowalność pracy
+
+- Luna: implementacja UIR-05, poprawki po review oraz rutynowy przegląd końcowego stanu.
+- Sol: jedna końcowa bramka oraz celowane re-review findingów po poprawkach — końcowy odbiór `PASS`.
+- Rework: obejmował faktyczne poprawki rejestru, odświeżania i ochrony nawigacji oraz poprawki wynikające z review; brak podstaw do dalszego kwantyfikowania.
+- Czasy i koszt: `UNKNOWN`; repozytorium nie zawiera wiarygodnych pomiarów, więc nie podaje się procentów.

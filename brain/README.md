@@ -32,5 +32,13 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - Czas monotoniczny nie jest trwałym znacznikiem i nie służy do porównań między restartami procesu.
 - UI jest budowane programowo w Android Views.
 - `/brain` opisuje bieżący stan projektu i nie zawiera założeń bez potwierdzenia w kodzie lub decyzjach.
-- Finalny remote tree PR #14 przed ostatnią lokalną poprawką to `f52eaee5903342a8d43dbc162530b7192f7a0291`, z headem PR `05886c0a18a7230932d7cdf740d4d31973c0b2c1`, CI #90 (run `34025125406`) PASS i artifactem `9986840777`.
-- Lokalny commit naprawczy po CI #90 zmienia tree; wymaga CI #91 (nowego builda) i ponownego odbioru. CI #90 nie jest przypisywane nowemu drzewu.
+- PR #14 ma potwierdzony head `efa199277e2dadaace5185990d06e91eaf4e32f0` i tree `0601804b44198b58c70e16fd46ea722a440dbe4e`.
+- CI #91 (run `34025599732`) zakończyło wszystkie kroki statusem `success` i `PASS`; artefakt APK `test-dialer-debug-apk` ma ID `9986983362`.
+- Kod oraz końcowy odbiór findingów Sol mają status `PASS`. Dokumentacja po tej weryfikacji jest lokalnym domknięciem i po jej publikacji wymaga finalnego CI; wynik CI #91 nie jest przypisywany przyszłemu commitowi dokumentacyjnemu.
+
+## Obserwowalność pracy
+
+- Luna: implementacja UIR-05, poprawki po uwagach oraz rutynowy przegląd dokumentacji i stanu.
+- Sol: jedna końcowa bramka odbioru oraz celowane ponowne sprawdzenie findingów po poprawkach.
+- Czas pracy, koszt i procentowy udział modeli: `UNKNOWN` — brak wiarygodnych danych pomiarowych w repozytorium.
+- Rework obejmował poprawki rejestru i jego odświeżania/nawigacji oraz późniejsze celowane poprawki po review; nie przypisuje się mu nieudokumentowanych metryk.

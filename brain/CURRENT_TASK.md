@@ -1,6 +1,6 @@
 # Current Task
 
-Status: FINAL SOL-FIX IMPLEMENTED LOCALLY — CI #91/RE-REVIEW PENDING
+Status: DOCS FINAL CLOSURE LOCALLY — READY FOR FINAL CI AND MERGE
 
 Feature: UIR-05 — Run/Event register
 
@@ -27,10 +27,17 @@ Base:
 
 Verification:
 - `git diff --check`: PASS.
-- PR #14 / finalny remote tree przed ostatnią poprawką: `f52eaee5903342a8d43dbc162530b7192f7a0291`, PR head `05886c0a18a7230932d7cdf740d4d31973c0b2c1`; CI #90 (run `34025125406`) PASS; artifact `test-dialer-debug-apk`, ID `9986840777`.
-- Ten PASS dotyczy wyłącznie remote tree `f52eaee5903342a8d43dbc162530b7192f7a0291`; lokalny commit po CI #90 wymaga CI #91/nowego builda i nie dziedziczy tego wyniku.
+- PR #14 head: `efa199277e2dadaace5185990d06e91eaf4e32f0`; tree: `0601804b44198b58c70e16fd46ea722a440dbe4e`.
+- CI #91 (run `34025599732`): `PASS`; wszystkie kroki zakończone `success`; artifact `test-dialer-debug-apk`, ID `9986983362`.
+- Kod i końcowy odbiór findingów Sol: `PASS`.
+- Dokumentacja jest teraz domykana lokalnie. Po jej publikacji należy wykonać finalne CI dla nowego docs commit, a następnie merge; CI #91 nie jest przypisywane temu przyszłemu commitowi.
 - Lokalne celowane `:app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem przez brak dystrybucji Gradle i `Network is unreachable`.
-- Po ostatniej lokalnej poprawce konieczne są CI #91 (nowy build) oraz ponowny odbiór findingów Sol.
+
+## Obserwowalność
+
+- Luna: implementacja, poprawki i rutynowy przegląd UIR-05.
+- Sol: jedna końcowa bramka oraz celowane re-review findingów po poprawkach.
+- Czasy i koszt: `UNKNOWN`; brak wiarygodnych danych pomiarowych. Rework opisano wyłącznie na podstawie faktycznych poprawek i review.
 
 ## Poprzedni etap UIR-04
 
