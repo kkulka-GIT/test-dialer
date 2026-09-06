@@ -13,6 +13,7 @@ data class TestRunSummary(
     val startedAtMillis: Long,
     val completedAtMillis: Long?,
     val revision: Long,
+    val eventCount: Int = 0,
 )
 
 interface TestRunRepository {
@@ -63,8 +64,9 @@ class RoomTestRunRepository(
                 status = enumValues<TestRunStatus>().singleOrNull { it.name == run.status }
                     ?: throw IllegalArgumentException("Unknown run status: ${run.status}"),
                 startedAtMillis = run.startedAtMillis,
-                completedAtMillis = run.completedAtMillis,
                 revision = run.revision,
+                completedAtMillis = run.completedAtMillis,
+                eventCount = dao.eventCount(run.runId),
             )
         }
 }

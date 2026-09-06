@@ -10,6 +10,19 @@ import android.widget.ScrollView
 import com.example.testdialer.ui.RunHomeView
 import com.example.testdialer.ui.SystemStatusStripView
 import com.example.testdialer.persistence.TestRunRepository
+import com.example.testdialer.persistence.StoredTestRun
+import com.example.testdialer.persistence.TestRunSummary
+import com.example.testdialer.domain.EventId
+import com.example.testdialer.domain.RunId
+import com.example.testdialer.domain.ScenarioDefinition
+import com.example.testdialer.domain.ScenarioId
+import com.example.testdialer.domain.ScenarioStepDefinition
+import com.example.testdialer.domain.StepId
+import com.example.testdialer.domain.TestAction
+import com.example.testdialer.domain.TestEvent
+import com.example.testdialer.domain.TestRun
+import com.example.testdialer.domain.TestRunStatus
+import com.example.testdialer.register.RegisterUiState
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -331,6 +344,129 @@ class MainActivitySmokeTest {
         assertNotNull(findButton(restored, restored.getString(R.string.run_add_test)))
     }
 
+    @Test
+    fun `register labels new Run history and separates legacy Voice records`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        setRegisterState(activity, RegisterUiState())
+        findButton(activity, activity.getString(R.string.nav_register)).performClick()
+        val text = collectText(activity.findViewById(android.R.id.content))
+
+        assertTrue(text.contains(activity.getString(R.string.register_runs_empty_title)))
+        assertTrue(text.contains(activity.getString(R.string.manual_history_title)))
+        assertTrue(text.contains(activity.getString(R.string.legacy_voice_history_title)))
+        assertTrue(text.contains(activity.getString(R.string.legacy_voice_history_description)))
+        assertTrue(text.indexOf(activity.getString(R.string.manual_history_title)) <
+            text.indexOf(activity.getString(R.string.legacy_voice_history_title)))
+    }
+
+    @Test
+    fun `register navigates from run list to event details and back`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val stored = sampleStoredRun()
+        setRegisterState(
+            activity,
+            RegisterUiState(
+                runs = listOf(TestRunSummary(
+                    stored.run.id,
+                    stored.scenario.name,
+                    1,
+                    TestRunStatus.CREATED,
+                    1L,
+                    null,
+                    0L,
+                    1,
+                )),
+            ),
+        )
+        findButton(activity, activity.getString(R.string.nav_register)).performClick()
+        findButton(activity, activity.getString(R.string.register_open_run)).performClick()
+        setRegisterState(activity, RegisterUiState(runs = listOf(), selectedRun = stored))
+        findButton(activity, activity.getString(R.string.register_open_event)).performClick()
+        setRegisterState(
+            activity,
+            RegisterUiState(selectedRun = stored, selectedEventId = EventId("event-1")),
+        )
+        val detailText = collectText(activity.findViewById(android.R.id.content))
+        assertTrue(detailText.contains(activity.getString(R.string.register_event_detail_title)))
+        assertTrue(detailText.contains("+48123"))
+        assertTrue(detailText.contains("event-1"))
+
+        findButton(activity, activity.getString(R.string.register_back_to_run)).performClick()
+        setRegisterState(activity, RegisterUiState(selectedRun = stored))
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.register_events_title),
+        ))
+    }
+
+    @Test
+    fun `register error remains visible and accessible in run and event details`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val stored = sampleStoredRun()
+        val error = "Błąd odświeżenia Rejestru"
+
+        setRegisterState(activity, RegisterUiState(selectedRun = stored, error = error))
+        var root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        assertTrue(collectText(root).contains(error))
+        assertTrue(descendants(root).any { it.contentDescription?.toString() == error })
+
+        setRegisterState(
+            activity,
+            RegisterUiState(
+                selectedRun = stored,
+                selectedEventId = EventId("event-1"),
+                error = error,
+            ),
+        )
+        root = activity.findViewById(android.R.id.content)
+        assertTrue(collectText(root).contains(error))
+        assertTrue(descendants(root).any { it.contentDescription?.toString() == error })
+    }
+
+    @Test
+    fun `system back ignores register selection outside register section`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val stored = sampleStoredRun()
+        setRegisterState(activity, RegisterUiState(selectedRun = stored))
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
+
+        activity.onBackPressedDispatcher.onBackPressed()
+
+        val state = MainActivity::class.java.getDeclaredField("registerState").apply {
+            isAccessible = true
+        }.get(activity) as RegisterUiState
+        assertEquals(stored.run.id, state.selectedRun?.run?.id)
+    }
+
+    @Test
+    fun `register detail survives rotation through retained view model state`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        findButton(activity, activity.getString(R.string.nav_register)).performClick()
+        val openRun = awaitButtonWithDescription(
+            activity,
+            activity.getString(
+                R.string.register_open_run_accessibility,
+                "Podstawowy test Voice / SMS / Data",
+            ),
+        )
+        openRun.performClick()
+        repeat(100) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            if (collectText(activity.findViewById(android.R.id.content)).contains(
+                    activity.getString(R.string.register_events_title),
+                )
+            ) return@repeat
+            Thread.sleep(10)
+        }
+        controller.configurationChange(Configuration())
+
+        val rotated = controller.get()
+        val text = collectText(rotated.findViewById(android.R.id.content))
+        assertTrue(text.contains(rotated.getString(R.string.register_events_title)))
+        assertTrue(text.contains(rotated.getString(R.string.register_back_to_runs)))
+    }
+
     private fun findButton(activity: MainActivity, text: String): Button {
         val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         return descendants(root).filterIsInstance<Button>().first { it.text.toString() == text }
@@ -377,6 +513,52 @@ class MainActivitySmokeTest {
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_network_label)))
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_cellular_label)))
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_wifi_label)))
+    }
+
+    private fun setRegisterState(activity: MainActivity, state: RegisterUiState) {
+        MainActivity::class.java.getDeclaredField("registerState").apply {
+            isAccessible = true
+            set(activity, state)
+        }
+        MainActivity::class.java.getDeclaredMethod("renderRegister").apply {
+            isAccessible = true
+            invoke(activity)
+        }
+    }
+
+    private fun sampleStoredRun(): StoredTestRun {
+        val scenario = ScenarioDefinition(
+            id = ScenarioId("register-test"),
+            version = 1,
+            name = "Register test",
+            steps = listOf(ScenarioStepDefinition(
+                id = StepId("step-1"),
+                order = 0,
+                title = "Voice",
+                instruction = "Record",
+                action = TestAction.Voice("+48123"),
+            )),
+        )
+        val runId = RunId("run-1")
+        val event = TestEvent(
+            id = EventId("event-1"),
+            runId = runId,
+            stepId = StepId("step-1"),
+            action = TestAction.Voice("+48123"),
+            occurredAtMillis = 1L,
+        )
+        return StoredTestRun(
+            scenario = scenario,
+            run = TestRun(
+                id = runId,
+                scenarioId = scenario.id,
+                scenarioVersion = 1,
+                status = TestRunStatus.CREATED,
+                startedAtMillis = 1L,
+                events = listOf(event),
+            ),
+            revision = 0L,
+        )
     }
 
     private fun descendants(root: android.view.View): Sequence<android.view.View> = sequence {

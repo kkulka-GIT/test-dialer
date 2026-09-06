@@ -21,3 +21,7 @@
 - UIR-03 został scalony do `main` jako `bfbec34fc49f880bc6d07b22488f41923573506d` po zielonym CI i niezależnym odbiorze.
 - UIR-04 przygotował zwarte wykonanie Voice/SMS/Data z widocznym kontekstem Run/Task/etap, rozwijanymi polami opcjonalnymi i zachowaniem edycji przy rotacji. Lokalny test Robolectric jest BLOCKED przed startem przez niedostępność pobrania Gradle; weryfikację przejmie CI po publikacji brancha.
 - Po niezależnym odbiorze UIR-04 zablokowano zmianę typu testu podczas niezakończonego SMS lub aktywnego Data oraz uzupełniono komunikaty TalkBack dla zwijanej opcjonalnej nazwy; dodano regresje obu zachowań.
+- UIR-05 dodał Room-backed listę Runów z nazwą Scenario, statusem, czasem startu i liczbą Eventów oraz nawigację do szczegółów Runu, listy Eventów i szczegółów Eventu.
+- Szczegóły Eventu pokazują typ usługi, czas, faktycznie użyte parametry, obserwację/wynik, Event ID, Run ID, Step ID i dane korelacyjne. Statusy są opisane tekstem, nie tylko kolorem.
+- Dodano `RegisterViewModel`, regresje listy/licznika, nawigacji i pustego Rejestru oraz zachowania widoku po odtworzeniu Activity. Legacy `VoiceResultStore` pozostał nietknięty w osobnej sekcji.
+- `git diff --check` zakończył się PASS. Celowane testy Gradle nie wystartowały: wrapper wymaga pobrania Gradle 8.11.1, a środowisko zwróciło `Network is unreachable`.

@@ -1,11 +1,47 @@
 # Current Task
 
-Status: IMPLEMENTATION AND REVIEW COMPLETE — DOCS PUBLICATION PENDING
+Status: DOCS FINAL CLOSURE LOCALLY — READY FOR FINAL CI AND MERGE
 
-Feature: UIR-04 — Compact execution screens
+Feature: UIR-05 — Run/Event register
 
 Goal:
-Uprościć wykonanie Voice, SMS i Data bez zmiany kontraktów wykonawczych Active Runu.
+ Zbudować spójny, czytelny Rejestr Runów i Eventów bez naruszania istniejącego storage legacy Voice.
+
+Scope:
+- Lista Room-backed Runów z nazwą Scenario, czasem, statusem i liczbą Eventów.
+- Nawigacja lista Runów → szczegóły Runu → lista Eventów → szczegóły Eventu.
+- Faktycznie użyte parametry, obserwacja/wynik, identyfikatory i dane korelacyjne.
+- Dostępność TalkBack, etykiety przycisków, back navigation i odtworzenie szczegółów po rotacji.
+- Osobna, wyjaśniona sekcja historycznych wyników legacy Voice.
+- Minimalne rozszerzenie repository API o eventCount oraz read-only RegisterViewModel.
+
+Out of scope:
+- Eksport, rozbudowane filtry, nowe testy sieciowe, Compose/rewrite i migracja Room.
+- Usuwanie lub migracja `VoiceResultStore`.
+
+Branch:
+`feature/uir-05-run-event-register`
+
+Base:
+`d398eaf27c23ea5ff30ea4ab5fa43d7a5d6c258a`
+
+Verification:
+- `git diff --check`: PASS.
+- PR #14 head: `efa199277e2dadaace5185990d06e91eaf4e32f0`; tree: `0601804b44198b58c70e16fd46ea722a440dbe4e`.
+- CI #91 (run `34025599732`): `PASS`; wszystkie kroki zakończone `success`; artifact `test-dialer-debug-apk`, ID `9986983362`.
+- Kod i końcowy odbiór findingów Sol: `PASS`.
+- Dokumentacja jest teraz domykana lokalnie. Po jej publikacji należy wykonać finalne CI dla nowego docs commit, a następnie merge; CI #91 nie jest przypisywane temu przyszłemu commitowi.
+- Lokalne celowane `:app:testDebugUnitTest --offline --tests com.example.testdialer.register.RegisterViewModelTest --tests com.example.testdialer.MainActivitySmokeTest`: BLOCKED przed uruchomieniem przez brak dystrybucji Gradle i `Network is unreachable`.
+
+## Obserwowalność
+
+- Luna: implementacja, poprawki i rutynowy przegląd UIR-05.
+- Sol: jedna końcowa bramka oraz celowane re-review findingów po poprawkach.
+- Czasy i koszt: `UNKNOWN`; brak wiarygodnych danych pomiarowych. Rework opisano wyłącznie na podstawie faktycznych poprawek i review.
+
+## Poprzedni etap UIR-04
+
+Zakres UIR-04 pozostaje zachowany poniżej jako historia poprzedniego etapu:
 
 Scope:
 - Widoczny kontekst nazwy/ID Runu, Tasku i etapu wykonania.
