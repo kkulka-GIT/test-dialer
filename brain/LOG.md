@@ -25,3 +25,7 @@
 - Szczegóły Eventu pokazują typ usługi, czas, faktycznie użyte parametry, obserwację/wynik, Event ID, Run ID, Step ID i dane korelacyjne. Statusy są opisane tekstem, nie tylko kolorem.
 - Dodano `RegisterViewModel`, regresje listy/licznika, nawigacji i pustego Rejestru oraz zachowania widoku po odtworzeniu Activity. Legacy `VoiceResultStore` pozostał nietknięty w osobnej sekcji.
 - `git diff --check` zakończył się PASS. Celowane testy Gradle nie wystartowały: wrapper wymaga pobrania Gradle 8.11.1, a środowisko zwróciło `Network is unreachable`.
+- PR #14 został squash-merged do `main` jako `20e36eba94a90f330736c0fe788162affa0357a6`.
+- Main CI #93 (run `34026128334`) zakończyło wszystkie kroki statusem `success`/`PASS`.
+- Main APK artifact `test-dialer-debug-apk` (ID `9987140914`) ma digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
+- UIR-02–UIR-05 zamknięto. Brak aktywnego zadania; kolejny feature wymaga nowej decyzji produktowej.
