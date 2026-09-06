@@ -21,7 +21,7 @@
 - Start i koniec runu, kroku oraz próby są osobnymi wpisami osi, a `ACTION_RECORDED` wskazuje właściwy `TestEvent`.
 - `TestRunRecorder` pilnuje jednej aktywnej próby w jednym aktywnym kroku, zamykania prób przed krokiem i braku zmian po stanie terminalnym.
 - Okna korelacji CDR mają jawny margines przed i po zdarzeniu oraz bezpieczną obsługę granic Long.
-- Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`.
+- [SUPERSEDED by UIR-02] Główna nawigacja aplikacji to `Status` / `Test` / `Rejestr`; zapis zachowany jako decyzja historyczna.
 - W obecnym UI aktywny scenariusz produkcyjny to tylko `Voice`.
 - `Voice` otwiera systemowy dialer przez `ACTION_DIAL`; aplikacja nie wykonuje połączenia automatycznie.
 - Obecny wynik Voice jest ręczną deklaracją użytkownika.
@@ -82,5 +82,8 @@
 - UIR-05 traktuje Room-backed `TestRun` jako jedyne źródło nowego Rejestru: lista pokazuje Runy, a szczegóły prowadzą do Eventów i ich danych korelacyjnych.
 - `TestRunSummary.eventCount` jest wyliczany z istniejących Eventów DAO; schemat Room i dane historyczne nie są migrowane.
 - Rejestr nawigacyjny jest read-only i asynchroniczny (`RegisterViewModel`); wybór Runu/Eventu jest stanem UI zachowywanym przez ViewModel podczas rotacji.
+- UIR-05 po recenzji Sol serializuje odczyty Rejestru, scala odświeżenia zgłoszone podczas busy i odrzuca wyłącznie nieaktualną część wyniku, która mogłaby nadpisać nowszą nawigację (`clearRun`, `clearEvent` albo wybór).
+- Systemowy Back interpretuje stan wyboru Rejestru wyłącznie w sekcji `REGISTER`; w `TEST` nie czyści stanu Rejestru.
+- Błąd Rejestru jest widoczny także na ekranie szczegółów Runu/Eventu i ma jawną treść oraz opis dla TalkBack.
 - `VoiceResultStore` pozostaje osobnym storage legacy. Wygaszanie legacy polega wyłącznie na odseparowanej sekcji z jasnym wyjaśnieniem, bez usuwania ani migracji rekordów.
 - Parametry wymagane są widoczne bezpośrednio, opcjonalna nazwa testu jest domyślnie zwinięta, a edytowane drafty są zachowywane przez `savedInstanceState` podczas rotacji.

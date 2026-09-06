@@ -238,9 +238,9 @@ class MainActivity : ComponentActivity() {
             renderRegister()
         }
         onBackPressedDispatcher.addCallback(this) {
-            if (registerState.selectedEventId != null) {
+            if (currentSection == AppSection.REGISTER && registerState.selectedEventId != null) {
                 registerViewModel.clearEvent()
-            } else if (registerState.selectedRun != null) {
+            } else if (currentSection == AppSection.REGISTER && registerState.selectedRun != null) {
                 registerViewModel.clearRun()
             } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
@@ -711,6 +711,10 @@ class MainActivity : ComponentActivity() {
             } else {
                 registerListHost.addView(createRunDetail(selected))
             }
+            registerState.error?.let { error ->
+                registerListHost.addView(spaceVertical(dimen(12)))
+                registerListHost.addView(createRegisterError(error))
+            }
             return
         }
 
@@ -772,6 +776,9 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createRegisterError(message: String): View = createCard {
+        isFocusable = true
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+        contentDescription = message
         addView(createStatusText(message).apply {
             setTextColor(ColorPalette.bad)
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE

@@ -63,7 +63,103 @@ class RegisterViewModelTest {
         executor.shutdown()
     }
 
+    @Test
+    fun `refresh requested while busy is coalesced and executed after current read`() {
+        val repository = FakeRepository()
+        val executor = QueueExecutorService()
+        val viewModel = RegisterViewModel(repository, executor)
+
+        viewModel.load()
+        viewModel.load()
+        viewModel.load()
+
+        assertEquals(1, executor.size())
+        executor.runNext()
+        assertEquals(1, repository.listSummariesCalls)
+        assertEquals(1, executor.size())
+
+        executor.runNext()
+        assertEquals(2, repository.listSummariesCalls)
+        assertTrue(!viewModel.state.value!!.busy)
+        executor.shutdown()
+    }
+
+    @Test
+    fun `stale refresh cannot restore a run cleared during the read`() {
+        val executor = QueueExecutorService()
+        val viewModel = RegisterViewModel(FakeRepository(), executor)
+
+        viewModel.selectRun(RunId("run-1"))
+        executor.runNext()
+        assertEquals(RunId("run-1"), viewModel.state.value!!.selectedRun?.run?.id)
+
+        viewModel.load()
+        viewModel.clearRun()
+        executor.runNext()
+
+        assertNull(viewModel.state.value!!.selectedRun)
+        assertNull(viewModel.state.value!!.selectedEventId)
+        assertTrue(!viewModel.state.value!!.busy)
+        executor.shutdown()
+    }
+
+    @Test
+    fun `stale refresh cannot restore an event cleared during the read`() {
+        val executor = QueueExecutorService()
+        val viewModel = RegisterViewModel(FakeRepository(), executor)
+
+        viewModel.selectRun(RunId("run-1"))
+        executor.runNext()
+        viewModel.selectEvent(EventId("event-1"))
+        assertEquals(EventId("event-1"), viewModel.state.value!!.selectedEventId)
+
+        viewModel.load()
+        viewModel.clearEvent()
+        executor.runNext()
+
+        assertEquals(RunId("run-1"), viewModel.state.value!!.selectedRun?.run?.id)
+        assertNull(viewModel.state.value!!.selectedEventId)
+        assertTrue(!viewModel.state.value!!.busy)
+        executor.shutdown()
+    }
+
+    @Test
+    fun `stale run selection cannot restore a run cleared during the read`() {
+        val executor = QueueExecutorService()
+        val viewModel = RegisterViewModel(FakeRepository(), executor)
+
+        viewModel.selectRun(RunId("run-1"))
+        viewModel.clearRun()
+        executor.runNext()
+
+        assertNull(viewModel.state.value!!.selectedRun)
+        assertNull(viewModel.state.value!!.selectedEventId)
+        assertTrue(!viewModel.state.value!!.busy)
+        executor.shutdown()
+    }
+
+    @Test
+    fun `navigation requested while busy is processed after the stale read`() {
+        val executor = QueueExecutorService()
+        val viewModel = RegisterViewModel(FakeRepository(), executor)
+
+        viewModel.load()
+        viewModel.selectRun(RunId("run-1"))
+        assertEquals(1, executor.size())
+
+        executor.runNext()
+        assertEquals(1, executor.size())
+        executor.runNext()
+
+        assertEquals(RunId("run-1"), viewModel.state.value!!.selectedRun?.run?.id)
+        assertNull(viewModel.state.value!!.selectedEventId)
+        assertTrue(!viewModel.state.value!!.busy)
+        executor.shutdown()
+    }
+
     private class FakeRepository(private val empty: Boolean = false) : TestRunRepository {
+        var listSummariesCalls = 0
+
         private val scenario = ScenarioDefinition(
             id = ScenarioId("register-test"),
             version = 1,
@@ -100,18 +196,21 @@ class RegisterViewModelTest {
 
         override fun saveSnapshot(scenario: ScenarioDefinition, run: TestRun, expectedRevision: Long?) = stored
         override fun get(runId: RunId): StoredTestRun? = stored.takeUnless { empty || it.run.id != runId }
-        override fun listSummaries(): List<TestRunSummary> = if (empty) emptyList() else listOf(
-            TestRunSummary(
-                runId = stored.run.id,
-                scenarioName = scenario.name,
-                scenarioVersion = 1,
-                status = TestRunStatus.CREATED,
-                startedAtMillis = 1L,
-                completedAtMillis = null,
-                revision = 0L,
-                eventCount = 1,
-            ),
-        )
+        override fun listSummaries(): List<TestRunSummary> {
+            listSummariesCalls += 1
+            return if (empty) emptyList() else listOf(
+                TestRunSummary(
+                    runId = stored.run.id,
+                    scenarioName = scenario.name,
+                    scenarioVersion = 1,
+                    status = TestRunStatus.CREATED,
+                    startedAtMillis = 1L,
+                    completedAtMillis = null,
+                    revision = 0L,
+                    eventCount = 1,
+                ),
+            )
+        }
     }
 
     private class QueueExecutorService : AbstractExecutorService() {
@@ -119,6 +218,7 @@ class RegisterViewModelTest {
         private var stopped = false
         override fun execute(command: Runnable) { tasks.addLast(command) }
         fun runNext() = tasks.removeFirst().run()
+        fun size() = tasks.size
         override fun shutdown() { stopped = true }
         override fun shutdownNow(): MutableList<Runnable> = tasks.toMutableList().also { tasks.clear(); stopped = true }
         override fun isShutdown() = stopped

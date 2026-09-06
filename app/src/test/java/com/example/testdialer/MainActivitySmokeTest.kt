@@ -399,6 +399,45 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `register error remains visible and accessible in run and event details`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val stored = sampleStoredRun()
+        val error = "Błąd odświeżenia Rejestru"
+
+        setRegisterState(activity, RegisterUiState(selectedRun = stored, error = error))
+        var root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        assertTrue(collectText(root).contains(error))
+        assertTrue(descendants(root).any { it.contentDescription?.toString() == error })
+
+        setRegisterState(
+            activity,
+            RegisterUiState(
+                selectedRun = stored,
+                selectedEventId = EventId("event-1"),
+                error = error,
+            ),
+        )
+        root = activity.findViewById(android.R.id.content)
+        assertTrue(collectText(root).contains(error))
+        assertTrue(descendants(root).any { it.contentDescription?.toString() == error })
+    }
+
+    @Test
+    fun `system back ignores register selection outside register section`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val stored = sampleStoredRun()
+        setRegisterState(activity, RegisterUiState(selectedRun = stored))
+        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
+
+        activity.onBackPressedDispatcher.onBackPressed()
+
+        val state = MainActivity::class.java.getDeclaredField("registerState").apply {
+            isAccessible = true
+        }.get(activity) as RegisterUiState
+        assertEquals(stored.run.id, state.selectedRun?.run?.id)
+    }
+
+    @Test
     fun `register detail survives rotation through retained view model state`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
