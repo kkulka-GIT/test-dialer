@@ -63,3 +63,13 @@ jobs:
           name: test-dialer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Build side-by-side preview APK
+        run: ./gradlew assemblePreview
+
+      - name: Upload preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-dialer-preview-apk
+          path: app/build/outputs/apk/preview/app-preview.apk
+          if-no-files-found: error

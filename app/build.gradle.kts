@@ -21,6 +21,15 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    buildTypes {
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            resValue("string", "app_name", "Test Dialer Preview")
+            matchingFallbacks += listOf("debug")
+        }
+    }
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
