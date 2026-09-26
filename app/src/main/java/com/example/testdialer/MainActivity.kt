@@ -1993,11 +1993,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun pillBackground(color: Int): GradientDrawable {
-        return GradientDrawable().apply {
+    private fun pillBackground(color: Int): android.graphics.drawable.Drawable {
+        val shape = GradientDrawable().apply {
             cornerRadius = dimen(12).toFloat()
             setColor(color)
         }
+        return android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(0x33000000), shape, null)
     }
 
     private fun dimen(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()

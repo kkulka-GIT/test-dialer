@@ -29,3 +29,4 @@
 - Main CI #93 (run `34026128334`) zakończyło wszystkie kroki statusem `success`/`PASS`.
 - Main APK artifact `test-dialer-debug-apk` (ID `9987140914`) ma digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
 - UIR-02–UIR-05 zamknięto. Brak aktywnego zadania; kolejny feature wymaga nowej decyzji produktowej.
+- 2026-09-26: PR #16 dodaje JSON/TXT, schowek i systemowy share, powtórzenie parametrów Eventu oraz postęp Runu i poprawki UI. CI #96 ujawniło niedostępny pakiet SDK tools przed kompilacją; konfigurację poprawiono. Weryfikacja kolejnego checkpointu trwa.

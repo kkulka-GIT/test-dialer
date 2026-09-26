@@ -18,10 +18,10 @@
     <string name="test_title">Test</string>
     <string name="test_description">Wybierz typ testu i uruchom odpowiedni scenariusz.</string>
     <string name="run_home_title">Test Dialer</string>
-    <string name="run_home_description">Run i testy ratingowe</string>
+    <string name="run_home_description">Twoje testy sieci, w jednym miejscu</string>
     <string name="run_empty_title">Brak aktywnego Run</string>
     <string name="run_empty_description">Wybierz Voice, SMS lub Data poniżej. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
-    <string name="run_start_description">Rozpocznij pusty Run albo wybierz lokalne Scenario. Run pozostanie głównym kontekstem kolejnych testów.</string>
+    <string name="run_start_description">Nazwij sesję i rozpocznij własny zestaw testów lub skorzystaj z gotowego scenariusza.</string>
     <string name="run_name_hint">Nazwa Runu (opcjonalna)</string>
     <string name="run_start_empty">Rozpocznij pusty Run</string>
     <string name="run_start_scenario">Rozpocznij Scenario Voice / SMS / Data</string>
@@ -38,7 +38,7 @@
     <string name="test_already_in_progress">Najpierw zakończ trwający test.</string>
     <string name="task_opened_announcement">Otwarto test %1$s dla wybranego Tasku.</string>
     <string name="run_add_test">Dodaj test</string>
-    <string name="run_tasks_title">Tasks</string>
+    <string name="run_tasks_title">Zadania</string>
     <string name="run_tasks_description">Wybierz Voice, SMS lub Data.</string>
     <string name="run_tasks_announcement">Sekcja Tasks. Wybierz typ testu.</string>
     <string name="test_selector_title">Wybór testu</string>

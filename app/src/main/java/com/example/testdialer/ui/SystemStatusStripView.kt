@@ -58,7 +58,7 @@ internal class SystemStatusStripView(
     }
 
     private fun createBadge(symbol: String, label: String): LinearLayout = LinearLayout(context).apply {
-        orientation = HORIZONTAL
+        orientation = VERTICAL
         gravity = Gravity.CENTER
         minimumHeight = dp(36)
         setPadding(dp(6), dp(4), dp(6), dp(4))
@@ -71,7 +71,8 @@ internal class SystemStatusStripView(
             setTextColor(TEXT)
         })
         addView(TextView(context).apply {
-            text = " $label"
+            text = label
+            gravity = Gravity.CENTER
             textSize = 11f
             setTextColor(TEXT)
         })
