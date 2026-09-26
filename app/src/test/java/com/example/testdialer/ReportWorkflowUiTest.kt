@@ -77,6 +77,23 @@ class ReportWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `large font keeps action labels within button bounds`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val config = Configuration(controller.get().resources.configuration).apply { fontScale = 1.6f }
+        controller.configurationChange(config)
+        val activity = controller.get()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        capture(activity, "04-home-large-font")
+        views(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+            .filter { it.isShown && it.width > 0 }.forEach { button ->
+                val layout = button.layout
+                if (layout != null && layout.lineCount > 0) {
+                    assertTrue("Clipped action: ${button.text}", layout.getLineBottom(layout.lineCount - 1) <= button.height - button.compoundPaddingTop - button.compoundPaddingBottom)
+                }
+            }
+        controller.pause().stop().destroy()
+    }
+
     private fun capture(activity: MainActivity, name: String) {
         val root = activity.findViewById<ViewGroup>(android.R.id.content)
         root.measure(View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))

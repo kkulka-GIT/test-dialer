@@ -56,6 +56,35 @@ class RunReportTest {
         assertFalse(text.contains("PASS"))
     }
 
+    @Test fun `JSON retains timeline order attempt links and all service variants`() {
+        val scenario = ScenarioDefinition(ScenarioId("timeline"), 2, "All services", steps = listOf(
+            ScenarioStepDefinition(StepId("v"), 0, "Voice", "Dial", TestAction.Voice("123")),
+            ScenarioStepDefinition(StepId("d"), 1, "Data", "Download", TestAction.Data("https://example.com/test")),
+        ))
+        val recorder = com.example.testdialer.domain.execution.TestRunRecorder.start(scenario)
+        scenario.steps.forEach { step ->
+            recorder.startStep(step.id)
+            recorder.startAttempt()
+            recorder.recordEvent()
+            recorder.finishAttempt()
+            recorder.finishStep()
+        }
+        val run = recorder.complete()
+        val exported = JSONObject(RunReportFormatter.json(StoredTestRun(scenario, run, 8))).getJSONObject("run")
+        val timeline = exported.getJSONArray("timeline")
+        assertEquals(run.timeline.size, timeline.length())
+        run.timeline.forEachIndexed { index, entry ->
+            val item = timeline.getJSONObject(index)
+            assertEquals(entry.sequenceNumber, item.getLong("sequenceNumber"))
+            assertEquals(entry.capturedAt.epochMillis, item.getLong("epochMillis"))
+            assertEquals(entry.capturedAt.monotonicNanos, item.getLong("monotonicNanos"))
+            entry.attemptId?.let { assertEquals(it.value, item.getString("attemptId")) }
+            entry.relatedEventId?.let { assertEquals(it.value, item.getString("relatedEventId")) }
+        }
+        assertEquals("VOICE", exported.getJSONArray("events").getJSONObject(0).getJSONObject("action").getString("serviceType"))
+        assertEquals("https://example.com/test", exported.getJSONArray("events").getJSONObject(1).getJSONObject("action").getString("target"))
+    }
+
     @Test fun `shared files use read only content URI and independent utf8 snapshots`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val first = RunReportFiles.shareIntent(context, "Zażółć", false)

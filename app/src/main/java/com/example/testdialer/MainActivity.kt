@@ -1881,9 +1881,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createSectionHeader(title: String, description: String): View {
-        return createCard {
-            addView(createHeaderText(title))
-            addView(spaceVertical(dimen(8)))
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(createHeaderText(title).apply { ViewCompat.setAccessibilityHeading(this, true) })
+            addView(spaceVertical(dimen(6)))
             addView(createBodyText(description))
         }
     }
