@@ -26,12 +26,26 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
 
       - name: Run debug unit tests
         run: ./gradlew testDebugUnitTest
+
+      - name: Upload test reports and UI previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-and-ui
+          path: |
+            app/build/reports/tests
+            app/build/reports/screenshots
+            app/build/test-results
+          if-no-files-found: warn
 
       - name: Upload Room schemas
         uses: actions/upload-artifact@v4
