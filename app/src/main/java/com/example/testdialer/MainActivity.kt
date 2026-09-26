@@ -183,6 +183,8 @@ class MainActivity : ComponentActivity() {
         currentTestType = savedInstanceState?.getString(STATE_CURRENT_TEST_TYPE)
             ?.let { saved -> TestType.entries.firstOrNull { it.name == saved } } ?: TestType.VOICE
 
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = ViewGroup.LayoutParams(
