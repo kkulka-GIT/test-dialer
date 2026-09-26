@@ -226,4 +226,19 @@
     <string name="timeline_step_finished">krok zakończony</string>
     <string name="timeline_run_completed">sesja zakończona</string>
     <string name="timeline_run_aborted">sesja przerwana</string>
+    <string name="report_export">Eksportuj raport</string>
+    <string name="report_contents">Raport zawiera numery, treść SMS i dane korelacyjne z tej wersji Runu.</string>
+    <string name="report_copy">Kopiuj raport tekstowy</string>
+    <string name="report_share_text">Udostępnij plik TXT</string>
+    <string name="report_share_json">Udostępnij pełny JSON</string>
+    <string name="report_preparing">Przygotowuję raport…</string>
+    <string name="report_copied">Raport skopiowany</string>
+    <string name="report_failed">Nie udało się udostępnić raportu. Spróbuj ponownie.</string>
+    <string name="report_too_large">Raport jest za duży do schowka. Udostępnij go jako plik.</string>
+    <string name="repeat_event">Powtórz z tymi parametrami</string>
+    <string name="repeat_needs_run">Najpierw rozpocznij Run w Operacjach. Potem wróć do zdarzenia.</string>
+    <string name="repeat_event_description">Wypełnia formularz nowego testu w aktywnym Runie. Wykonanie zatwierdzisz osobno.</string>
+    <string name="run_progress_summary">Wykonane: %1$d/%2$d · Pominięte: %3$d
+Zapisane zdarzenia: %4$d</string>
+    <string name="run_progress_accessibility">Rozpatrzone zadania: %1$d z %2$d</string>
 </resources>

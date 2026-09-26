@@ -36,6 +36,14 @@ internal class RunHomeView(
 
     init {
         orientation = VERTICAL
+        addView(TextView(context).apply {
+            text = "TEST DIALER"
+            textSize = 12f
+            letterSpacing = 0.14f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFF006C70.toInt())
+        })
+        addView(space(6))
         addView(header(title))
         addView(space(4))
         addView(body(description))
@@ -96,6 +104,7 @@ internal class RunHomeView(
     private fun header(value: String) = TextView(context).apply {
         text = value
         textSize = 27f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         setTextColor(TEXT_PRIMARY)
         ViewCompat.setAccessibilityHeading(this, true)
     }

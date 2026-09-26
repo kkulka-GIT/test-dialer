@@ -1,6 +1,15 @@
 package com.example.testdialer
 
+import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.widget.ProgressBar
+import androidx.core.view.WindowInsetsCompat
+import com.example.testdialer.report.RunReportFormatter
+import com.example.testdialer.report.RunReportFiles
+import java.util.concurrent.Executors
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.ConnectivityManager
@@ -62,6 +71,9 @@ import java.util.Locale
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
+    private val reportExecutor = Executors.newSingleThreadExecutor()
+    private var reportBusy = false
+    private var runNameDraft = ""
     private val sectionButtons = mutableMapOf<AppSection, Button>()
     private val testTypeButtons = mutableMapOf<TestType, Button>()
     private lateinit var contentHost: FrameLayout
@@ -150,6 +162,7 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
@@ -195,6 +208,11 @@ class MainActivity : ComponentActivity() {
 
         root.addView(contentHost)
         root.addView(createBottomNavigation())
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.ime())
+            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
         setContentView(root)
 
         manualSessionViewModel.state.observe(this) { state ->
@@ -283,6 +301,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("runNameDraft", runNameDraft)
         outState.putString(STATE_PENDING_PHONE, pendingPhoneNumber)
         outState.putString(STATE_PENDING_NAME, pendingTestName)
         outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
@@ -299,6 +318,11 @@ class MainActivity : ComponentActivity() {
         outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
         outState.putString(STATE_ACTIVE_TASK_ID, selectedActiveTaskId?.value)
         super.onSaveInstanceState(outState)
+    }
+
+    override fun onDestroy() {
+        reportExecutor.shutdownNow()
+        super.onDestroy()
     }
 
     override fun onStop() {
@@ -336,6 +360,7 @@ class MainActivity : ComponentActivity() {
         sectionButtons.forEach { (current, button) ->
             val selected = current == operationalSection
             button.isEnabled = true
+            button.isSelected = selected
             button.alpha = if (selected) 1f else 0.86f
             button.background = pillBackground(if (selected) ColorPalette.accent else ColorPalette.button)
             button.setTextColor(if (selected) ColorPalette.onAccent else ColorPalette.textPrimary)
@@ -441,7 +466,10 @@ class MainActivity : ComponentActivity() {
                 addView(spaceVertical(dimen(6)))
                 addView(createBodyText(getString(R.string.run_start_description)))
                 addView(spaceVertical(dimen(12)))
-                val name = createOptionalInput(getString(R.string.run_name_hint))
+                val name = createOptionalInput(getString(R.string.run_name_hint)).apply {
+                    setText(runNameDraft)
+                    trackDraft { runNameDraft = it }
+                }
                 addView(name)
                 addView(spaceVertical(dimen(10)))
                 addView(Button(this@MainActivity).apply {
@@ -472,7 +500,21 @@ class MainActivity : ComponentActivity() {
         runHomeView.runHost.addView(createCard {
             addView(createCardTitle(active.stored.scenario.name).apply { ViewCompat.setAccessibilityHeading(this, true) })
             addView(spaceVertical(dimen(6)))
-            addView(createStatusText(getString(R.string.run_active_status)))
+            addView(createTag(getString(R.string.run_active_status)))
+            addView(spaceVertical(dimen(10)))
+            val done = active.tasks.count { it.status == ActiveTaskStatus.DONE }
+            val skipped = active.tasks.count { it.status == ActiveTaskStatus.SKIPPED }
+            addView(createBodyText(getString(R.string.run_progress_summary, done, active.tasks.size, skipped, run.events.size)))
+            if (active.tasks.isNotEmpty()) {
+                addView(spaceVertical(dimen(8)))
+                addView(ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                    max = active.tasks.size
+                    progress = done + skipped
+                    progressTintList = ColorStateList.valueOf(ColorPalette.accent)
+                    contentDescription = getString(R.string.run_progress_accessibility, done + skipped, active.tasks.size)
+                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dimen(8))
+                })
+            }
             addView(spaceVertical(dimen(6)))
             addView(createMicroText(getString(R.string.manual_session_run_id, run.id.value)).apply { setTextIsSelectable(true) })
             addView(spaceVertical(dimen(10)))
@@ -526,8 +568,8 @@ class MainActivity : ComponentActivity() {
         renderExecutionContext(currentTestType)
     }
 
-    private fun openActiveTask(stepId: StepId, action: TestAction) {
-        if (activeRunViewModel.executionInProgress()) {
+    private fun openActiveTask(stepId: StepId?, action: TestAction) {
+        if (activeRunViewModel.executionInProgress() || isTestTypeSwitchLocked()) {
             Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
             return
         }
@@ -848,6 +890,10 @@ class MainActivity : ComponentActivity() {
                 })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
+                addView(spaceVertical(dimen(14)))
+                addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
+                addView(spaceVertical(dimen(6)))
+                addView(createStatusText(getString(R.string.report_contents)))
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
@@ -927,6 +973,21 @@ class MainActivity : ComponentActivity() {
                 addView(createMicroText(getString(R.string.register_event_detail_run_id, event.runId.value)).apply { setTextIsSelectable(true) })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_event_detail_step_id, event.stepId.value)).apply { setTextIsSelectable(true) })
+                addView(spaceVertical(dimen(12)))
+                addView(reportButton(getString(R.string.repeat_event)) {
+                    if (activeRunState.active == null) {
+                        Toast.makeText(this@MainActivity, R.string.repeat_needs_run, Toast.LENGTH_LONG).show()
+                    } else if (!activeRunState.busy && !isTestTypeSwitchLocked() && !activeRunViewModel.executionInProgress()) {
+                        openActiveTask(null, event.action)
+                        showSection(AppSection.TEST)
+                        testScenarioHost.requestFocus()
+                        testScenarioHost.post { testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false) }
+                    } else {
+                        Toast.makeText(this@MainActivity, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+                    }
+                })
+                addView(spaceVertical(dimen(6)))
+                addView(createStatusText(getString(R.string.repeat_event_description)))
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
@@ -974,6 +1035,63 @@ class MainActivity : ComponentActivity() {
                     addView(createBodyText(getString(R.string.register_correlation_reference, reference.namespace, reference.value)))
                 }
             })
+        }
+    }
+
+    private fun reportButton(label: String, action: () -> Unit): Button = Button(this).apply {
+        text = label
+        isAllCaps = false
+        textSize = 16f
+        minHeight = dimen(50)
+        setPadding(dimen(14), dimen(10), dimen(14), dimen(10))
+        background = pillBackground(ColorPalette.accent)
+        setTextColor(ColorPalette.onAccent)
+        setOnClickListener { action() }
+    }
+
+    private fun showReportOptions(stored: StoredTestRun) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.report_export)
+            .setItems(arrayOf(getString(R.string.report_copy), getString(R.string.report_share_text), getString(R.string.report_share_json))) { _, option ->
+                exportReport(stored, option)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun exportReport(stored: StoredTestRun, option: Int) {
+        if (reportBusy) return
+        reportBusy = true
+        Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
+        val appContext = applicationContext
+        reportExecutor.execute {
+            val result = runCatching {
+                val content = if (option == 2) RunReportFormatter.json(stored) else RunReportFormatter.text(stored)
+                if (option == 0) {
+                    require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
+                    content to null
+                } else content to RunReportFiles.shareIntent(appContext, content, option == 2)
+            }
+            runOnUiThread {
+                reportBusy = false
+                if (isDestroyed || isFinishing) return@runOnUiThread
+                result.fold(onSuccess = { (content, intent) ->
+                    runCatching {
+                        if (intent == null) {
+                            val clip = ClipData.newPlainText("Test Dialer", content)
+                            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                clip.description.extras = android.os.PersistableBundle().apply {
+                                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                                }
+                            }
+                            getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+                            Toast.makeText(this, R.string.report_copied, Toast.LENGTH_SHORT).show()
+                        } else startActivity(Intent.createChooser(intent, getString(R.string.report_export)))
+                    }.onFailure { Toast.makeText(this, R.string.report_failed, Toast.LENGTH_LONG).show() }
+                }, onFailure = {
+                    Toast.makeText(this, if (it.message == "clipboard_limit") R.string.report_too_large else R.string.report_failed, Toast.LENGTH_LONG).show()
+                })
+            }
         }
     }
 
@@ -1774,6 +1892,7 @@ class MainActivity : ComponentActivity() {
         return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 18f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(ColorPalette.textPrimary)
         }
     }
@@ -1782,6 +1901,7 @@ class MainActivity : ComponentActivity() {
         return TextView(this@MainActivity).apply {
             this.text = text
             textSize = 27f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(ColorPalette.textPrimary)
         }
     }
@@ -1833,7 +1953,7 @@ class MainActivity : ComponentActivity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dimen(18), dimen(18), dimen(18), dimen(18))
             background = cardBackground()
-            elevation = dimen(4).toFloat()
+            elevation = dimen(1).toFloat()
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -1875,7 +1995,7 @@ class MainActivity : ComponentActivity() {
 
     private fun pillBackground(color: Int): GradientDrawable {
         return GradientDrawable().apply {
-            cornerRadius = dimen(20).toFloat()
+            cornerRadius = dimen(12).toFloat()
             setColor(color)
         }
     }
@@ -1901,10 +2021,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private object ColorPalette {
-        const val background = 0xFFF4F7FB.toInt()
+        const val background = 0xFFF3F6F8.toInt()
         const val surface = 0xFFFFFFFF.toInt()
-        const val accent = 0xFF1565C0.toInt()
-        const val button = 0xFFE8EEF5.toInt()
+        const val accent = 0xFF006C70.toInt()
+        const val button = 0xFFE5EEF0.toInt()
         const val border = 0xFFD7E1EE.toInt()
         const val textPrimary = 0xFF102A43.toInt()
         const val textSecondary = 0xFF52606D.toInt()
