@@ -17,11 +17,11 @@
     <string name="data_type">Data</string>
     <string name="test_title">Test</string>
     <string name="test_description">Wybierz typ testu i uruchom odpowiedni scenariusz.</string>
-    <string name="run_home_title">Test Dialer</string>
-    <string name="run_home_description">Run i testy ratingowe</string>
+    <string name="run_home_title">Operacje</string>
+    <string name="run_home_description">Twoje testy sieci, w jednym miejscu</string>
     <string name="run_empty_title">Brak aktywnego Run</string>
     <string name="run_empty_description">Wybierz Voice, SMS lub Data poniżej. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
-    <string name="run_start_description">Rozpocznij pusty Run albo wybierz lokalne Scenario. Run pozostanie głównym kontekstem kolejnych testów.</string>
+    <string name="run_start_description">Nazwij sesję i rozpocznij własny zestaw testów lub skorzystaj z gotowego scenariusza.</string>
     <string name="run_name_hint">Nazwa Runu (opcjonalna)</string>
     <string name="run_start_empty">Rozpocznij pusty Run</string>
     <string name="run_start_scenario">Rozpocznij Scenario Voice / SMS / Data</string>
@@ -38,9 +38,9 @@
     <string name="test_already_in_progress">Najpierw zakończ trwający test.</string>
     <string name="task_opened_announcement">Otwarto test %1$s dla wybranego Tasku.</string>
     <string name="run_add_test">Dodaj test</string>
-    <string name="run_tasks_title">Tasks</string>
+    <string name="run_tasks_title">Zadania</string>
     <string name="run_tasks_description">Wybierz Voice, SMS lub Data.</string>
-    <string name="run_tasks_announcement">Sekcja Tasks. Wybierz typ testu.</string>
+    <string name="run_tasks_announcement">Sekcja zadań. Wybierz typ testu.</string>
     <string name="test_selector_title">Wybór testu</string>
     <string name="execution_run_context">Run: %1$s · ID %2$s</string>
     <string name="execution_task_stage">%1$s · etap: %2$s</string>
@@ -120,7 +120,7 @@
     <string name="data_cancelled">Test anulowano, a zdarzenie terminalne zapisano w Rejestrze.</string>
     <string name="data_start_another">Rozpocznij kolejny test Data</string>
     <string name="register_title">Rejestr</string>
-    <string name="register_description">Lokalny Rejestr Runów i Eventów. Najnowsze Runy są na górze; historyczne wyniki Voice pozostają osobno.</string>
+    <string name="register_description">Historia sesji i zapisanych zdarzeń.</string>
     <string name="register_empty_title">Brak zapisanych wyników</string>
     <string name="register_empty_body">Wykonaj test Voice i po powrocie z dialera wskaż jego wynik.</string>
     <string name="result_unnamed">Test Voice</string>
@@ -226,4 +226,18 @@
     <string name="timeline_step_finished">krok zakończony</string>
     <string name="timeline_run_completed">sesja zakończona</string>
     <string name="timeline_run_aborted">sesja przerwana</string>
+    <string name="report_export">Eksportuj raport</string>
+    <string name="report_contents">Raport zawiera numery, treść SMS i dane korelacyjne z tej wersji Runu.</string>
+    <string name="report_copy">Kopiuj raport tekstowy</string>
+    <string name="report_share_text">Udostępnij plik TXT</string>
+    <string name="report_share_json">Udostępnij pełny JSON</string>
+    <string name="report_preparing">Przygotowuję raport…</string>
+    <string name="report_copied">Raport skopiowany</string>
+    <string name="report_failed">Nie udało się udostępnić raportu. Spróbuj ponownie.</string>
+    <string name="report_too_large">Raport jest za duży do schowka. Udostępnij go jako plik.</string>
+    <string name="repeat_event">Powtórz z tymi parametrami</string>
+    <string name="repeat_needs_run">Najpierw rozpocznij Run w Operacjach. Potem wróć do zdarzenia.</string>
+    <string name="repeat_event_description">Wypełnia formularz nowego testu w aktywnym Runie. Wykonanie zatwierdzisz osobno.</string>
+    <string name="run_progress_summary">Wykonane: %1$d/%2$d · Pominięte: %3$d\nZapisane zdarzenia: %4$d</string>
+    <string name="run_progress_accessibility">Rozpatrzone zadania: %1$d z %2$d</string>
 </resources>

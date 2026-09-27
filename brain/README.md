@@ -43,3 +43,7 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - Sol: jedna końcowa bramka/re-review findingów po poprawkach.
 - Czas pracy, koszt i procentowy udział modeli: `UNKNOWN` — brak wiarygodnych danych pomiarowych w repozytorium.
 - Rework obejmował poprawki rejestru i jego odświeżania/nawigacji oraz późniejsze celowane poprawki po review; nie przypisuje się mu nieudokumentowanych metryk.
+
+## Zmiany oczekujące w PR #16 (2026-09-27)
+
+Eksport Runu do TXT/JSON, kopiowanie i udostępnianie, powtórzenie parametrów Eventu, postęp zadań i poprawki UI są dostępne na feature/run-reports-polish-20260926. Nie zostały jeszcze scalone do main. CI #101: PASS, 123 testy. Wariant Test Dialer Preview instaluje się obok starej aplikacji i korzysta z osobnej historii. Raport: reports/2026-09-26-run-reports-polish.md.

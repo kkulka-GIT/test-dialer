@@ -26,12 +26,26 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
 
       - name: Run debug unit tests
         run: ./gradlew testDebugUnitTest
+
+      - name: Upload test reports and UI previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-and-ui
+          path: |
+            app/build/reports/tests
+            app/build/reports/screenshots
+            app/build/test-results
+          if-no-files-found: warn
 
       - name: Upload Room schemas
         uses: actions/upload-artifact@v4
@@ -48,4 +62,20 @@ jobs:
         with:
           name: test-dialer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Build side-by-side preview APK
+        run: ./gradlew assemblePreview
+
+      - name: Verify preview application identity
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/preview/app-preview.apk > preview-badging.txt
+          grep -F "package: name='com.example.testdialer.preview'" preview-badging.txt
+          grep -F "application-label:'Test Dialer Preview'" preview-badging.txt
+
+      - name: Upload preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-dialer-preview-apk
+          path: app/build/outputs/apk/preview/app-preview.apk
           if-no-files-found: error

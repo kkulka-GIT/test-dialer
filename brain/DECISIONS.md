@@ -87,3 +87,10 @@
 - Błąd Rejestru jest widoczny także na ekranie szczegółów Runu/Eventu i ma jawną treść oraz opis dla TalkBack.
 - `VoiceResultStore` pozostaje osobnym storage legacy. Wygaszanie legacy polega wyłącznie na odseparowanej sekcji z jasnym wyjaśnieniem, bez usuwania ani migracji rekordów.
 - Parametry wymagane są widoczne bezpośrednio, opcjonalna nazwa testu jest domyślnie zwinięta, a edytowane drafty są zachowywane przez `savedInstanceState` podczas rotacji.
+
+- 2026-09-26: użytkownik zatwierdził autonomiczną rundę dopracowania funkcji i grafiki. Zakres rundy obejmuje raporty Runów, powtórzenie parametrów i poprawki operacyjnego UI.
+- Eksport JSON v1 jest odczytem pełnego wybranego snapshotu (rewizja, Scenario, Run, Eventy, timeline), bez zmiany historii. TXT jest czytelnym podsumowaniem, a pełna oś jest w JSON.
+- Eksport odbywa się wyłącznie na żądanie przez schowek lub systemowe udostępnianie plików z prywatnego cache/reports. FileProvider jest nieeksportowany, grant jest tylko do odczytu. Nie dodano uprawnień Androida.
+- Powtórzenie Eventu wypełnia formularz dodatkowego testu w bieżącym Active Runie. Wykonanie nadal wymaga osobnego kliknięcia; historia nie jest nadpisywana.
+- CI jawnie instaluje platform-tools, gdyż domyślny pakiet tools akcji setup-android przestał być dostępny. Raporty testów i podglądy UI są publikowane jako osobny artefakt.
+- Porównanie certyfikatów APK #95 i #97 potwierdziło różne klucze debug. Nie wolno zalecać odinstalowania starej aplikacji jako sposobu aktualizacji (utrata historii). Dodano osobny wariant preview z applicationIdSuffix .preview i nazwą Test Dialer Preview, do instalacji obok dotychczasowej aplikacji. Stały klucz do przyszłych aktualizacji pozostaje osobnym zadaniem; nie dodano kluczy ani sekretów do repo.
