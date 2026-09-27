@@ -73,6 +73,9 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private var reportBusy = false
+    private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
+    private var dataAmountDraft = "1"
+    private var dataUnitDraft = "MB"
     private var runNameDraft = ""
     private val sectionButtons = mutableMapOf<AppSection, Button>()
     private val testTypeButtons = mutableMapOf<TestType, Button>()
@@ -162,6 +165,8 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
+        dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
         runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
@@ -238,6 +243,8 @@ class MainActivity : ComponentActivity() {
         }
         cellularDataViewModel.state.observe(this) { state ->
             cellularDataState = state
+            if (state.busy) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             if (currentTestType == TestType.DATA) renderScenario(TestType.DATA)
             if (state.saved) {
                 manualSessionViewModel.loadHistory()
@@ -303,6 +310,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("dataAmountDraft", dataAmountDraft)
+        outState.putString("dataUnitDraft", dataUnitDraft)
         outState.putString("runNameDraft", runNameDraft)
         outState.putString(STATE_PENDING_PHONE, pendingPhoneNumber)
         outState.putString(STATE_PENDING_NAME, pendingTestName)
@@ -328,6 +337,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        if (!isChangingConfigurations && cellularDataState.busy) cellularDataViewModel.cancel()
         unregisterNetworkCallback()
         super.onStop()
     }
@@ -491,6 +501,10 @@ class MainActivity : ComponentActivity() {
                     isEnabled = !state.busy && !state.executionInProgress
                     setOnClickListener { activeRunViewModel.startScenario(LocalScenarioCatalog.smoke) }
                 })
+                addView(spaceVertical(dimen(8)))
+                addView(reportButton(getString(R.string.quota_scenario)) { showQuotaScenarioDialog() }.apply {
+                    isEnabled = !state.busy && !state.executionInProgress
+                })
             })
             runHomeView.selectorHost.visibility = View.GONE
             runHomeView.scenarioHost.visibility = View.GONE
@@ -519,6 +533,13 @@ class MainActivity : ComponentActivity() {
             }
             addView(spaceVertical(dimen(6)))
             addView(createMicroText(getString(R.string.manual_session_run_id, run.id.value)).apply { setTextIsSelectable(true) })
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.data_run_total, dataBytes(run))))
+            addView(spaceVertical(dimen(8)))
+            addView(Button(this@MainActivity).apply {
+                setText(R.string.run_note)
+                setOnClickListener { editRunNote(run.id) }
+            })
             addView(spaceVertical(dimen(10)))
             addView(Button(this@MainActivity).apply {
                 setText(R.string.run_complete)
@@ -896,6 +917,15 @@ class MainActivity : ComponentActivity() {
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.report_contents)))
+                addView(spaceVertical(dimen(10)))
+                addView(createBodyText(getString(R.string.data_run_total, dataBytes(run))))
+                addView(spaceVertical(dimen(8)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.run_note)
+                    setOnClickListener { editRunNote(run.id) }
+                })
+                val note = runNotes.get(run.id)
+                if (note.isNotBlank()) addView(createBodyText(note).apply { setTextIsSelectable(true) })
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
@@ -980,6 +1010,13 @@ class MainActivity : ComponentActivity() {
                     if (activeRunState.active == null) {
                         Toast.makeText(this@MainActivity, R.string.repeat_needs_run, Toast.LENGTH_LONG).show()
                     } else if (!activeRunState.busy && !isTestTypeSwitchLocked() && !activeRunViewModel.executionInProgress()) {
+                        if (event.action is TestAction.Data) {
+                            event.correlation.references.firstOrNull { it.namespace == "requestedBytes" }?.value
+                                ?.toLongOrNull()?.takeIf { it in 1..com.example.testdialer.data.DataVolume.MAX_BYTES }?.let {
+                                    dataAmountDraft = it.toString()
+                                    dataUnitDraft = "B"
+                                }
+                        }
                         openActiveTask(null, event.action)
                         showSection(AppSection.TEST)
                         testScenarioHost.requestFocus()
@@ -1040,6 +1077,64 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun dataBytes(run: com.example.testdialer.domain.TestRun): String = run.events
+        .filter { it.action is TestAction.Data }
+        .sumOf { event -> event.correlation.references.firstOrNull { it.namespace == "bytes" }?.value?.toLongOrNull()?.coerceAtLeast(0) ?: 0L }
+        .let { String.format(Locale.getDefault(), "%,d B (%.3f MB)", it, it / 1_000_000.0) }
+
+    private fun editRunNote(runId: RunId) {
+        val input = EditText(this).apply {
+            setText(runNotes.get(runId))
+            hint = getString(R.string.run_note_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            minLines = 5
+            maxLines = 10
+            gravity = Gravity.TOP
+            filters = arrayOf(android.text.InputFilter.LengthFilter(com.example.testdialer.notes.RunNotesStore.MAX_LENGTH))
+            setPadding(dimen(18), dimen(12), dimen(18), dimen(12))
+        }
+        AlertDialog.Builder(this).setTitle(R.string.run_note).setView(input)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.run_note_save) { _, _ ->
+                val text = input.text.toString()
+                reportExecutor.execute {
+                    val saved = runCatching { runNotes.save(runId, text) }.getOrDefault(false)
+                    runOnUiThread {
+                        if (!isDestroyed && !isFinishing) {
+                            Toast.makeText(this, if (saved) R.string.run_note_saved else R.string.run_note_failed, Toast.LENGTH_LONG).show()
+                            renderRegister()
+                        }
+                    }
+                }
+            }.show()
+    }
+
+    private fun showQuotaScenarioDialog() {
+        val number = createPhoneInput(getString(R.string.quota_sms_number))
+        val message = createOptionalInput(getString(R.string.quota_sms_message))
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dimen(20), dimen(8), dimen(20), dimen(8))
+            addView(createBodyText(getString(R.string.quota_scenario_description)))
+            addView(spaceVertical(dimen(10)))
+            addView(number)
+            addView(spaceVertical(dimen(8)))
+            addView(message)
+        }
+        val dialog = AlertDialog.Builder(this).setTitle(R.string.quota_scenario).setView(fields)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.quota_scenario_start, null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (number.text.isNullOrBlank()) { number.error = getString(R.string.quota_sms_required); return@setOnClickListener }
+                if (activeRunState.active != null || activeRunState.busy || activeRunViewModel.executionInProgress()) return@setOnClickListener
+                activeRunViewModel.startScenario(LocalScenarioCatalog.dataQuota(number.text.toString(), message.text.toString()))
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
+
     private fun reportButton(label: String, action: () -> Unit): Button = Button(this).apply {
         text = label
         isAllCaps = false
@@ -1066,9 +1161,10 @@ class MainActivity : ComponentActivity() {
         reportBusy = true
         Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
         val appContext = applicationContext
+        val note = runNotes.get(stored.run.id)
         reportExecutor.execute {
             val result = runCatching {
-                val content = if (option == 2) RunReportFormatter.json(stored) else RunReportFormatter.text(stored)
+                val content = if (option == 2) RunReportFormatter.json(stored, note) else RunReportFormatter.text(stored, note)
                 if (option == 0) {
                     require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
                     content to null
@@ -1413,10 +1509,35 @@ class MainActivity : ComponentActivity() {
 
     private fun createCellularDataScenario(): View {
         val state = cellularDataState
+        if (state.busy) return createCard {
+            addView(createCardTitle(getString(R.string.data_running)))
+            addView(spaceVertical(dimen(12)))
+            addView(createBodyText(getString(R.string.data_progress, state.bytes, state.targetBytes)))
+            addView(spaceVertical(dimen(10)))
+            addView(ProgressBar(this@MainActivity, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 1000
+                progress = if (state.targetBytes > 0) (state.bytes * 1000 / state.targetBytes).toInt() else 0
+                progressTintList = ColorStateList.valueOf(ColorPalette.accent)
+                contentDescription = getString(R.string.data_progress, state.bytes, state.targetBytes)
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dimen(12))
+            })
+            addView(spaceVertical(dimen(10)))
+            val speed = if (state.elapsedMillis > 0) state.bytes / 1000.0 / state.elapsedMillis else 0.0
+            addView(createBodyText(getString(R.string.data_speed, state.elapsedMillis / 1000, speed)))
+            addView(spaceVertical(dimen(12)))
+            addView(reportButton(getString(R.string.data_cancel)) { cellularDataViewModel.cancel() })
+            addView(spaceVertical(dimen(8)))
+            addView(createStatusText(getString(R.string.data_foreground)))
+        }
         if (state.saved) return createCard {
             addView(createCardTitle(getString(R.string.data_saved_title)))
             addView(spaceVertical(dimen(8)))
             addView(createBodyText(if (state.cancelled) getString(R.string.data_cancelled) else getString(R.string.data_saved_description)))
+            state.completed?.run?.events?.lastOrNull()?.let { event ->
+                val refs = event.correlation.references.associate { it.namespace to it.value }
+                addView(spaceVertical(dimen(8)))
+                addView(createBodyText(getString(R.string.data_result_detail, refs["bytes"] ?: "0", refs["requestedBytes"] ?: "—", refs["resultCode"] ?: "—")))
+            }
             addView(spaceVertical(dimen(14)))
             addView(Button(this@MainActivity).apply {
                 setText(R.string.go_to_register)
@@ -1443,9 +1564,32 @@ class MainActivity : ComponentActivity() {
             }
             val url = createOptionalInput(getString(R.string.data_url_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-                setText(dataUrlDraft ?: (selectedTaskAction() as? TestAction.Data)?.target.orEmpty())
+                setText(dataUrlDraft ?: (selectedTaskAction() as? TestAction.Data)?.target ?: com.example.testdialer.data.DataVolume.DEFAULT_URL)
                 trackDraft { dataUrlDraft = it }
             }
+            val amount = createOptionalInput(getString(R.string.data_amount_hint)).apply {
+                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+                setText(dataAmountDraft)
+                trackDraft { dataAmountDraft = it }
+            }
+            addView(createBodyText(getString(R.string.data_amount_hint)))
+            addView(spaceVertical(dimen(6)))
+            addView(amount)
+            val units = com.example.testdialer.data.DataVolume.units
+            val unit = android.widget.Spinner(this@MainActivity).apply {
+                adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, units)
+                setSelection(units.indexOf(dataUnitDraft).coerceAtLeast(0))
+                minimumHeight = dimen(48)
+                contentDescription = getString(R.string.data_unit)
+                onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                    override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) { dataUnitDraft = units[position] }
+                    override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+                }
+            }
+            addView(unit)
+            addView(createStatusText(getString(R.string.data_units_hint)))
+            addView(spaceVertical(dimen(8)))
+            addView(createBodyText(getString(R.string.data_url_hint)))
             addView(url)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
@@ -1466,6 +1610,8 @@ class MainActivity : ComponentActivity() {
                 background = pillBackground(ColorPalette.accent)
                 setTextColor(ColorPalette.onAccent)
                 setOnClickListener {
+                    val target = runCatching { com.example.testdialer.data.DataVolume.parse(amount.text.toString(), unit.selectedItem.toString()) }
+                        .getOrElse { amount.error = it.message; return@setOnClickListener }
                     activeRunState.active?.let {
                         runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.DATA) }
                             .getOrElse { error ->
@@ -1477,21 +1623,12 @@ class MainActivity : ComponentActivity() {
                         CellularDataInput(
                             url = url.text.toString(),
                             label = label.text.toString().trim().takeIf(String::isNotEmpty),
+                            targetBytes = target,
                         ),
                     )
                 }
             })
-            if (state.busy) {
-                addView(spaceVertical(dimen(10)))
-                addView(createStatusText(getString(R.string.data_running)))
-                addView(spaceVertical(dimen(10)))
-                addView(Button(this@MainActivity).apply {
-                    setText(R.string.data_cancel)
-                    isAllCaps = false
-                    minHeight = dimen(52)
-                    setOnClickListener { cellularDataViewModel.cancel() }
-                })
-            }
+
         }
     }
 

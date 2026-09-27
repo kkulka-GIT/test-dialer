@@ -18,7 +18,7 @@ import com.example.testdialer.persistence.StoredTestRun
 import com.example.testdialer.persistence.TestRunRepository
 import java.util.UUID
 
-data class CellularDataInput(val url: String, val label: String?)
+data class CellularDataInput(val url: String, val label: String?, val targetBytes: Long = 1_000_000L)
 
 class CellularDataTestCoordinator(
     private val repository: TestRunRepository,
@@ -29,7 +29,9 @@ class CellularDataTestCoordinator(
         input: CellularDataInput,
         requestedAt: CapturedTime,
         cancellation: DownloadCancellation,
+        onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): StoredTestRun {
+        require(input.targetBytes in 1..DataVolume.MAX_BYTES) { "Nieprawidłowa ilość danych" }
         val prepared = gateway.prepare(input.url) // preflight before RUNNING
         val stepId = StepId("cellular-data-download")
         val scenario = ScenarioDefinition(
@@ -42,7 +44,7 @@ class CellularDataTestCoordinator(
                     id = stepId,
                     order = 0,
                     title = "Download over active cellular network",
-                    instruction = "Perform a bounded HTTPS GET over the active cellular transport.",
+                    instruction = "Pobierz ${input.targetBytes} bajtów treści przez aktywną sieć komórkową.",
                     action = TestAction.Data(prepared.url.uri.toString()),
                 ),
             ),
@@ -52,7 +54,7 @@ class CellularDataTestCoordinator(
         recorder.startAttempt()
         var revision = repository.saveSnapshot(scenario, recorder.snapshot()).revision
         return try {
-            val result = gateway.execute(prepared, cancellation)
+            val result = gateway.executeVolume(prepared, cancellation, input.targetBytes, onProgress)
             val observation = Observation(
                 status = if (result.status == DownloadStatus.COMPLETED) {
                     ObservationStatus.CONFIRMED
@@ -71,6 +73,8 @@ class CellularDataTestCoordinator(
                         CorrelationReference("requestedAtEpochMillis", requestedAt.epochMillis.toString()),
                         CorrelationReference("endedAtEpochMillis", result.endedAt.epochMillis.toString()),
                         CorrelationReference("bytes", result.bytes.toString()),
+                        CorrelationReference("requestedBytes", input.targetBytes.toString()),
+                        CorrelationReference("byteSemantics", "HTTP_BODY_NOT_BILLING"),
                         CorrelationReference("durationMillis", durationMillis(result)),
                         CorrelationReference("status", result.status.name),
                         CorrelationReference("resultCode", result.resultCode.name),

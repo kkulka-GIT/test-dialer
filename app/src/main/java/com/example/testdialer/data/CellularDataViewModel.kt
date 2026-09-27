@@ -15,6 +15,9 @@ import java.util.concurrent.Future
 
 data class CellularDataUiState(
     val busy: Boolean = false,
+    val bytes: Long = 0,
+    val targetBytes: Long = 0,
+    val elapsedMillis: Long = 0,
     val saved: Boolean = false,
     val cancelled: Boolean = false,
     val completed: StoredTestRun? = null,
@@ -36,10 +39,18 @@ class CellularDataViewModel(
         val requestedAt = timeProvider.capture()
         val cancellation = DownloadCancellation()
         currentCancellation = cancellation
-        mutableState.value = CellularDataUiState(busy = true)
+        mutableState.value = CellularDataUiState(busy = true, targetBytes = input.targetBytes)
         currentFuture = executor.submit {
             mutableState.postValue(
-                runCatching { coordinator.run(input, requestedAt, cancellation) }.fold(
+                runCatching {
+                    var lastUpdate = -250L
+                    coordinator.run(input, requestedAt, cancellation) { bytes, elapsed ->
+                        if (elapsed - lastUpdate >= 250 || bytes == input.targetBytes) {
+                            lastUpdate = elapsed
+                            mutableState.postValue(CellularDataUiState(busy = true, bytes = bytes, targetBytes = input.targetBytes, elapsedMillis = elapsed))
+                        }
+                    }
+                }.fold(
                     onSuccess = { stored ->
                         CellularDataUiState(
                             saved = true,
