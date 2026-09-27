@@ -30,3 +30,4 @@
 - Main APK artifact `test-dialer-debug-apk` (ID `9987140914`) ma digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
 - UIR-02–UIR-05 zamknięto. Brak aktywnego zadania; kolejny feature wymaga nowej decyzji produktowej.
 - 2026-09-26: PR #16 dodaje JSON/TXT, schowek i systemowy share, powtórzenie parametrów Eventu oraz postęp Runu i poprawki UI. CI #96 ujawniło niedostępny pakiet SDK tools przed kompilacją; konfigurację poprawiono. Weryfikacja kolejnego checkpointu trwa.
+- 2026-09-27: wznowiono i domknięto weryfikację PR #16. CI #101 PASS, 123 testy bez błędów; potwierdzono debug/preview APK i osobny identyfikator Preview. Przejrzano końcowe zrzuty UI. Raport zapisany w reports/2026-09-26-run-reports-polish.md; main bez zmian, akceptacja fizycznego SIM/TalkBack i merge pozostają do decyzji.
