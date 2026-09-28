@@ -42,3 +42,12 @@
 - Resumed after interruption. #103 had one failing dialog test; awaited onShow callback without weakening assertions.
 - #104 PASS: 134 tests, zero failures/errors/skips; debug and preview APKs, Room schema, identity check. Native screenshots unchanged and reviewed.
 - Final documentation checkpoint records results and physical-device acceptance limits. No merge.
+
+## 2026-09-28 — phone acceptance fixes
+- User reported APK #104 failed phone acceptance; explicitly requested Data-only scenario and network/task UI fixes.
+- Removed required SMS dialog/tasks from new Data scenario; retained manual Run notes.
+- Replaced blanket default VPN rejection with physical cellular selection; no Wi-Fi fallback.
+- Open now focuses and reveals form. Added network selection regression tests and real task-opening assertion.
+- Branch fix/data-only-network-20260928, draft PR #18. CI pending; no merge.
+
+- Final verification: #106 app compiled, network test fixtures failed compilation; corrected using Robolectric shadows. #107 PASS: 140 tests, APKs and identity check. Real task navigation screenshots reviewed. Handset retest still pending.

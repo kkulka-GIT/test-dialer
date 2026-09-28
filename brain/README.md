@@ -55,3 +55,7 @@ Na feature/data-quota-notes-20260927, opartym na PR #16, dodano scenariusz Test 
 Test Dialer Data Preview instaluje się obok poprzednich aplikacji i ma osobną historię. Żaden z PR #16/#17 nie został scalony. Raport weryfikacji: reports/2026-09-27-data-quota-notes.md.
 
 Weryfikacja DATA-01: CI #104 PASS, 134 testy bez błędów/pominięć, APK debug i Data Preview oraz kontrola identyfikatora aplikacji. Test na fizycznej SIM pozostaje do wykonania.
+
+## Korekta po odbiorze na telefonie — PR #18
+
+Użytkownik zgłosił nieudany odbiór APK #104: brak właściwego SMS-a do zapytania, niewidoczne otwarcie Tasku i blokadę VPN. Automatyczny PASS #104 nie oznaczał akceptacji na urządzeniu. PR #18 zastępuje nowy scenariusz samym Data z ręczną notatką, przewija do otwartego formularza i wybiera dostępną fizyczną sieć komórkową niezależnie od domyślnej sieci VPN. Zapisana historia i pozostałe ręczne testy pozostają zachowane.
