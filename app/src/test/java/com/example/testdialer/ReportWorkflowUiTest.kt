@@ -126,17 +126,31 @@ class ReportWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `quota dialog requires a number and does not send SMS`() {
+    @Test fun `data scenario starts without SMS input and open scrolls to data form`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         button(activity, R.string.quota_scenario).performClick()
+        var open: Button? = null
+        for (attempt in 0 until 100) {
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            open = views(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+                .firstOrNull { it.contentDescription == activity.getString(R.string.task_open_accessibility, "Transmisja danych") }
+            if (open != null) break
+            Thread.sleep(10)
+        }
+        assertNotNull(open)
+        assertTrue(open!!.isEnabled)
+        capture(activity, "07-data-only-run")
+        open.performClick()
         Shadows.shadowOf(Looper.getMainLooper()).idle()
-        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
-        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        assertTrue(dialog.isShowing)
-        assertTrue(views(dialog.window!!.decorView).filterIsInstance<EditText>().any { it.error != null })
+        capture(activity, "08-open-data-task")
+        assertNotNull(button(activity, R.string.data_start))
+        val host = MainActivity::class.java.getDeclaredField("testScenarioHost").apply { isAccessible = true }.get(activity) as View
+        assertTrue(host.hasFocus())
+        val scroll = generateSequence(host.parent) { it.parent }.filterIsInstance<android.widget.ScrollView>().first()
+        assertTrue("Opening a task must reveal its form", scroll.scrollY > 0)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
-        dialog.dismiss()
+        assertNull(org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog())
         controller.pause().stop().destroy()
     }
 

@@ -248,14 +248,9 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
 data class LocalScenario(val id: String, val name: String, val steps: List<ScenarioStepDefinition>)
 
 object LocalScenarioCatalog {
-    fun dataQuota(destination: String, message: String): LocalScenario {
-        require(destination.isNotBlank())
-        return LocalScenario("data-quota-v1", "Test pakietu danych", listOf(
-            ScenarioStepDefinition(StepId("sms-before"), 0, "1. SMS przed transferem", "Wyślij zapytanie o pakiet i zapisz odpowiedź w notatce Runu.", TestAction.Sms(destination.trim(), message)),
-            ScenarioStepDefinition(StepId("data-quota"), 1, "2. Transmisja danych", "Wybierz ilość danych i uruchom transfer.", TestAction.Data(com.example.testdialer.data.DataVolume.DEFAULT_URL)),
-            ScenarioStepDefinition(StepId("sms-after"), 2, "3. SMS po transferze", "Wyślij zapytanie ponownie i uzupełnij notatkę odpowiedzią operatora.", TestAction.Sms(destination.trim(), message)),
-        ))
-    }
+    fun dataQuota(): LocalScenario = LocalScenario("data-only-v2", "Test transmisji danych", listOf(
+        ScenarioStepDefinition(StepId("data-quota"), 0, "Transmisja danych", "Wybierz ilość danych. Stan pakietu przed i po sprawdź samodzielnie i zapisz w notatce Runu.", TestAction.Data(com.example.testdialer.data.DataVolume.DEFAULT_URL)),
+    ))
 
     val smoke = LocalScenario(
         id = "basic-smoke-v1",
