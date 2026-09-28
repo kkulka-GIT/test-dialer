@@ -130,6 +130,7 @@ class ReportWorkflowUiTest {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         button(activity, R.string.quota_scenario).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         assertTrue(dialog.isShowing)
