@@ -502,7 +502,7 @@ class MainActivity : ComponentActivity() {
                     setOnClickListener { activeRunViewModel.startScenario(LocalScenarioCatalog.smoke) }
                 })
                 addView(spaceVertical(dimen(8)))
-                addView(reportButton(getString(R.string.quota_scenario)) { showQuotaScenarioDialog() }.apply {
+                addView(reportButton(getString(R.string.quota_scenario)) { startDataScenario() }.apply {
                     isEnabled = !state.busy && !state.executionInProgress
                 })
             })
@@ -625,7 +625,12 @@ class MainActivity : ComponentActivity() {
         }
         updateTestTypeChips()
         renderScenario(currentTestType)
-        runHomeView.announceTasks(getString(R.string.task_opened_announcement, currentTestType.name))
+        testScenarioHost.isFocusableInTouchMode = true
+        testScenarioHost.requestFocus()
+        testScenarioHost.announceForAccessibility(getString(R.string.task_opened_announcement, currentTestType.name))
+        testScenarioHost.post {
+            testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
+        }
     }
 
     private fun selectedTaskAction(): TestAction? = activeRunState.active?.tasks
@@ -1109,30 +1114,9 @@ class MainActivity : ComponentActivity() {
             }.show()
     }
 
-    private fun showQuotaScenarioDialog() {
-        val number = createPhoneInput(getString(R.string.quota_sms_number))
-        val message = createOptionalInput(getString(R.string.quota_sms_message))
-        val fields = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dimen(20), dimen(8), dimen(20), dimen(8))
-            addView(createBodyText(getString(R.string.quota_scenario_description)))
-            addView(spaceVertical(dimen(10)))
-            addView(number)
-            addView(spaceVertical(dimen(8)))
-            addView(message)
-        }
-        val dialog = AlertDialog.Builder(this).setTitle(R.string.quota_scenario).setView(fields)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.quota_scenario_start, null).create()
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (number.text.isNullOrBlank()) { number.error = getString(R.string.quota_sms_required); return@setOnClickListener }
-                if (activeRunState.active != null || activeRunState.busy || activeRunViewModel.executionInProgress()) return@setOnClickListener
-                activeRunViewModel.startScenario(LocalScenarioCatalog.dataQuota(number.text.toString(), message.text.toString()))
-                dialog.dismiss()
-            }
-        }
-        dialog.show()
+    private fun startDataScenario() {
+        if (activeRunState.active != null || activeRunState.busy || activeRunViewModel.executionInProgress()) return
+        activeRunViewModel.startScenario(LocalScenarioCatalog.dataQuota())
     }
 
     private fun reportButton(label: String, action: () -> Unit): Button = Button(this).apply {

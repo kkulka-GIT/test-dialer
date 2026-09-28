@@ -109,7 +109,7 @@
     <string name="data_placeholder_body">Scenariusz Data jest przygotowany wizualnie i będzie rozwijany później.</string>
     <string name="data_placeholder_tag">wkrótce</string>
     <string name="data_card_title">Kontrolowany test danych komórkowych</string>
-    <string name="data_card_description">Pobierz zadaną ilość treści przez sieć komórkową. Domyślne źródło: plik testowy Hetznera.</string>
+    <string name="data_card_description">Pobierz zadaną ilość treści przez bezpośrednie połączenie komórkowe, poza VPN. Domyślne źródło: plik testowy Hetznera. Stan pakietu przed i po możesz wpisać w notatce Runu.</string>
     <string name="data_label_hint">Nazwa testu (opcjonalna)</string>
     <string name="data_url_hint">Publiczny adres HTTPS bez parametrów</string>
     <string name="data_start">Uruchom pobieranie</string>
@@ -240,12 +240,7 @@
     <string name="repeat_event_description">Wypełnia formularz nowego testu w aktywnym Runie. Wykonanie zatwierdzisz osobno.</string>
     <string name="run_progress_summary">Wykonane: %1$d/%2$d · Pominięte: %3$d\nZapisane zdarzenia: %4$d</string>
     <string name="run_progress_accessibility">Rozpatrzone zadania: %1$d z %2$d</string>
-    <string name="quota_scenario">Test pakietu danych: SMS → Data → SMS</string>
-    <string name="quota_scenario_description">Podaj numer i treść zapytania do swojego operatora. Oba SMS-y będą edytowalne i wysyłane ręcznie. Odpowiedzi możesz wkleić do notatki Runu.</string>
-    <string name="quota_sms_number">Numer SMS operatora</string>
-    <string name="quota_sms_message">Treść zapytania o pakiet</string>
-    <string name="quota_sms_required">Wpisz numer SMS</string>
-    <string name="quota_scenario_start">Utwórz Run</string>
+    <string name="quota_scenario">Test transmisji danych</string>
     <string name="run_note">Notatka testera</string>
     <string name="run_note_hint">Przed transferem:…\nPo transferze:…\nUwagi:…</string>
     <string name="run_note_save">Zapisz notatkę</string>

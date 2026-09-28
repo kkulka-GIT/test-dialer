@@ -6,13 +6,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DataQuotaScenarioTest {
-    @Test fun `quota scenario keeps the same user supplied SMS before and after data`() {
-        val scenario = LocalScenarioCatalog.dataQuota(" 1234 ", "ILE")
-        assertEquals(listOf(0, 1, 2), scenario.steps.map { it.order })
-        assertEquals(TestAction.Sms("1234", "ILE"), scenario.steps[0].action)
-        assertEquals(TestAction.Data(DataVolume.DEFAULT_URL), scenario.steps[1].action)
-        assertEquals(scenario.steps[0].action, scenario.steps[2].action)
-        assertEquals(3, scenario.steps.map { it.id }.distinct().size)
-        assertThrows(IllegalArgumentException::class.java) { LocalScenarioCatalog.dataQuota(" ", "ILE") }
+    @Test fun `data scenario needs no SMS and contains only one data task`() {
+        val scenario = LocalScenarioCatalog.dataQuota()
+        assertEquals(1, scenario.steps.size)
+        assertEquals(0, scenario.steps.single().order)
+        assertEquals(TestAction.Data(DataVolume.DEFAULT_URL), scenario.steps.single().action)
     }
 }

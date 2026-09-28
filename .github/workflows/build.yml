@@ -70,8 +70,8 @@ jobs:
       - name: Verify preview application identity
         run: |
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/preview/app-preview.apk > preview-badging.txt
-          grep -F "package: name='com.example.testdialer.preview.data'" preview-badging.txt
-          grep -F "application-label:'Test Dialer Data Preview'" preview-badging.txt
+          grep -F "package: name='com.example.testdialer.preview.datafix'" preview-badging.txt
+          grep -F "application-label:'Test Dialer Data 2'" preview-badging.txt
 
       - name: Upload preview APK
         uses: actions/upload-artifact@v4

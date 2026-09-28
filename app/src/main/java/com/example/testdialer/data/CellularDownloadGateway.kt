@@ -85,15 +85,11 @@ class AndroidCellularDownloadGateway(
 ) : CellularDownloadGateway {
     override fun prepare(rawUrl: String): PreparedCellularDownload {
         val url = SafeDownloadUrlValidator.requireValid(rawUrl)
-        val network = requireNotNull(connectivityManager.activeNetwork) { "Brak aktywnej sieci" }
-        val capabilities = requireNotNull(connectivityManager.getNetworkCapabilities(network)) {
-            "Nie można odczytać parametrów aktywnej sieci"
-        }
-        require(capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) { "Wyłącz Wi-Fi i włącz dane komórkowe. Test używa wyłącznie aktywnej sieci komórkowej." }
-        require(!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) { "Test danych nie działa przez VPN" }
-        require(capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-            "Sieć komórkowa nie zgłasza dostępu do Internetu"
-        }
+        val network = requireNotNull(selectCellularNetwork(
+            connectivityManager.activeNetwork,
+            connectivityManager.allNetworks.toList(),
+            connectivityManager::getNetworkCapabilities,
+        )) { "Brak dostępnego bezpośredniego połączenia komórkowego. Włącz dane komórkowe. Jeśli nadal nie działa, sprawdź ograniczenia sieci w ustawieniach telefonu." }
         return PreparedCellularDownload(url, network)
     }
 
@@ -213,4 +209,20 @@ private class AndroidDownloadConnection(private val delegate: HttpURLConnection)
     override fun requestRange(lastByte: Long) { delegate.setRequestProperty("Range", "bytes=0-$lastByte") }
     override val contentRange: String? get() = delegate.getHeaderField("Content-Range")
     override fun disconnect() = delegate.disconnect()
+}
+
+/** Prefer default cellular, otherwise a physical cellular network exposed by Android.
+ * Never mistake a VPN advertising CELLULAR for the physical mobile connection.
+ * Network.openConnection keeps the transfer on this network, without Wi-Fi fallback.
+ */
+internal fun selectCellularNetwork(
+    active: Network?,
+    networks: List<Network>,
+    capabilities: (Network) -> NetworkCapabilities?,
+): Network? = (listOfNotNull(active) + networks).distinct().firstOrNull { network ->
+    capabilities(network)?.let {
+        it.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+            !it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+            it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    } == true
 }
