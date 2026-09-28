@@ -6,17 +6,20 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowNetwork
+import org.robolectric.shadows.ShadowNetworkCapabilities
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class CellularNetworkSelectionTest {
-    private val mobile = Network(101)
-    private val vpn = Network(102)
-    private val wifi = Network(103)
-    private fun caps(vararg transport: Int) = NetworkCapabilities().apply {
-        transport.forEach { addTransportType(it) }
-        addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    private val mobile = ShadowNetwork.newInstance(101)
+    private val vpn = ShadowNetwork.newInstance(102)
+    private val wifi = ShadowNetwork.newInstance(103)
+    private fun caps(vararg transport: Int) = ShadowNetworkCapabilities.newInstance().apply {
+        transport.forEach { shadowOf(this).addTransportType(it) }
+        shadowOf(this).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
     private fun select(active: Network?, available: Map<Network, NetworkCapabilities>) =
         selectCellularNetwork(active, available.keys.toList(), available::get)
@@ -29,7 +32,7 @@ class CellularNetworkSelectionTest {
         assertEquals(mobile, select(vpn, mapOf(vpn to caps(NetworkCapabilities.TRANSPORT_VPN), mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR))))
     }
     @Test fun `default cellular is preferred over another mobile network`() {
-        val other = Network(104)
+        val other = ShadowNetwork.newInstance(104)
         assertEquals(mobile, select(mobile, mapOf(other to caps(NetworkCapabilities.TRANSPORT_CELLULAR), mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR))))
     }
     @Test fun `wifi default does not steal the mobile data test`() {
@@ -40,6 +43,6 @@ class CellularNetworkSelectionTest {
         assertNull(select(null, emptyMap()))
     }
     @Test fun `cellular without internet capability is not selected`() {
-        assertNull(select(mobile, mapOf(mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR).apply { removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) })))
+        assertNull(select(mobile, mapOf(mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR).apply { shadowOf(this).removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) })))
     }
 }
