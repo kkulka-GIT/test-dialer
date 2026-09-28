@@ -29,6 +29,23 @@ class RunReportTest {
         return StoredTestRun(scenario, run, 3)
     }
 
+    @Test fun `editable notes survive reopening and export without altering event history`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val original = snapshot()
+        val notes = com.example.testdialer.notes.RunNotesStore(context)
+        val text = "Przed: 501 MB\nPo: 1 MB. Odpowiedź operatora."
+        assertTrue(notes.save(original.run.id, text))
+        val reopened = com.example.testdialer.notes.RunNotesStore(context)
+        assertEquals(text, reopened.get(original.run.id))
+        assertEquals("", reopened.get(RunId("another-run")))
+        assertEquals(text, JSONObject(RunReportFormatter.json(original, text)).getString("testerNote"))
+        assertTrue(RunReportFormatter.text(original, text).contains(text))
+        assertTrue(notes.save(original.run.id, ""))
+        assertEquals("", reopened.get(original.run.id))
+        assertThrows(IllegalArgumentException::class.java) { notes.save(original.run.id, "x".repeat(4001)) }
+        assertEquals(snapshot(), original)
+    }
+
     @Test fun `JSON preserves actual values unicode nulls and exact times without changing snapshot`() {
         val original = snapshot()
         val result = JSONObject(RunReportFormatter.json(original))

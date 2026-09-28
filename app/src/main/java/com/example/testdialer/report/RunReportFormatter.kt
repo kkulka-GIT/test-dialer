@@ -8,11 +8,12 @@ import java.time.Instant
 
 /** Versioned, read-only snapshot. Epoch milliseconds retain exact correlation timestamps. */
 object RunReportFormatter {
-    fun json(stored: StoredTestRun): String {
+    fun json(stored: StoredTestRun, testerNote: String = ""): String {
         val run = stored.run
         return obj(
             "format" to "test-dialer-run", "schemaVersion" to 1,
             "revision" to stored.revision,
+            "testerNote" to testerNote,
             "timeSemantics" to "epochMillis=UTC; sequenceNumber=run order; monotonicNanos=source process only",
             "scenario" to obj(
                 "id" to stored.scenario.id.value, "version" to stored.scenario.version,
@@ -56,7 +57,7 @@ object RunReportFormatter {
         ).toString(2)
     }
 
-    fun text(stored: StoredTestRun): String = buildString {
+    fun text(stored: StoredTestRun, testerNote: String = ""): String = buildString {
         val run = stored.run
         appendLine("TEST DIALER — RAPORT RUNU")
         appendLine(stored.scenario.name)
@@ -66,6 +67,11 @@ object RunReportFormatter {
         appendLine("Koniec UTC: ${run.completedAtMillis?.let(::utc) ?: "—"}")
         appendLine("Zdarzenia: ${run.events.size}")
         appendLine("Obserwacje nie są oceną poprawności naliczenia. Pełna oś czasu jest w JSON.")
+        if (testerNote.isNotBlank()) {
+            appendLine()
+            appendLine("NOTATKA TESTERA")
+            appendLine(testerNote)
+        }
         run.events.forEachIndexed { index, event ->
             appendLine()
             appendLine("${index + 1}. ${event.action.serviceType.name} — ${utc(event.occurredAtMillis)}")

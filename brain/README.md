@@ -35,7 +35,7 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 - PR #14 został squash-merged do `main`; aktualny commit `20e36eba94a90f330736c0fe788162affa0357a6`.
 - Main CI #93 (run `34026128334`) zakończyło wszystkie kroki statusem `success` i `PASS`.
 - Artefakt APK `test-dialer-debug-apk` ma ID `9987140914` i digest `sha256:d1d0790eb62cd86907f9808fdd3ac56f927202187de4ad49e6e3a8e3d80326b8`.
-- UIR-02–UIR-05 są zakończone. Brak aktywnego zadania; następny feature wymaga nowej decyzji produktowej.
+- UIR-02–UIR-05 są zakończone na main. Bieżące zaakceptowane prace na branchach opisuje CURRENT_TASK.md.
 
 ## Obserwowalność pracy
 
@@ -47,3 +47,11 @@ Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów e
 ## Zmiany oczekujące w PR #16 (2026-09-27)
 
 Eksport Runu do TXT/JSON, kopiowanie i udostępnianie, powtórzenie parametrów Eventu, postęp zadań i poprawki UI są dostępne na feature/run-reports-polish-20260926. Nie zostały jeszcze scalone do main. CI #101: PASS, 123 testy. Wariant Test Dialer Preview instaluje się obok starej aplikacji i korzysta z osobnej historii. Raport: reports/2026-09-26-run-reports-polish.md.
+
+## Zmiany oczekujące w PR #17 (2026-09-27)
+
+Na feature/data-quota-notes-20260927, opartym na PR #16, dodano scenariusz Test pakietu danych (SMS → Data → SMS), ilość 1 B–1 GB, postęp i anulowanie, sumę transferu oraz edytowalne notatki Runu z eksportem. Taski są ręczne i niezależne. Źródłem domyślnym jest plik testowy Hetznera pobierany przez HTTP Range. Licznik mierzy treść HTTP i nie stanowi pomiaru billingu.
+
+Test Dialer Data Preview instaluje się obok poprzednich aplikacji i ma osobną historię. Żaden z PR #16/#17 nie został scalony. Raport weryfikacji: reports/2026-09-27-data-quota-notes.md.
+
+Weryfikacja DATA-01: CI #104 PASS, 134 testy bez błędów/pominięć, APK debug i Data Preview oraz kontrola identyfikatora aplikacji. Test na fizycznej SIM pozostaje do wykonania.

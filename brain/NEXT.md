@@ -1,8 +1,9 @@
 # Co robimy teraz
 
-PR #16 jest zaimplementowany. Kod aplikacji przeszedł CI #101: 123 testy, debug APK i Preview APK, weryfikacja identyfikatora Preview oraz przegląd zrzutów UI.
+DATA-01 / PR #17: CI #104 PASS (134 testy, APK), zrzuty sprawdzone. Następny krok: test akceptacyjny APK #104 na telefonie.
 
-Następny krok: akceptacja na telefonie — Run → test → Rejestr → TXT/JSON, kopiowanie, powtórzenie parametrów, duża czcionka i TalkBack.
-Używać Test Dialer Preview obok starej aplikacji; nie odinstalowywać starej wersji z historią. Klucze debug różnią się pomiędzy buildami; stałe podpisywanie pozostaje osobnym zadaniem.
+Scenariusz: SMS przed → wybrana ilość danych → SMS po. Odpowiedzi operatora tester wpisuje w notatkę Runu. Ilość to bajty treści HTTP, nie dokładny licznik billingowy.
 
-Merge do main wymaga osobnej decyzji użytkownika zgodnie z AGENTS.md. Szczegóły: reports/2026-09-26-run-reports-polish.md.
+Nowe APK Test Dialer Data Preview (.preview.data) instaluje się obok wcześniejszych aplikacji. Każda ma osobną historię; nie usuwać poprzednich wersji. Stałe podpisywanie przyszłych aktualizacji pozostaje osobnym zadaniem.
+
+PR #17 jest oparty na PR #16. Żaden nie został scalony. Merge wymaga osobnej decyzji użytkownika zgodnie z AGENTS.md.

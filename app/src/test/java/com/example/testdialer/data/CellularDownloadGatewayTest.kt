@@ -98,6 +98,56 @@ class CellularDownloadGatewayTest {
         assertEquals(503, result.httpStatus)
     }
 
+    @Test fun `volume stops at target without an extra probe even if server ignores range`() {
+        var readBytes = 0
+        val connection = object : DownloadConnection {
+            override val responseCode = 200
+            override val contentLength = 1_000_000_000L
+            override val contentEncoding: String? = null
+            override val inputStream = object : InputStream() {
+                override fun read(): Int { readBytes++; return 0 }
+            }
+            var requestedEnd = -1L
+            override fun requestRange(lastByte: Long) { requestedEnd = lastByte }
+            override fun disconnect() = Unit
+        }
+        val progress = mutableListOf<Long>()
+        val result = gateway(factory = DownloadConnectionFactory { _, _ -> connection })
+            .executeVolume(prepared(), DownloadCancellation(), 17) { bytes, _ -> progress += bytes }
+        assertEquals(DownloadResultCode.COMPLETED, result.resultCode)
+        assertEquals(17L, result.bytes)
+        assertEquals(17, readBytes)
+        assertEquals(16L, connection.requestedEnd)
+        assertEquals(17L, progress.last())
+    }
+
+    @Test fun `volume early EOF records partial bytes as incomplete`() {
+        val result = gateway(body = ByteArray(37)).executeVolume(prepared(), DownloadCancellation(), 100) { _, _ -> }
+        assertEquals(DownloadResultCode.INCOMPLETE, result.resultCode)
+        assertEquals(DownloadStatus.FAILED, result.status)
+        assertEquals(37L, result.bytes)
+    }
+
+    @Test fun `valid range completes and incorrect range is rejected before reading`() {
+        for (range in listOf("bytes 0-16/1000", "bytes 1-17/1000", null)) {
+            val connection = FakeConnection(ByteArray(17), response = 206, range = range)
+            val result = gateway(factory = DownloadConnectionFactory { _, _ -> connection })
+                .executeVolume(prepared(), DownloadCancellation(), 17) { _, _ -> }
+            assertEquals(if (range == "bytes 0-16/1000") DownloadResultCode.COMPLETED else DownloadResultCode.HTTP_ERROR, result.resultCode)
+            assertTrue(connection.disconnected)
+        }
+    }
+
+    @Test fun `cancel after first chunk retains partial bytes and disconnects`() {
+        val cancellation = DownloadCancellation()
+        val connection = FakeConnection(ByteArray(20_000))
+        val result = gateway(factory = DownloadConnectionFactory { _, _ -> connection })
+            .executeVolume(prepared(), cancellation, 20_000) { _, _ -> cancellation.cancel() }
+        assertEquals(DownloadResultCode.CANCELLED, result.resultCode)
+        assertEquals(8192L, result.bytes)
+        assertTrue(connection.disconnected)
+    }
+
     private fun gateway(
         body: ByteArray = byteArrayOf(),
         resolver: HostResolver = HostResolver { _, _ -> publicAddress() },
@@ -125,8 +175,10 @@ class CellularDownloadGatewayTest {
         private val response: Int = 200,
         private val declaredLength: Long = -1,
         private val onBody: () -> Unit = {},
+        private val range: String? = null,
     ) : DownloadConnection {
         var disconnected = false
+        override val contentRange get() = range
         override val responseCode get() = response
         override val contentLength get() = declaredLength
         override val contentEncoding: String? = null

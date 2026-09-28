@@ -34,7 +34,7 @@ class DownloadCancellation {
 data class PreparedCellularDownload(val url: SafeDownloadUrl, internal val networkToken: Any? = null)
 enum class DownloadStatus { COMPLETED, FAILED, CANCELLED }
 enum class DownloadResultCode {
-    COMPLETED, CANCELLED, TIMEOUT, DNS_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED,
+    COMPLETED, CANCELLED, TIMEOUT, DNS_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED, INCOMPLETE,
 }
 data class DownloadResult(
     val status: DownloadStatus,
@@ -48,6 +48,7 @@ data class DownloadResult(
 interface CellularDownloadGateway {
     fun prepare(rawUrl: String): PreparedCellularDownload
     fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation): DownloadResult
+    fun executeVolume(prepared: PreparedCellularDownload, cancellation: DownloadCancellation, targetBytes: Long, onProgress: (Long, Long) -> Unit): DownloadResult = execute(prepared, cancellation)
 }
 fun interface HostResolver {
     @Throws(UnknownHostException::class)
@@ -58,6 +59,8 @@ interface DownloadConnection {
     val contentLength: Long
     val contentEncoding: String?
     val inputStream: InputStream
+    fun requestRange(lastByte: Long) {}
+    val contentRange: String? get() = null
     fun disconnect()
 }
 fun interface DownloadConnectionFactory {
@@ -86,7 +89,7 @@ class AndroidCellularDownloadGateway(
         val capabilities = requireNotNull(connectivityManager.getNetworkCapabilities(network)) {
             "Nie można odczytać parametrów aktywnej sieci"
         }
-        require(capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) { "Aktywna sieć nie jest siecią komórkową" }
+        require(capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) { "Wyłącz Wi-Fi i włącz dane komórkowe. Test używa wyłącznie aktywnej sieci komórkowej." }
         require(!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) { "Test danych nie działa przez VPN" }
         require(capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
             "Sieć komórkowa nie zgłasza dostępu do Internetu"
@@ -94,7 +97,16 @@ class AndroidCellularDownloadGateway(
         return PreparedCellularDownload(url, network)
     }
 
-    override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation): DownloadResult {
+    override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation): DownloadResult =
+        download(prepared, cancellation, null) { _, _ -> }
+
+    override fun executeVolume(prepared: PreparedCellularDownload, cancellation: DownloadCancellation, targetBytes: Long, onProgress: (Long, Long) -> Unit): DownloadResult {
+        require(targetBytes in 1..DataVolume.MAX_BYTES)
+        return download(prepared, cancellation, targetBytes, onProgress)
+    }
+
+    private fun download(prepared: PreparedCellularDownload, cancellation: DownloadCancellation, targetBytes: Long?, onProgress: (Long, Long) -> Unit): DownloadResult {
+        val limit = targetBytes ?: MAX_BYTES
         if (cancellation.isCancelled()) return cancelledResult()
         val started = timeProvider.capture()
         var bytes = 0L
@@ -111,29 +123,38 @@ class AndroidCellularDownloadGateway(
             cancellation.onCancel(disconnect)
             try {
                 if (cancellation.isCancelled()) return cancelledResult(started)
+                if (targetBytes != null) active.requestRange(targetBytes - 1)
                 httpStatus = active.responseCode
                 if (httpStatus !in 200..299) return failedResult(DownloadResultCode.HTTP_ERROR, started, bytes, httpStatus)
                 val encoding = active.contentEncoding
                 if (!encoding.isNullOrBlank() && !encoding.equals("identity", true)) {
                     return failedResult(DownloadResultCode.SECURITY_REJECTED, started, bytes, httpStatus)
                 }
-                if (active.contentLength > MAX_BYTES) {
+                if (targetBytes == null && active.contentLength > MAX_BYTES) {
                     return failedResult(DownloadResultCode.LIMIT_EXCEEDED, started, bytes, httpStatus)
+                }
+                if (targetBytes != null && httpStatus == 206) {
+                    val range = active.contentRange
+                    val match = range?.let { Regex("bytes 0-([0-9]+)/([0-9]+|\\*)").matchEntire(it) }
+                    val end = match?.groupValues?.get(1)?.toLongOrNull()
+                    if (end == null || end != targetBytes - 1) return failedResult(DownloadResultCode.HTTP_ERROR, started, bytes, httpStatus)
                 }
                 active.inputStream.use { input ->
                     val buffer = ByteArray(BUFFER_SIZE)
-                    while (bytes < MAX_BYTES) {
+                    while (bytes < limit) {
                         if (cancellation.isCancelled()) return cancelledResult(started, bytes, httpStatus)
-                        val remaining = (MAX_BYTES - bytes).coerceAtMost(buffer.size.toLong()).toInt()
+                        val remaining = (limit - bytes).coerceAtMost(buffer.size.toLong()).toInt()
                         val count = input.read(buffer, 0, remaining)
                         if (count < 0) break
                         bytes += count
+                        onProgress(bytes, ((timeProvider.capture().monotonicNanos - started.monotonicNanos) / 1_000_000).coerceAtLeast(0))
                     }
-                    if (bytes == MAX_BYTES && input.read() >= 0) {
+                    if (targetBytes == null && bytes == MAX_BYTES && input.read() >= 0) {
                         return failedResult(DownloadResultCode.LIMIT_EXCEEDED, started, bytes, httpStatus)
                     }
                 }
                 if (cancellation.isCancelled()) return cancelledResult(started, bytes, httpStatus)
+                if (targetBytes != null && bytes < targetBytes) return failedResult(DownloadResultCode.INCOMPLETE, started, bytes, httpStatus)
                 return DownloadResult(
                     DownloadStatus.COMPLETED, DownloadResultCode.COMPLETED, started,
                     timeProvider.capture(), bytes, httpStatus,
@@ -189,5 +210,7 @@ private class AndroidDownloadConnection(private val delegate: HttpURLConnection)
     override val contentLength: Long get() = delegate.contentLengthLong
     override val contentEncoding: String? get() = delegate.contentEncoding
     override val inputStream: InputStream get() = delegate.inputStream
+    override fun requestRange(lastByte: Long) { delegate.setRequestProperty("Range", "bytes=0-$lastByte") }
+    override val contentRange: String? get() = delegate.getHeaderField("Content-Range")
     override fun disconnect() = delegate.disconnect()
 }

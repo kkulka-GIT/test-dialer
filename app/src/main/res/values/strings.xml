@@ -109,7 +109,7 @@
     <string name="data_placeholder_body">Scenariusz Data jest przygotowany wizualnie i będzie rozwijany później.</string>
     <string name="data_placeholder_tag">wkrótce</string>
     <string name="data_card_title">Kontrolowany test danych komórkowych</string>
-    <string name="data_card_description">Pobierz maksymalnie 1 MiB przez aktualnie aktywną sieć komórkową. Test nie przełącza sieci i nie działa przez VPN.</string>
+    <string name="data_card_description">Pobierz zadaną ilość treści przez sieć komórkową. Domyślne źródło: plik testowy Hetznera.</string>
     <string name="data_label_hint">Nazwa testu (opcjonalna)</string>
     <string name="data_url_hint">Publiczny adres HTTPS bez parametrów</string>
     <string name="data_start">Uruchom pobieranie</string>
@@ -240,4 +240,23 @@
     <string name="repeat_event_description">Wypełnia formularz nowego testu w aktywnym Runie. Wykonanie zatwierdzisz osobno.</string>
     <string name="run_progress_summary">Wykonane: %1$d/%2$d · Pominięte: %3$d\nZapisane zdarzenia: %4$d</string>
     <string name="run_progress_accessibility">Rozpatrzone zadania: %1$d z %2$d</string>
+    <string name="quota_scenario">Test pakietu danych: SMS → Data → SMS</string>
+    <string name="quota_scenario_description">Podaj numer i treść zapytania do swojego operatora. Oba SMS-y będą edytowalne i wysyłane ręcznie. Odpowiedzi możesz wkleić do notatki Runu.</string>
+    <string name="quota_sms_number">Numer SMS operatora</string>
+    <string name="quota_sms_message">Treść zapytania o pakiet</string>
+    <string name="quota_sms_required">Wpisz numer SMS</string>
+    <string name="quota_scenario_start">Utwórz Run</string>
+    <string name="run_note">Notatka testera</string>
+    <string name="run_note_hint">Przed transferem:…\nPo transferze:…\nUwagi:…</string>
+    <string name="run_note_save">Zapisz notatkę</string>
+    <string name="run_note_saved">Notatka zapisana</string>
+    <string name="run_note_failed">Nie udało się zapisać notatki</string>
+    <string name="data_run_total">Transfer aplikacji w Runie: %1$s</string>
+    <string name="data_amount_hint">Ilość danych do pobrania</string>
+    <string name="data_unit">Jednostka ilości danych</string>
+    <string name="data_units_hint">1 MB = 1 000 000 B. Zakres: 1 B – 1 GB. Licznik treści aplikacji może różnić się od billingu.</string>
+    <string name="data_progress">Odebrano %1$d z %2$d B</string>
+    <string name="data_speed">Czas: %1$d s · Średnio: %2$.3f MB/s</string>
+    <string name="data_foreground">Pozostaw aplikację na ekranie. Wyjście do innej aplikacji zatrzyma transfer i zapisze część odebraną do tej chwili.</string>
+    <string name="data_result_detail">Odebrano: %1$s B / cel: %2$s B\nWynik: %3$s</string>
 </resources>

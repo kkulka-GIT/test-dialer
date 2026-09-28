@@ -94,3 +94,11 @@
 - Powtórzenie Eventu wypełnia formularz dodatkowego testu w bieżącym Active Runie. Wykonanie nadal wymaga osobnego kliknięcia; historia nie jest nadpisywana.
 - CI jawnie instaluje platform-tools, gdyż domyślny pakiet tools akcji setup-android przestał być dostępny. Raporty testów i podglądy UI są publikowane jako osobny artefakt.
 - Porównanie certyfikatów APK #95 i #97 potwierdziło różne klucze debug. Nie wolno zalecać odinstalowania starej aplikacji jako sposobu aktualizacji (utrata historii). Dodano osobny wariant preview z applicationIdSuffix .preview i nazwą Test Dialer Preview, do instalacji obok dotychczasowej aplikacji. Stały klucz do przyszłych aktualizacji pozostaje osobnym zadaniem; nie dodano kluczy ani sekretów do repo.
+
+- 2026-09-27 DATA-01: zaakceptowany scenariusz SMS przed → Data → SMS po. Numer i treść podaje tester; kolejność sugerowana, Taski nadal niezależne. Brak automatycznej wysyłki/odczytu SMS i integracji operatora.
+- Jedyny parametr wielkości to ilość bajtów: jednostki dziesiętne B/kB/MB/GB, zakres 1 B–1 GB. Pobierana jest treść HTTP; narzut protokołów, retransmisje i zaokrąglenia operatora mogą zmienić billing.
+- Domyślne źródło: https://fsn1-speed.hetzner.com/1GB.bin. Range 0..target-1, bez kompresji i przekierowań. Przy HTTP 200 stosujemy ograniczony odczyt; przy 206 walidujemy Content-Range. Krótkie EOF jest INCOMPLETE. Dawny limit 1 MiB pozostaje tylko w zgodnościowym API execute, nie w formularzu Data.
+- Transfer jest przypisany do aktywnej sieci komórkowej; Wi-Fi/VPN blokują preflight. Działa na pierwszym planie, utrzymuje ekran włączony, onStop poza zmianą konfiguracji anuluje. Bajty częściowe pozostają w Eventach.
+- requestedBytes i bytes zapisują cel i treść rzeczywiście odczytaną; byteSemantics=HTTP_BODY_NOT_BILLING. Suma Runu obejmuje wyłącznie jego Eventy Data, w tym częściowe wyniki.
+- Notatka do 4000 znaków jest edytowalną adnotacją w osobnym SharedPreferences po RunId; nie zmienia snapshotu Room ani Eventów. JSON v1 otrzymuje addytywne pole testerNote, TXT osobną sekcję. Zapis jawny, brak autosave draftu dialogu.
+- DATA-01 Preview używa .preview.data i nazwy Test Dialer Data Preview, ponieważ runner generuje inne certyfikaty debug. Instaluje się obok .preview z poprzedniej rundy, bez migracji historii. Stałe podpisywanie pozostaje otwarte; nie dodano kluczy do repo.

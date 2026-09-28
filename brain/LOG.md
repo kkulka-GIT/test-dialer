@@ -31,3 +31,14 @@
 - UIR-02–UIR-05 zamknięto. Brak aktywnego zadania; kolejny feature wymaga nowej decyzji produktowej.
 - 2026-09-26: PR #16 dodaje JSON/TXT, schowek i systemowy share, powtórzenie parametrów Eventu oraz postęp Runu i poprawki UI. CI #96 ujawniło niedostępny pakiet SDK tools przed kompilacją; konfigurację poprawiono. Weryfikacja kolejnego checkpointu trwa.
 - 2026-09-27: wznowiono i domknięto weryfikację PR #16. CI #101 PASS, 123 testy bez błędów; potwierdzono debug/preview APK i osobny identyfikator Preview. Przejrzano końcowe zrzuty UI. Raport zapisany w reports/2026-09-26-run-reports-polish.md; main bez zmian, akceptacja fizycznego SIM/TalkBack i merge pozostają do decyzji.
+
+## 2026-09-27 — DATA-01 implementation checkpoint
+- User accepted quota scenario and notes; branch feature/data-quota-notes-20260927, draft PR #17 based on #16.
+- Added configurable volume, bounded Range transfer, progress/cancel/partial results, Run totals, notes and exports.
+- Added volume/network/scenario/notes/UI tests; CI #103 started. Real server probe: HTTP 206, content-range bytes 0-15/1073741824, 16 B received.
+- No merge; physical SIM/billing not tested.
+
+## 2026-09-28 — DATA-01 verification completed
+- Resumed after interruption. #103 had one failing dialog test; awaited onShow callback without weakening assertions.
+- #104 PASS: 134 tests, zero failures/errors/skips; debug and preview APKs, Room schema, identity check. Native screenshots unchanged and reviewed.
+- Final documentation checkpoint records results and physical-device acceptance limits. No merge.

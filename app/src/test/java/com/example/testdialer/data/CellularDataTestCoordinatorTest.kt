@@ -31,6 +31,8 @@ class CellularDataTestCoordinatorTest {
         val refs = stored.run.events.single().correlation.references.associate { it.namespace to it.value }
         assertEquals("CELLULAR", refs["transport"])
         assertEquals("512", refs["bytes"])
+        assertEquals("1000000", refs["requestedBytes"])
+        assertEquals("HTTP_BODY_NOT_BILLING", refs["byteSemantics"])
         assertEquals("example.com", refs["host"])
         assertEquals(2, repository.saveCount)
     }

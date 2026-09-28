@@ -94,6 +94,65 @@ class ReportWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `volume form validates input and preserves amount after rotation`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        button(activity, R.string.data_type).performClick()
+        val input = views(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>()
+            .first { it.hint == activity.getString(R.string.data_amount_hint) }
+        input.setText("0")
+        button(activity, R.string.data_start).performClick()
+        assertNotNull(input.error)
+        input.setText("200")
+        controller.configurationChange(Configuration())
+        val rotated = controller.get()
+        assertEquals("200", views(rotated.findViewById(android.R.id.content)).filterIsInstance<EditText>()
+            .first { it.hint == rotated.getString(R.string.data_amount_hint) }.text.toString())
+        captureDataCard(rotated, "05-data-volume")
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `progress shows partial transfer and offers cancellation`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        setField(activity, "cellularDataState", com.example.testdialer.data.CellularDataUiState(
+            busy = true, bytes = 125_000_000, targetBytes = 500_000_000, elapsedMillis = 10_000,
+        ))
+        val card = captureDataCard(activity, "06-data-progress")
+        assertEquals(250, views(card).filterIsInstance<android.widget.ProgressBar>().single().progress)
+        assertTrue(views(card).filterIsInstance<Button>().any { it.text == activity.getString(R.string.data_cancel) })
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `quota dialog requires a number and does not send SMS`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        button(activity, R.string.quota_scenario).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        assertTrue(dialog.isShowing)
+        assertTrue(views(dialog.window!!.decorView).filterIsInstance<EditText>().any { it.error != null })
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        dialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
+    private fun captureDataCard(activity: MainActivity, name: String): View {
+        val card = MainActivity::class.java.getDeclaredMethod("createCellularDataScenario").apply { isAccessible = true }.invoke(activity) as View
+        card.measure(View.MeasureSpec.makeMeasureSpec(336, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1200, View.MeasureSpec.AT_MOST))
+        card.layout(0, 0, 336, card.measuredHeight)
+        val bitmap = Bitmap.createBitmap(336, card.height, Bitmap.Config.ARGB_8888)
+        card.draw(Canvas(bitmap))
+        val target = File("build/reports/screenshots/$name.png")
+        target.parentFile!!.mkdirs()
+        target.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        bitmap.recycle()
+        return card
+    }
+
     private fun capture(activity: MainActivity, name: String) {
         val root = activity.findViewById<ViewGroup>(android.R.id.content)
         root.measure(View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))
