@@ -188,7 +188,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         val recorder = TestRunRecorder.start(scenario)
         return try {
             val stored = repository.saveSnapshot(scenario, recorder.snapshot())
-            val current = Session(scenario, recorder, stored.revision, dataAmounts)
+            val current = Session(scenario, recorder, stored.revision, dataAmounts.toMap())
             session = current
             snapshot(current)
         } catch (error: Throwable) {

@@ -250,6 +250,34 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `repeat with unknown quantity clears old draft and blocks transfer until explicit input`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        MainActivity::class.java.getDeclaredField("dataAmountDraft").apply { isAccessible = true; set(activity, "500") }
+        val stepId = com.example.testdialer.domain.StepId("repeat-unknown")
+        val plan = com.example.testdialer.active.LocalScenario("test-unknown", "Powtórka bez ilości", listOf(
+            com.example.testdialer.domain.ScenarioStepDefinition(stepId, 0, "1. Dane", "Podaj ilość", TestAction.Data("https://example.com/file"))), mapOf(stepId to null))
+        val preview = MainActivity::class.java.getDeclaredMethod("showRepeatPlanPreview", com.example.testdialer.active.LocalScenario::class.java).apply { isAccessible = true }
+        preview.invoke(activity, plan)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        val stateField = MainActivity::class.java.getDeclaredField("activeRunState").apply { isAccessible = true }
+        await { (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active != null }
+        val originalId = (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active!!.stored.run.id
+        preview.invoke(activity, plan)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(originalId, (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active!!.stored.run.id)
+        button(activity, activity.getString(R.string.task_open)).performClick()
+        val amount = views(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().first { it.hint == activity.getString(R.string.data_amount_hint) }
+        assertEquals("", amount.text.toString())
+        button(activity, activity.getString(R.string.data_start)).performClick()
+        assertNotNull(amount.error)
+        assertFalse((stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).executionInProgress)
+        assertTrue((stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active!!.stored.run.events.isEmpty())
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
     private fun getRegisterState(activity: MainActivity) = MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true }.get(activity) as com.example.testdialer.register.RegisterUiState
     private fun setRegisterState(activity: MainActivity, state: com.example.testdialer.register.RegisterUiState) {
         MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true; set(activity, state) }

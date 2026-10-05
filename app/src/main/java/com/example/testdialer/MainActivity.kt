@@ -1412,7 +1412,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun repeatPreparationBlocked(): Boolean = activeRunState.active != null || activeRunState.busy ||
-        activeRunViewModel.executionInProgress() || manualSessionState.active != null || isTestTypeSwitchLocked()
+        activeRunViewModel.executionInProgress() || manualSessionState.active != null || manualSessionState.busy || isTestTypeSwitchLocked()
 
     private fun prepareSessionRepeat(sourceId: RunId) {
         if (repeatPreparationBlocked()) { templateTransferMessage("Najpierw zakończ bieżącą sesję lub test."); return }
