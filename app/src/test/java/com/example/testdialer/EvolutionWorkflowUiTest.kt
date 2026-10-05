@@ -33,6 +33,7 @@ class EvolutionWorkflowUiTest {
     @Before fun clear() {
         context.getSharedPreferences("ui-settings", Context.MODE_PRIVATE).edit().clear().commit()
         context.getSharedPreferences("test-templates-v1", Context.MODE_PRIVATE).edit().clear().commit()
+        context.getSharedPreferences(com.example.testdialer.active.ScenarioPlanStore.PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit()
     }
     @After fun cleanup() { clear() }
 
@@ -275,6 +276,41 @@ class EvolutionWorkflowUiTest {
         assertFalse((stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).executionInProgress)
         assertTrue((stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active!!.stored.run.events.isEmpty())
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `saved multi-step plan reopens as a fresh pending session without execution`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val data = com.example.testdialer.domain.StepId("saved-data")
+        val plan = com.example.testdialer.active.LocalScenario("save-source", "Plan źródłowy", listOf(
+            com.example.testdialer.domain.ScenarioStepDefinition(com.example.testdialer.domain.StepId("saved-sms"), 0, "1. SMS", "Wyślij osobno", TestAction.Sms("123", "Kontrola")),
+            com.example.testdialer.domain.ScenarioStepDefinition(data, 1, "2. Dane", "Pobierz osobno", TestAction.Data("https://example.com/file")),
+        ), mapOf(data to 100_000_000L))
+        val preview = MainActivity::class.java.getDeclaredMethod("showRepeatPlanPreview", com.example.testdialer.active.LocalScenario::class.java).apply { isAccessible = true }
+        preview.invoke(activity, plan)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        val save = ShadowAlertDialog.getLatestAlertDialog()
+        val name = views(save.window!!.decorView).filterIsInstance<EditText>().single()
+        name.setText("Plan regresyjny")
+        save.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        val store = com.example.testdialer.active.ScenarioPlanStore(context)
+        assertEquals(listOf("Plan regresyjny"), store.list().map { it.name })
+        val show = MainActivity::class.java.getDeclaredMethod("showScenarioPlans").apply { isAccessible = true }
+        show.invoke(activity)
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 0, 0)
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 0, 0)
+        val reopened = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(reopened.message.toString().contains("100000000 B"))
+        reopened.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        val stateField = MainActivity::class.java.getDeclaredField("activeRunState").apply { isAccessible = true }
+        await { (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active != null }
+        val active = (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active!!
+        assertEquals(2, active.tasks.size)
+        assertTrue(active.tasks.all { it.status == com.example.testdialer.active.ActiveTaskStatus.PENDING })
+        assertTrue(active.stored.run.events.isEmpty())
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        capture(activity, "phase5-saved-plan")
         controller.pause().stop().destroy()
     }
 
