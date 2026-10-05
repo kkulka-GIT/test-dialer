@@ -52,6 +52,12 @@ class EvolutionWorkflowUiTest {
         assertTrue(edits.contains("+48123456789"))
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         capture(activity, "evolution-template-sms")
+        button(activity, "Wróć do sesji i listy testów").performClick()
+        assertTrue(button(activity, activity.getString(R.string.run_complete)).isShown)
+        val preserved = views(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>()
+            .first { it.hint == activity.getString(R.string.sms_message_hint) }
+        assertEquals("Treść kontrolna", preserved.text.toString())
+
         controller.pause().stop().destroy()
     }
 
