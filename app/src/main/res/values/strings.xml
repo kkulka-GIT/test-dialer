@@ -19,11 +19,11 @@
     <string name="test_description">Wybierz typ testu i uruchom odpowiedni scenariusz.</string>
     <string name="run_home_title">Operacje</string>
     <string name="run_home_description">Twoje testy sieci, w jednym miejscu</string>
-    <string name="run_empty_title">Brak aktywnego sesja</string>
+    <string name="run_empty_title">Brak aktywnej sesji</string>
     <string name="run_empty_description">Wybierz Voice, SMS lub Data poniżej. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
     <string name="run_start_description">Nazwij sesję i rozpocznij własny zestaw testów lub skorzystaj z gotowego scenariusza.</string>
     <string name="run_name_hint">Nazwa sesji (opcjonalna)</string>
-    <string name="run_start_empty">Rozpocznij pusty sesja</string>
+    <string name="run_start_empty">Rozpocznij pustą sesję</string>
     <string name="run_start_scenario">Rozpocznij scenariusz Voice / SMS / Data</string>
     <string name="run_active_status">Stan: aktywny</string>
     <string name="run_complete">Zakończ sesja</string>
@@ -44,7 +44,7 @@
     <string name="test_selector_title">Wybór testu</string>
     <string name="execution_run_context">sesja: %1$s · ID %2$s</string>
     <string name="execution_task_stage">%1$s · etap: %2$s</string>
-    <string name="execution_context_accessibility">Aktywny sesja %1$s, ID %2$s. Test %3$s. Etap %4$s.</string>
+    <string name="execution_context_accessibility">Aktywna sesja %1$s, ID %2$s. Test %3$s. Etap %4$s.</string>
     <string name="execution_manual_test">Dodatkowy test</string>
     <string name="execution_stage_prepare">przygotowanie</string>
     <string name="execution_stage_running">wykonanie</string>

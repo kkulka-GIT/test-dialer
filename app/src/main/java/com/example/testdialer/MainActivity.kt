@@ -72,6 +72,9 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private val reportExecutor = Executors.newSingleThreadExecutor()
+    private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
+    private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
+    private var pendingTemplateId: String? = null
     private var pendingAdditionalType: TestType? = null
     private lateinit var registerFiltersHost: LinearLayout
     private var registerFilter = com.example.testdialer.register.RegisterFilter()
@@ -175,6 +178,7 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        pendingTemplateId = savedInstanceState?.getString("pendingTemplateId")
         registerFilter = com.example.testdialer.register.RegisterFilter(
             query = savedInstanceState?.getString("registerQuery").orEmpty(),
             status = savedInstanceState?.getString("registerStatus")?.let { value -> TestRunStatus.entries.firstOrNull { it.name == value } },
@@ -279,11 +283,15 @@ class MainActivity : ComponentActivity() {
             activeRunState = state
             renderActiveRun()
             if (state.active != null && !state.busy) {
+                pendingTemplateId?.let { id ->
+                    pendingTemplateId = null
+                    templates.list().firstOrNull { it.id == id }?.let(::applyTemplate)
+                }
                 pendingAdditionalType?.let { type ->
                     pendingAdditionalType = null
                     selectAdditionalTest(type)
                 }
-            } else if (state.error != null) pendingAdditionalType = null
+            } else if (state.error != null) { pendingAdditionalType = null; pendingTemplateId = null }
             state.message?.let { runHomeView.announceForAccessibility(it) }
             if (state.active == null) selectedActiveTaskId = null
             registerViewModel.load()
@@ -338,6 +346,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("pendingTemplateId", pendingTemplateId)
         outState.putString("registerQuery", registerFilter.query)
         outState.putString("registerStatus", registerFilter.status?.name)
         outState.putString("registerService", registerFilter.service?.name)
@@ -682,7 +691,8 @@ class MainActivity : ComponentActivity() {
             return
         }
         AlertDialog.Builder(this).setTitle("Dodaj test")
-            .setItems(arrayOf("Połączenie", "SMS", "Dane")) { _, index ->
+            .setItems(arrayOf("Połączenie", "SMS", "Dane", "Zapisane szablony")) { _, index ->
+                if (index == 3) { showTemplates(); return@setItems }
                 val type = TestType.entries[index]
                 if (activeRunState.active == null) {
                     pendingAdditionalType = type
@@ -1038,6 +1048,23 @@ class MainActivity : ComponentActivity() {
                 addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
                 })
                 addView(spaceVertical(dimen(14)))
+                if (run.status == TestRunStatus.RUNNING && activeRunState.active?.stored?.run?.id != run.id) {
+                    val interrupted = billingReviews.interruptedAt(run.id)
+                    addView(createBodyText(if (interrupted > 0) "Oznaczona jako przerwana przez testera: ${formatDateWithMillis(interrupted)}. Historyczny stan zapisu pozostaje w toku." else "Ta sesja pozostała w toku po przerwaniu pracy. Pobieranie nie jest wznawiane. Możesz zachować historię i rozpocząć nową sesję."))
+                    if (interrupted == 0L) addView(Button(this@MainActivity).apply {
+                        text = "Oznacz przegląd sesji jako przerwany"
+                        setOnClickListener {
+                            AlertDialog.Builder(this@MainActivity).setTitle("Oznaczyć sesję jako przerwaną?")
+                                .setMessage("Zapiszę oznaczenie testera. Zdarzenia, czasy i wyniki sesji pozostaną zachowane.")
+                                .setPositiveButton("Oznacz") { _, _ ->
+                                    reportExecutor.execute {
+                                        val saved = billingReviews.markInterrupted(run.id, System.currentTimeMillis())
+                                        runOnUiThread { if (!isDestroyed && !isFinishing) { if (saved) renderRegister() else Toast.makeText(this@MainActivity, "Nie udało się zapisać oznaczenia", Toast.LENGTH_LONG).show() } }
+                                    }
+                                }.setNegativeButton("Anuluj", null).show()
+                        }
+                    })
+                }
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.report_contents)))
@@ -1153,6 +1180,11 @@ class MainActivity : ComponentActivity() {
                 })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.repeat_event_description)))
+                addView(spaceVertical(dimen(8)))
+                addView(Button(this@MainActivity).apply {
+                    text = "Zapisz jako szablon"
+                    setOnClickListener { saveTemplate(event) }
+                })
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
@@ -1165,6 +1197,20 @@ class MainActivity : ComponentActivity() {
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
+                addView(createCardTitle("Rozliczenie — ocena testera"))
+                val review = billingReviews.get(event.id)
+                addView(createBodyText("Oczekiwano: ${review.expected.ifBlank { "nie określono" }}"))
+                addView(createBodyText("Otrzymano: ${review.actual.ifBlank { "nie sprawdzono" }}"))
+                addView(createTag("Ocena rozliczenia: ${billingVerdictLabel(review.verdict)}"))
+                if (review.reviewedAtMillis > 0) addView(createStatusText("Ocena testera z ${formatDateWithMillis(review.reviewedAtMillis)}"))
+                stored.scenario.steps.firstOrNull { it.id == event.stepId }?.expectedResult?.let {
+                    addView(createStatusText("Oczekiwanie scenariusza: ${it.description}"))
+                }
+                addView(Button(this@MainActivity).apply {
+                    text = "Edytuj oczekiwanie i ocenę"
+                    setOnClickListener { editBillingReview(event.id) }
+                })
+                addView(spaceVertical(dimen(12)))
                 addView(createCardTitle(getString(R.string.register_observation_title)).apply { ViewCompat.setAccessibilityHeading(this, true) })
                 addView(spaceVertical(dimen(8)))
                 val observation = event.observation
@@ -1233,6 +1279,115 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }.show()
+    }
+
+    private fun saveTemplate(event: TestEvent) {
+        val input = createOptionalInput("Nazwa szablonu").apply {
+            setText(eventTypeLabel(event))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(80))
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("Zapisz parametry jako szablon")
+            .setView(input).setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (input.text.isBlank()) { input.error = "Podaj nazwę"; return@setOnClickListener }
+                val name = input.text.toString()
+                val bytes = event.correlation.references.firstOrNull { it.namespace == "requestedBytes" }?.value?.toLongOrNull()
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                reportExecutor.execute {
+                    val result = runCatching { check(templates.save(name, event.action, bytes)) { "Nie udało się zapisać szablonu" } }
+                    runOnUiThread {
+                        if (isDestroyed || isFinishing) return@runOnUiThread
+                        if (result.isSuccess) { dialog.dismiss(); Toast.makeText(this, "Szablon zapisany", Toast.LENGTH_SHORT).show() }
+                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; input.error = result.exceptionOrNull()?.message }
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun showTemplates() {
+        val items = templates.list()
+        if (items.isEmpty()) {
+            AlertDialog.Builder(this).setTitle("Szablony testów")
+                .setMessage("Otwórz wykonane zdarzenie w Rejestrze i wybierz Zapisz jako szablon. Szablon zachowa numer, treść SMS lub ilość danych.")
+                .setPositiveButton("OK", null).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Wybierz szablon")
+            .setItems(items.map { it.name + " · " + when (it.action.serviceType) { ServiceType.VOICE -> "Połączenie"; ServiceType.SMS -> "SMS"; ServiceType.DATA -> "Dane" } }.toTypedArray()) { _, index ->
+                val template = items[index]
+                AlertDialog.Builder(this).setTitle(template.name).setItems(arrayOf("Użyj parametrów", "Usuń szablon")) { _, choice ->
+                    if (choice == 0) {
+                        if (activeRunState.busy || activeRunViewModel.executionInProgress() || isTestTypeSwitchLocked()) {
+                            Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+                        } else if (activeRunState.active == null) {
+                            pendingTemplateId = template.id
+                            activeRunViewModel.startEmpty(template.name)
+                        } else applyTemplate(template)
+                    } else AlertDialog.Builder(this).setTitle("Usunąć szablon ${template.name}?")
+                        .setMessage("Wyniki wykonanych testów pozostaną zachowane.")
+                        .setPositiveButton("Usuń") { _, _ -> reportExecutor.execute {
+                            val success = templates.delete(template.id)
+                            runOnUiThread { if (!isDestroyed && !isFinishing) Toast.makeText(this, if (success) "Szablon usunięty" else "Nie udało się usunąć szablonu", Toast.LENGTH_SHORT).show() }
+                        } }.setNegativeButton("Anuluj", null).show()
+                }.setNegativeButton("Anuluj", null).show()
+            }.setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun applyTemplate(template: com.example.testdialer.templates.TestTemplate) {
+        if (template.action is TestAction.Data) {
+            dataAmountDraft = (template.requestedBytes ?: 1_000_000L).toString()
+            dataUnitDraft = "B"
+        }
+        openActiveTask(null, template.action)
+        showSection(AppSection.TEST)
+    }
+
+    private fun billingVerdictLabel(verdict: com.example.testdialer.review.BillingVerdict): String = when (verdict) {
+        com.example.testdialer.review.BillingVerdict.NOT_CHECKED -> "nie sprawdzono"
+        com.example.testdialer.review.BillingVerdict.PASS -> "zgodne (PASS)"
+        com.example.testdialer.review.BillingVerdict.FAIL -> "niezgodne (FAIL)"
+    }
+
+    private fun editBillingReview(eventId: EventId) {
+        val before = billingReviews.get(eventId)
+        val expected = createOptionalInput("Oczekiwane naliczenie, np. 0,79 PLN").apply { setText(before.expected); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
+        val actual = createOptionalInput("Rzeczywiste naliczenie / dowód, np. CDR").apply { setText(before.actual); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
+        val verdicts = com.example.testdialer.review.BillingVerdict.entries
+        val choice = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, verdicts.map(::billingVerdictLabel))
+            setSelection(verdicts.indexOf(before.verdict))
+            minimumHeight = dimen(48)
+            contentDescription = "Ocena poprawności rozliczenia przez testera"
+        }
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dimen(20), dimen(8), dimen(20), dimen(8))
+            addView(createBodyText("To ręczna ocena rozliczenia. Nie zmienia technicznego wyniku usługi."))
+            addView(expected); addView(actual); addView(choice)
+        }
+        val scroll = ScrollView(this).apply { addView(fields) }
+        val dialog = AlertDialog.Builder(this).setTitle("Oczekiwano / otrzymano").setView(scroll)
+            .setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val review = com.example.testdialer.review.BillingReview(expected.text.toString(), actual.text.toString(), verdicts[choice.selectedItemPosition], System.currentTimeMillis())
+                if (review.verdict != com.example.testdialer.review.BillingVerdict.NOT_CHECKED && (review.expected.isBlank() || review.actual.isBlank())) {
+                    actual.error = "Opisz oczekiwanie i otrzymany wynik, aby zapisać PASS/FAIL"; return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                reportExecutor.execute {
+                    val result = runCatching { check(billingReviews.save(eventId, review)) }
+                    runOnUiThread {
+                        if (isDestroyed || isFinishing) return@runOnUiThread
+                        if (result.isSuccess) { dialog.dismiss(); renderRegister() }
+                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; actual.error = "Nie udało się zapisać oceny" }
+                    }
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun startDataScenario() {

@@ -218,7 +218,7 @@ class MainActivitySmokeTest {
 
         val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         val context = descendants(root).first {
-            it.contentDescription?.toString()?.contains("Aktywny Run") == true &&
+            it.contentDescription?.toString()?.contains("Aktywna sesja") == true &&
                 it.contentDescription?.toString()?.contains(taskTitle) == true
         }
         assertTrue(context.contentDescription.contains(activity.getString(R.string.execution_stage_prepare)))
