@@ -1222,6 +1222,7 @@ class MainActivity : ComponentActivity() {
                     })
                 }
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
+                addView(reportButton("Porównaj z inną sesją") { chooseComparison(stored.run.id) })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.report_contents)))
                 addView(spaceVertical(dimen(10)))
@@ -1403,6 +1404,65 @@ class MainActivity : ComponentActivity() {
                 }
             })
         }
+    }
+
+    private fun chooseComparison(baselineId: RunId) {
+        val candidates = registerState.runs.filter { it.runId != baselineId }
+        if (candidates.isEmpty()) { templateTransferMessage("Zapisz co najmniej dwie sesje, aby porównać wyniki."); return }
+        AlertDialog.Builder(this).setTitle("Wybierz sesję do porównania")
+            .setItems(candidates.map { "${it.scenarioName} · ${formatDateWithMillis(it.startedAtMillis)} · ${it.eventCount} zdarzeń" }.toTypedArray()) { _, index ->
+                if (reportBusy) return@setItems
+                reportBusy = true
+                templateTransferMessage("Wczytuję porównanie sesji")
+                reportExecutor.execute {
+                    val result = runCatching {
+                        val repository = (application as TestDialerApplication).testRunRepository
+                        val a = repository.get(baselineId) ?: error("Sesja bazowa jest niedostępna.")
+                        val b = repository.get(candidates[index].runId) ?: error("Wybrana sesja jest niedostępna.")
+                        val reviews = (a.run.events + b.run.events).associate { it.id.value to billingReviews.get(it.id) }
+                        com.example.testdialer.report.RunComparisonFormatter.compare(a, b, reviews)
+                    }
+                    runOnUiThread {
+                        reportBusy = false
+                        if (!isDestroyed && !isFinishing) result.fold(::showComparison) { templateTransferMessage("Nie udało się porównać: ${it.message}") }
+                    }
+                }
+            }.setNegativeButton("Anuluj", null).show()
+    }
+
+    private fun showComparison(comparison: com.example.testdialer.report.RunComparison) {
+        var onlyDifferences = false
+        val comparisonText = createBodyText(comparison.text()).apply { setTextIsSelectable(true) }
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dimen(20), dimen(8), dimen(20), dimen(16))
+            addView(Button(this@MainActivity).apply {
+                text = "Pokaż tylko różnice"; isAllCaps = false; minHeight = dimen(48)
+                setOnClickListener {
+                    onlyDifferences = !onlyDifferences
+                    this.text = if (onlyDifferences) "Pokaż wszystkie pola" else "Pokaż tylko różnice"
+                    comparisonText.text = comparison.text(onlyDifferences)
+                    announceForAccessibility(if (onlyDifferences) "Wyświetlono różnice: ${comparison.differences.size}" else "Wyświetlono wszystkie pola")
+                }
+            })
+            addView(Button(this@MainActivity).apply {
+                this.text = "Odczytaj podsumowanie"; isAllCaps = false; minHeight = dimen(48)
+                setOnClickListener {
+                    if (!getSharedPreferences("ui-settings", MODE_PRIVATE).getBoolean("speech", false)) templateTransferMessage("Najpierw włącz komunikaty głosowe w Ustawieniach")
+                    else speech.say("Porównanie sesji. Różnice w ${comparison.differences.size} polach. " + when (comparison.parametersMatch) { true -> "Zapisane parametry usług zgodne. Oceny rozliczenia są ręcznymi ocenami testera."; false -> "Parametry usług są różne. Różnice wyników nie oznaczają automatycznie regresji."; null -> "Brak pełnych parametrów do sprawdzenia zgodności." })
+                }
+            })
+            addView(comparisonText)
+        }
+        AlertDialog.Builder(this).setTitle("Porównanie sesji")
+            .setView(ScrollView(this).apply { addView(fields) })
+            .setPositiveButton("Udostępnij TXT") { _, _ ->
+                val snapshot = comparison.text(onlyDifferences)
+                reportExecutor.execute {
+                    val result = runCatching { RunReportFiles.shareIntent(this, snapshot, "txt") }
+                    runOnUiThread { if (!isDestroyed && !isFinishing) result.fold({ startActivity(Intent.createChooser(it, "Porównanie sesji")) }, { templateTransferMessage("Nie udało się udostępnić: ${it.message}") }) }
+                }
+            }.setNegativeButton("Zamknij", null).show()
     }
 
     private fun dataBytes(run: com.example.testdialer.domain.TestRun): String = run.events
