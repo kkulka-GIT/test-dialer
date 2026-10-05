@@ -1,5 +1,8 @@
 # Następny checkpoint
-Aktualny branch feature/template-portability-20261005, PR #20. Poprzednia faza: porównanie sesji, CI #131 PASS. Nowa faza 4 przygotowuje powtórkę z historii z podglądem, pustymi wynikami i ilością danych per krok. Faza 4 zakończona: źródła 62f0e1f254b81b20fb45bde1de7763a4c4636bfe, CI #133 PASS (177 testów, oba APK, kontrola tożsamości preview); raport i zrzut odczytane. Końcowe commity wyłącznie dokumentacyjne. Następny checkpoint: nazwana biblioteka planów z trwałością parametrów; najpierw ponownie sprawdzić aktualny head, PR i CI oraz zależność od PR #19. Nie powielać powtórki sesji.
-Raport brain/reports/2026-10-05-phase4.md; wytyczne brain/DEVELOPMENT_GUIDELINES.md. Przed każdą zmianą ponownie sprawdzić zdalny SHA, bieżący PR/CI i lokalne zmiany. Bez force push, automatycznego merge main i uruchamiania usług operatora.
-Dalszy kierunek: nazwana biblioteka wieloetapowych planów oparta na aktualnym LocalScenario z trwałą mapą ilości, podglądem i importem/eksportem; wersjonowana kopia pełnej historii/ocen; stabilny podpis do aktualizacji z zachowaniem danych (wymaga chronionego klucza poza repo). Przy dużych listach pomiar i paginacja DAO.
-Nie deklarować biblioteki planów, pełnej kopii historii lub stabilnego podpisu jako zaimplementowanych. Telefon/dostawcy dokumentów/TalkBack/TTS/SIM nadal NOT TESTED.
+Aktualny branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 5 zakończona: nazwana biblioteka planów sesji, źródła d608069b4ec251605d853aa79270cb9003a578b8, CI #139 PASS (181 testów, oba APK, kontrola tożsamości preview). Raport brain/reports/2026-10-05-phase5.md.
+
+Następny zalecany checkpoint: wersjonowany eksport/import nazwanych planów z pełnym podglądem, walidacją całego archiwum przed jednym zapisem, deduplikacją i zachowaniem istniejących planów. Rozwinąć ScenarioPlanStore; nie mieszać tego z pełną kopią historii.
+
+Dalszy kierunek: wersjonowana kopia pełnej historii i ręcznych ocen; stabilny podpis APK do aktualizacji z zachowaniem danych (wymaga chronionego klucza poza repo); DAO pagination dopiero po pomiarze większej historii. Przed zmianą sprawdzić remote SHA, PR/CI i lokalne zmiany. Bez force push, automatycznego merge main i usług operatora.
+
+Nie deklarować importu/eksportu planów, pełnej kopii historii lub stabilnego podpisu jako zaimplementowanych. Telefon/dostawcy dokumentów/TalkBack/TTS/SIM nadal NOT TESTED.
