@@ -1814,11 +1814,7 @@ class MainActivity : ComponentActivity() {
                 taskName,
                 stage,
             )
-            addView(createMicroText(getString(
-                R.string.execution_run_context,
-                active.stored.scenario.name,
-                active.stored.run.id.value,
-            )))
+            addView(createBodyText("Sesja: ${active.stored.scenario.name}"))
             addView(spaceVertical(dimen(4)))
             addView(createStatusText(getString(R.string.execution_task_stage, taskName, stage)))
         })
@@ -2035,8 +2031,12 @@ class MainActivity : ComponentActivity() {
                 setText(initialMessage)
                 trackDraft { smsMessageDraft = it }
             }
+            addView(createBodyText(getString(R.string.sms_destination_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(destinationInput)
             addView(spaceVertical(dimen(10)))
+            addView(createBodyText(getString(R.string.sms_message_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(messageInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
@@ -2167,6 +2167,8 @@ class MainActivity : ComponentActivity() {
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
             voicePhoneInput.setText(voicePhoneDraft ?: (selectedTaskAction() as? TestAction.Voice)?.destination.orEmpty())
             voicePhoneInput.trackDraft { voicePhoneDraft = it }
+            addView(createBodyText(getString(R.string.voice_number_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(voicePhoneInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {

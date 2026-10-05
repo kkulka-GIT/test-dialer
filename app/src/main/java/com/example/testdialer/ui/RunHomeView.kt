@@ -21,6 +21,7 @@ internal class RunHomeView(
     tasksDescription: String,
     onAddTest: () -> Unit,
 ) : LinearLayout(context) {
+    private val headingHost = verticalHost()
     private val planningHost = verticalHost()
     val executionNavigationHost = verticalHost()
     private lateinit var addTestButton: Button
@@ -39,9 +40,10 @@ internal class RunHomeView(
 
     init {
         orientation = VERTICAL
-        addView(header(title))
-        addView(space(4))
-        addView(body(description))
+        headingHost.addView(header(title))
+        headingHost.addView(space(4))
+        headingHost.addView(body(description))
+        addView(headingHost)
         addView(space(10))
         addView(statusHost)
         addView(space(10))
@@ -53,10 +55,10 @@ internal class RunHomeView(
             contentDescription = addTestLabel
             background = GradientDrawable().apply {
                 cornerRadius = dp(12).toFloat()
-                setColor(palette.button)
+                setColor(palette.accent)
                 setStroke(dp(1), palette.border)
             }
-            setTextColor(palette.textPrimary)
+            setTextColor(palette.onAccent)
             setOnClickListener { onAddTest() }
         }
         addView(addTestButton)
@@ -68,7 +70,6 @@ internal class RunHomeView(
         planningHost.addView(body(tasksDescription))
         planningHost.addView(space(12))
         planningHost.addView(taskListHost)
-        planningHost.addView(space(8))
         planningHost.addView(space(8))
         planningHost.addView(selectorHost)
         planningHost.addView(space(8))
@@ -82,6 +83,7 @@ internal class RunHomeView(
     }
 
     fun showExecutionOnly(focused: Boolean, hasSession: Boolean = true) {
+        headingHost.visibility = if (focused) View.GONE else View.VISIBLE
         runHost.visibility = if (focused) View.GONE else View.VISIBLE
         planningHost.visibility = if (focused || !hasSession) View.GONE else View.VISIBLE
         addTestButton.visibility = if (focused) View.GONE else View.VISIBLE
