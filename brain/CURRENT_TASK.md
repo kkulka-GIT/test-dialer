@@ -7,4 +7,4 @@ Kryteria: anulowanie niczego nie zapisuje; aktywna sesja blokuje powtórkę; źr
 Tryb incremental. Testy: kolejność/powtórzenia, niezależne ID, brakujące/niejednoznaczne ilości, limity, zachowanie aktywnej sesji, podgląd/anulowanie/formularz UI.
 Raport: brain/reports/2026-10-05-phase4.md.
 
-Stan: implementacja opublikowana, CI #133 QUEUED po kilku odczytach. Kryteria testy/APK nie są jeszcze spełnione. Następny przebieg ma najpierw dokończyć tę weryfikację lub naprawić znalezione błędy, bez nowej funkcji.
+Stan: checkpoint zakończony. CI #133 PASS dla źródeł 62f0e1f254b81b20fb45bde1de7763a4c4636bfe: 177 testów bez błędów/pominięć, oba APK i kontrola tożsamości preview PASS. Odczytano JUnit oraz zrzut formularza. Końcowe zmiany wyłącznie dokumentacyjne. Następny checkpoint wybierać według NEXT po sprawdzeniu remote SHA i PR/CI.
