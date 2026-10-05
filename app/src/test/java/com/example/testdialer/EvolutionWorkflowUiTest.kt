@@ -130,6 +130,7 @@ class EvolutionWorkflowUiTest {
         val backup = ShadowAlertDialog.getLatestAlertDialog()
         assertTrue(backup.isShowing)
         backup.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val intent = Shadows.shadowOf(activity).nextStartedActivity
         assertEquals(android.content.Intent.ACTION_CREATE_DOCUMENT, intent.action)
         assertEquals("application/json", intent.type)
@@ -138,6 +139,7 @@ class EvolutionWorkflowUiTest {
         val importDialog = ShadowAlertDialog.getLatestAlertDialog()
         capture(activity, "phase2-backup-settings")
         importDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val importIntent = Shadows.shadowOf(activity).nextStartedActivity
         assertEquals(android.content.Intent.ACTION_OPEN_DOCUMENT, importIntent.action)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
