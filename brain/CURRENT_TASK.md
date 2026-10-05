@@ -7,3 +7,5 @@ Kryteria: import nie nadpisuje istniejących szablonów; zły plik nie zmienia d
 Testy: round-trip parametrów, schemat/limity/typy, atomowość, duplikaty/kolizje ID, granice stron, UI wybierania plików i historia.
 Raportowanie: brain/reports/2026-10-05-phase2.md, checkpointy commit/push, faktyczne wyniki CI.
 Rozwój cykliczny: aktywna automatyzacja godzinowa; sprawdza aktualny stan przed zmianą i najpierw kończy niedokończone CI. Nie zakłada stałej dostępności środowiska ani automatycznego merge.
+
+Stan: faza 2 ukończona, CI #127 PASS, poprzedni pełny raport JUnit 165/0/0/0. Następna faza: porównania sesji, osobny branch.
