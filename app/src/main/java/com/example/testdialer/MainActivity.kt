@@ -246,10 +246,20 @@ class MainActivity : ComponentActivity() {
         contentHost.addView(testSection)
         contentHost.addView(registerSection)
 
-        root.addView(Button(this).apply {
-            text = "Wygląd i dźwięk"
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dimen(20), dimen(4), dimen(12), dimen(4))
+            addView(createStatusText("TEST DIALER").apply {
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(ColorPalette.accent)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(Button(this@MainActivity).apply {
+            text = "Ustawienia"
             contentDescription = "Ustawienia wyglądu i komunikatów głosowych"
             setOnClickListener { showAppearanceSettings() }
+            })
         })
         root.addView(contentHost)
         root.addView(createBottomNavigation())
@@ -576,7 +586,7 @@ class MainActivity : ComponentActivity() {
         }
         val active = state.active
         if (active == null) {
-            runHomeView.showExecutionOnly(false)
+            runHomeView.showExecutionOnly(false, false)
             runHomeView.executionContextHost.removeAllViews()
             runHomeView.runHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.run_empty_title)))
@@ -742,7 +752,7 @@ class MainActivity : ComponentActivity() {
 
     private fun setExecutionFocus(focused: Boolean) {
         executionFocused = focused
-        runHomeView.showExecutionOnly(focused && activeRunState.active != null)
+        runHomeView.showExecutionOnly(focused && activeRunState.active != null, activeRunState.active != null)
         if (!focused) {
             (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
                 .hideSoftInputFromWindow(testScenarioHost.windowToken, 0)

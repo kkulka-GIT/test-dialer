@@ -17,14 +17,14 @@
     <string name="data_type">Dane</string>
     <string name="test_title">Test</string>
     <string name="test_description">Wybierz typ testu i uruchom odpowiedni scenariusz.</string>
-    <string name="run_home_title">Operacje</string>
+    <string name="run_home_title">Twoje testy</string>
     <string name="run_home_description">Twoje testy sieci, w jednym miejscu</string>
     <string name="run_empty_title">Brak aktywnej sesji</string>
-    <string name="run_empty_description">Wybierz Voice, SMS lub Data poniżej. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
+    <string name="run_empty_description">Dodaj połączenie, SMS lub test danych. Ten panel nie tworzy rekordu ani nie uruchamia usługi.</string>
     <string name="run_start_description">Nazwij sesję i rozpocznij własny zestaw testów lub skorzystaj z gotowego scenariusza.</string>
     <string name="run_name_hint">Nazwa sesji (opcjonalna)</string>
     <string name="run_start_empty">Rozpocznij pustą sesję</string>
-    <string name="run_start_scenario">Rozpocznij scenariusz Voice / SMS / Data</string>
+    <string name="run_start_scenario">Scenariusz: połączenie, SMS i dane</string>
     <string name="run_active_status">Stan: aktywny</string>
     <string name="run_complete">Zakończ sesja</string>
     <string name="run_no_planned_tasks">Brak zaplanowanych testów. Dodaj ręczny test Voice, SMS lub Data.</string>
@@ -39,7 +39,7 @@
     <string name="task_opened_announcement">Otwarto test %1$s dla wybranego testu.</string>
     <string name="run_add_test">Dodaj test</string>
     <string name="run_tasks_title">Zadania</string>
-    <string name="run_tasks_description">Wybierz Voice, SMS lub Data.</string>
+    <string name="run_tasks_description">Dodaj połączenie, SMS lub test danych.</string>
     <string name="run_tasks_announcement">Sekcja zadań. Wybierz typ testu.</string>
     <string name="test_selector_title">Wybór testu</string>
     <string name="execution_run_context">sesja: %1$s · ID %2$s</string>

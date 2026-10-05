@@ -23,6 +23,7 @@ import com.example.testdialer.domain.TestEvent
 import com.example.testdialer.domain.TestRun
 import com.example.testdialer.domain.TestRunStatus
 import com.example.testdialer.register.RegisterUiState
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

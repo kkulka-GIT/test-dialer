@@ -23,6 +23,7 @@ internal class RunHomeView(
 ) : LinearLayout(context) {
     private val planningHost = verticalHost()
     val executionNavigationHost = verticalHost()
+    private lateinit var addTestButton: Button
     val statusHost = verticalHost()
     val runHost = verticalHost()
     val taskListHost = verticalHost()
@@ -38,29 +39,13 @@ internal class RunHomeView(
 
     init {
         orientation = VERTICAL
-        addView(TextView(context).apply {
-            text = "TEST DIALER"
-            textSize = 12f
-            letterSpacing = 0.14f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(palette.accent)
-        })
-        addView(space(6))
         addView(header(title))
         addView(space(4))
         addView(body(description))
         addView(space(10))
         addView(statusHost)
         addView(space(10))
-        addView(runHost)
-        addView(space(14))
-        planningHost.addView(tasksHeading)
-        planningHost.addView(space(6))
-        planningHost.addView(body(tasksDescription))
-        planningHost.addView(space(12))
-        planningHost.addView(taskListHost)
-        planningHost.addView(space(8))
-        planningHost.addView(Button(context).apply {
+        addTestButton = Button(context).apply {
             text = addTestLabel
             isAllCaps = false
             textSize = 16f
@@ -73,7 +58,17 @@ internal class RunHomeView(
             }
             setTextColor(palette.textPrimary)
             setOnClickListener { onAddTest() }
-        })
+        }
+        addView(addTestButton)
+        addView(space(10))
+        addView(runHost)
+        addView(space(14))
+        planningHost.addView(tasksHeading)
+        planningHost.addView(space(6))
+        planningHost.addView(body(tasksDescription))
+        planningHost.addView(space(12))
+        planningHost.addView(taskListHost)
+        planningHost.addView(space(8))
         planningHost.addView(space(8))
         planningHost.addView(selectorHost)
         planningHost.addView(space(8))
@@ -86,9 +81,10 @@ internal class RunHomeView(
         addView(manualSessionHost)
     }
 
-    fun showExecutionOnly(focused: Boolean) {
+    fun showExecutionOnly(focused: Boolean, hasSession: Boolean = true) {
         runHost.visibility = if (focused) View.GONE else View.VISIBLE
-        planningHost.visibility = if (focused) View.GONE else View.VISIBLE
+        planningHost.visibility = if (focused || !hasSession) View.GONE else View.VISIBLE
+        addTestButton.visibility = if (focused) View.GONE else View.VISIBLE
         executionNavigationHost.visibility = if (focused) View.VISIBLE else View.GONE
     }
 
