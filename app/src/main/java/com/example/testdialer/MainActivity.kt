@@ -106,6 +106,8 @@ class MainActivity : ComponentActivity() {
     private var pendingAdditionalType: TestType? = null
     private lateinit var registerFilterLabel: Button
     private lateinit var registerFiltersHost: LinearLayout
+    private var registerPage = 0
+    private val registerPageSize = 20
     private var registerFilter = com.example.testdialer.register.RegisterFilter()
     private var reportBusy = false
     private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
@@ -213,6 +215,7 @@ class MainActivity : ComponentActivity() {
         )[ActiveRunViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
+        registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
         pendingTemplateId = savedInstanceState?.getString("pendingTemplateId")
         registerFilter = com.example.testdialer.register.RegisterFilter(
             query = savedInstanceState?.getString("registerQuery").orEmpty(),
@@ -398,6 +401,7 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean("executionFocused", executionFocused)
         outState.putString("lastSpokenKey", lastSpokenKey)
         outState.putString("pendingTemplateId", pendingTemplateId)
+        outState.putInt("registerPage", registerPage)
         outState.putString("registerQuery", registerFilter.query)
         outState.putString("registerStatus", registerFilter.status?.name)
         outState.putString("registerService", registerFilter.service?.name)
@@ -1002,7 +1006,10 @@ class MainActivity : ComponentActivity() {
             registerListHost.addView(createBodyText(getString(R.string.register_loading)))
         }
         val summaries = registerFilter.apply(registerState.runs, System.currentTimeMillis())
+        val pageCount = ((summaries.size + registerPageSize - 1) / registerPageSize).coerceAtLeast(1)
+        registerPage = registerPage.coerceIn(0, pageCount - 1)
         registerListHost.addView(createStatusText("Znaleziono sesji: ${summaries.size} / ${registerState.runs.size}"))
+        if (pageCount > 1) registerListHost.addView(createRegisterPager(pageCount))
         if (summaries.isEmpty()) {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createCard {
@@ -1011,11 +1018,12 @@ class MainActivity : ComponentActivity() {
                 addView(createBodyText(if (registerState.runs.isEmpty()) getString(R.string.register_runs_empty_body) else "Brak sesji pasujących do filtrów. Zmień wyszukiwanie lub wyczyść filtry."))
             })
         } else {
-            summaries.forEach { summary ->
+            summaries.drop(registerPage * registerPageSize).take(registerPageSize).forEach { summary ->
                 registerListHost.addView(spaceVertical(dimen(12)))
                 registerListHost.addView(createRunSummaryCard(summary))
             }
         }
+        if (pageCount > 1) registerListHost.addView(createRegisterPager(pageCount))
         registerListHost.addView(spaceVertical(dimen(20)))
         registerListHost.addView(createCard {
             elevation = 0f
@@ -1044,6 +1052,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun createRegisterPager(pageCount: Int): View = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        val label = createStatusText("Strona ${registerPage + 1} z $pageCount · do $registerPageSize sesji").apply {
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        addView(label)
+        fun navigate(delta: Int) {
+            registerPage += delta
+            renderRegister()
+            registerFiltersHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, registerFiltersHost.width, registerFiltersHost.height), false)
+            registerListHost.announceForAccessibility("Strona ${registerPage + 1} z $pageCount")
+        }
+        // Vertical controls preserve large-font labels on narrow phones.
+        addView(Button(this@MainActivity).apply {
+            text = "Poprzednia strona"; isAllCaps = false; minHeight = dimen(48)
+            isEnabled = registerPage > 0
+            setOnClickListener { navigate(-1) }
+        })
+        addView(Button(this@MainActivity).apply {
+            text = "Następna strona"; isAllCaps = false; minHeight = dimen(48)
+            isEnabled = registerPage + 1 < pageCount
+            setOnClickListener { navigate(1) }
+        })
+    }
+
     private fun createRegisterFilters(): LinearLayout = createCard {
         val search = createOptionalInput("Szukaj nazwy sesji lub ID").apply {
             setText(registerFilter.query)
@@ -1056,7 +1089,7 @@ class MainActivity : ComponentActivity() {
                     clearFocus(); true
                 } else false
             }
-            trackDraft { query -> registerFilter = registerFilter.copy(query = query); renderRegister() }
+            trackDraft { query -> registerPage = 0; registerFilter = registerFilter.copy(query = query); renderRegister() }
         }
         addView(search)
         addView(Button(this@MainActivity).apply {
@@ -1066,7 +1099,7 @@ class MainActivity : ComponentActivity() {
         })
         addView(Button(this@MainActivity).apply {
             text = "Wyczyść filtry"
-            setOnClickListener { registerFilter = com.example.testdialer.register.RegisterFilter(); search.setText(""); renderRegister() }
+            setOnClickListener { registerPage = 0; registerFilter = com.example.testdialer.register.RegisterFilter(); search.setText(""); renderRegister() }
         })
     }
 
@@ -1079,6 +1112,7 @@ class MainActivity : ComponentActivity() {
                     else -> arrayOf("Cała historia", "Dzisiaj", "Ostatnie 7 dni", "Ostatnie 30 dni")
                 }
                 AlertDialog.Builder(this).setTitle("Wybierz filtr").setItems(options) { _, choice ->
+                    registerPage = 0
                     registerFilter = when (category) {
                         0 -> registerFilter.copy(status = if (choice == 0) null else TestRunStatus.entries[choice - 1])
                         1 -> registerFilter.copy(service = if (choice == 0) null else ServiceType.entries[choice - 1])

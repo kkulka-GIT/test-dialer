@@ -94,6 +94,62 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `register pages bound rendering while search finds sessions outside current page`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        button(activity, activity.getString(R.string.nav_register)).performClick()
+        await { !getRegisterState(activity).busy }
+        val summaries = (0 until 53).map { index -> com.example.testdialer.persistence.TestRunSummary(
+            com.example.testdialer.domain.RunId("page-$index"), "Sesja numer $index", 1,
+            com.example.testdialer.domain.TestRunStatus.COMPLETED, 1000L + index, 2000L + index, 1L) }
+        setRegisterState(activity, com.example.testdialer.register.RegisterUiState(runs = summaries))
+        fun openCount() = views(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+            .count { it.text.toString() == activity.getString(R.string.register_open_run) }
+        assertEquals(20, openCount())
+        assertFalse(button(activity, "Poprzednia strona").isEnabled)
+        button(activity, "Następna strona").performClick()
+        assertEquals(20, openCount())
+        button(activity, "Następna strona").performClick()
+        assertEquals(13, openCount())
+        assertFalse(button(activity, "Następna strona").isEnabled)
+        val search = views(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>().first { it.hint == "Szukaj nazwy sesji lub ID" }
+        search.setText("page-0")
+        assertEquals(1, openCount())
+        assertTrue(views(activity.findViewById(android.R.id.content)).filterIsInstance<android.widget.TextView>().any { it.text.toString().contains("Sesja numer 0") })
+        search.setText("")
+        assertEquals(20, openCount())
+        capture(activity, "phase2-register-pages")
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `backup and import use system document picker without telecom action`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 3, 3)
+        val backup = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(backup.isShowing)
+        backup.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        val intent = Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CREATE_DOCUMENT, intent.action)
+        assertEquals("application/json", intent.type)
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 3, 3)
+        val importDialog = ShadowAlertDialog.getLatestAlertDialog()
+        capture(activity, "phase2-backup-settings")
+        importDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        val importIntent = Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_OPEN_DOCUMENT, importIntent.action)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    private fun getRegisterState(activity: MainActivity) = MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true }.get(activity) as com.example.testdialer.register.RegisterUiState
+    private fun setRegisterState(activity: MainActivity, state: com.example.testdialer.register.RegisterUiState) {
+        MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true; set(activity, state) }
+        MainActivity::class.java.getDeclaredMethod("renderRegister").apply { isAccessible = true; invoke(activity) }
+    }
+
     private fun button(activity: MainActivity, label: String) = views(activity.findViewById(android.R.id.content)).filterIsInstance<Button>().first { it.text.toString() == label }
     private fun views(view: View): Sequence<View> = sequence {
         yield(view)
