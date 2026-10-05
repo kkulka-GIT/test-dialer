@@ -43,7 +43,7 @@ Baza: PR #18 / 7e0c335, zawierający #16 i #17. Nowy PR #19: https://github.com/
 1. Komunikaty głosowe są domyślnie wyłączone; włącza je tester w Ustawieniach.
 2. TTS używa polskiego języka systemowego i mówi o zapisie obserwacji/wyniku, bez udawania weryfikacji billingu.
 3. Dostępne jest krótkie odczytanie aktywnej sesji. Mowa zatrzymuje się w tle i silnik jest zamykany z Activity.
-4. Brak polskiego głosu daje jawny komunikat zamiast pozornego sukcesu.
+4. Brak polskiego głosu daje jawny komunikat zamiast pozornego sukcesu. Manifest ma wymagane queries dla TTS na Androidzie 11+; źródło: https://developer.android.com/reference/android/speech/tts/TextToSpeech. Nie dodano nowych uprawnień.
 
 ## Weryfikacja i ograniczenia
 - diff --check: PASS na checkpointach.

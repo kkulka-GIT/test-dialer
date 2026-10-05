@@ -72,7 +72,7 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private val speech by lazy { com.example.testdialer.accessibility.SpeechAnnouncements(applicationContext).apply {
-        onUnavailable = { if (!isDestroyed && !isFinishing) Toast.makeText(this@MainActivity, "Polski głos TTS jest niedostępny. Sprawdź ustawienia syntezy mowy telefonu.", Toast.LENGTH_LONG).show() }
+        onUnavailable = { if (!isDestroyed && !isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) Toast.makeText(this@MainActivity, "Polski głos TTS jest niedostępny. Sprawdź ustawienia syntezy mowy telefonu.", Toast.LENGTH_LONG).show() }
     } }
     private var executionFocused = false
     private var lastSpokenKey: String? = null
@@ -303,6 +303,7 @@ class MainActivity : ComponentActivity() {
             if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.DATA)
         }
         activeRunViewModel.state.observe(this) { state ->
+            if (activeRunState.active != null && state.active == null) executionFocused = false
             activeRunState = state
             renderActiveRun()
             if (state.active != null && !state.busy) {

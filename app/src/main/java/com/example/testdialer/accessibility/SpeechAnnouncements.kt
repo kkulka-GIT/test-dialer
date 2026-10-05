@@ -25,7 +25,12 @@ class SpeechAnnouncements(context: Context) {
                 if (closed || engine == null) return@post
                 val language = if (status == TextToSpeech.SUCCESS) engine?.setLanguage(Locale.forLanguageTag("pl-PL")) else null
                 ready = language != null && language >= TextToSpeech.LANG_AVAILABLE
-                if (ready) speakPending() else { pending = null; onUnavailable?.invoke() }
+                if (ready) speakPending() else {
+                    pending = null
+                    engine?.shutdown()
+                    engine = null
+                    if (enabled()) onUnavailable?.invoke()
+                }
             }
         }
     }
