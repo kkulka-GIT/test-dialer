@@ -73,6 +73,8 @@ import java.util.UUID
 class MainActivity : ComponentActivity() {
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private var pendingAdditionalType: TestType? = null
+    private lateinit var registerFiltersHost: LinearLayout
+    private var registerFilter = com.example.testdialer.register.RegisterFilter()
     private var reportBusy = false
     private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
     private var dataAmountDraft = "1"
@@ -173,6 +175,12 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        registerFilter = com.example.testdialer.register.RegisterFilter(
+            query = savedInstanceState?.getString("registerQuery").orEmpty(),
+            status = savedInstanceState?.getString("registerStatus")?.let { value -> TestRunStatus.entries.firstOrNull { it.name == value } },
+            service = savedInstanceState?.getString("registerService")?.let { value -> ServiceType.entries.firstOrNull { it.name == value } },
+            days = savedInstanceState?.getInt("registerDays", 0)?.takeIf { it > 0 },
+        )
         pendingAdditionalType = savedInstanceState?.getString("pendingAdditionalType")?.let { saved -> TestType.entries.firstOrNull { it.name == saved } }
         dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
         dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
@@ -330,6 +338,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("registerQuery", registerFilter.query)
+        outState.putString("registerStatus", registerFilter.status?.name)
+        outState.putString("registerService", registerFilter.service?.name)
+        outState.putInt("registerDays", registerFilter.days ?: 0)
         outState.putString("pendingAdditionalType", pendingAdditionalType?.name)
         outState.putString("dataAmountDraft", dataAmountDraft)
         outState.putString("dataUnitDraft", dataUnitDraft)
@@ -723,6 +735,9 @@ class MainActivity : ComponentActivity() {
             getString(R.string.register_description),
         ))
         content.addView(spaceVertical(dimen(16)))
+        registerFiltersHost = createRegisterFilters()
+        content.addView(registerFiltersHost)
+        content.addView(spaceVertical(dimen(12)))
         registerListHost = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
@@ -836,6 +851,7 @@ class MainActivity : ComponentActivity() {
 
     private fun renderRegister() {
         if (!::registerListHost.isInitialized) return
+        registerFiltersHost.visibility = if (registerState.selectedRun == null) View.VISIBLE else View.GONE
         registerListHost.removeAllViews()
         registerState.selectedRun?.let { selected ->
             if (registerState.selectedEventId != null) {
@@ -867,13 +883,14 @@ class MainActivity : ComponentActivity() {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createBodyText(getString(R.string.register_loading)))
         }
-        val summaries = registerState.runs
+        val summaries = registerFilter.apply(registerState.runs, System.currentTimeMillis())
+        registerListHost.addView(createStatusText("Znaleziono sesji: ${summaries.size} / ${registerState.runs.size}"))
         if (summaries.isEmpty()) {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.register_runs_empty_title)))
                 addView(spaceVertical(dimen(8)))
-                addView(createBodyText(getString(R.string.register_runs_empty_body)))
+                addView(createBodyText(if (registerState.runs.isEmpty()) getString(R.string.register_runs_empty_body) else "Brak sesji pasujących do filtrów. Zmień wyszukiwanie lub wyczyść filtry."))
             })
         } else {
             summaries.forEach { summary ->
@@ -907,6 +924,42 @@ class MainActivity : ComponentActivity() {
             if (index > 0) registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createVoiceResultCard(result))
         }
+    }
+
+    private fun createRegisterFilters(): LinearLayout = createCard {
+        val search = createOptionalInput("Szukaj nazwy sesji lub ID").apply {
+            setText(registerFilter.query)
+            contentDescription = "Wyszukiwanie sesji po nazwie lub identyfikatorze"
+            trackDraft { query -> registerFilter = registerFilter.copy(query = query); renderRegister() }
+        }
+        addView(search)
+        addView(Button(this@MainActivity).apply {
+            text = "Filtry: status, usługa, data"
+            setOnClickListener { showRegisterFilters() }
+        })
+        addView(Button(this@MainActivity).apply {
+            text = "Wyczyść filtry"
+            setOnClickListener { registerFilter = com.example.testdialer.register.RegisterFilter(); search.setText(""); renderRegister() }
+        })
+    }
+
+    private fun showRegisterFilters() {
+        AlertDialog.Builder(this).setTitle("Filtr rejestru")
+            .setItems(arrayOf("Status sesji", "Typ usługi", "Data rozpoczęcia")) { _, category ->
+                val options = when (category) {
+                    0 -> arrayOf("Wszystkie", "Utworzona", "W toku", "Zakończona", "Przerwana")
+                    1 -> arrayOf("Wszystkie", "Połączenie", "SMS", "Dane")
+                    else -> arrayOf("Cała historia", "Dzisiaj", "Ostatnie 7 dni", "Ostatnie 30 dni")
+                }
+                AlertDialog.Builder(this).setTitle("Wybierz filtr").setItems(options) { _, choice ->
+                    registerFilter = when (category) {
+                        0 -> registerFilter.copy(status = if (choice == 0) null else TestRunStatus.entries[choice - 1])
+                        1 -> registerFilter.copy(service = if (choice == 0) null else ServiceType.entries[choice - 1])
+                        else -> registerFilter.copy(days = listOf(null, 1, 7, 30)[choice])
+                    }
+                    renderRegister()
+                }.setNegativeButton("Anuluj", null).show()
+            }.setNegativeButton("Zamknij", null).show()
     }
 
     private fun createRegisterError(message: String): View = createCard {
@@ -1201,7 +1254,7 @@ class MainActivity : ComponentActivity() {
     private fun showReportOptions(stored: StoredTestRun) {
         AlertDialog.Builder(this)
             .setTitle(R.string.report_export)
-            .setItems(arrayOf(getString(R.string.report_copy), getString(R.string.report_share_text), getString(R.string.report_share_json))) { _, option ->
+            .setItems(arrayOf(getString(R.string.report_copy), getString(R.string.report_share_text), getString(R.string.report_share_json), "Udostępnij CSV")) { _, option ->
                 exportReport(stored, option)
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -1216,11 +1269,15 @@ class MainActivity : ComponentActivity() {
         val note = runNotes.get(stored.run.id)
         reportExecutor.execute {
             val result = runCatching {
-                val content = if (option == 2) RunReportFormatter.json(stored, note) else RunReportFormatter.text(stored, note)
+                val content = when (option) {
+                    2 -> RunReportFormatter.json(stored, note)
+                    3 -> RunReportFormatter.csv(stored, note)
+                    else -> RunReportFormatter.text(stored, note)
+                }
                 if (option == 0) {
                     require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
                     content to null
-                } else content to RunReportFiles.shareIntent(appContext, content, option == 2)
+                } else content to RunReportFiles.shareIntent(appContext, content, when (option) { 2 -> "json"; 3 -> "csv"; else -> "txt" })
             }
             runOnUiThread {
                 reportBusy = false

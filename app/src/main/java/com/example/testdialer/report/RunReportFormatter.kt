@@ -93,6 +93,34 @@ object RunReportFormatter {
         }
     }
 
+    /** RFC-style quoting plus spreadsheet formula neutralization for every user-controlled cell. */
+    fun csv(stored: StoredTestRun, testerNote: String = ""): String = buildString {
+        val headers = listOf("run_id", "scenario", "run_status", "event_id", "step_id", "service", "occurred_at_utc",
+            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code", "references_json", "tester_note")
+        appendLine(headers.joinToString(",") { csvCell(it) })
+        val events = stored.run.events.map { it as com.example.testdialer.domain.TestEvent? }.ifEmpty { listOf(null) }
+        events.forEach { event ->
+            val target = when (val action = event?.action) {
+                is TestAction.Voice -> action.destination
+                is TestAction.Sms -> action.destination
+                is TestAction.Data -> action.target
+                null -> ""
+            }
+            val values = listOf(stored.run.id.value, stored.scenario.name, stored.run.status.name,
+                event?.id?.value.orEmpty(), event?.stepId?.value.orEmpty(), event?.action?.serviceType?.name.orEmpty(),
+                event?.occurredAtMillis?.let(::utc).orEmpty(), event?.occurredAtMillis?.toString().orEmpty(), target,
+                (event?.action as? TestAction.Sms)?.message.orEmpty(), event?.observation?.status?.name.orEmpty(),
+                event?.observation?.source?.name.orEmpty(), event?.observation?.code.orEmpty(),
+                event?.correlation?.references?.let { refs -> array(refs.map { obj("namespace" to it.namespace, "value" to it.value) }).toString() }.orEmpty(), testerNote)
+            append(values.joinToString(",") { csvCell(it) }); append("\r\n")
+        }
+    }
+
+    internal fun csvCell(value: String): String {
+        val safe = if (value.trimStart().firstOrNull() in listOf('=', '+', '-', '@')) "'" + value else value
+        return "\"" + safe.replace("\"", "\"\"") + "\""
+    }
+
     private fun action(action: TestAction): JSONObject = when (action) {
         is TestAction.Voice -> obj("serviceType" to "VOICE", "destination" to action.destination)
         is TestAction.Sms -> obj("serviceType" to "SMS", "destination" to action.destination, "message" to action.message)

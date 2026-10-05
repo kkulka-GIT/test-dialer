@@ -44,6 +44,9 @@ abstract class TestRunDao {
     @Query("SELECT * FROM test_runs ORDER BY startedAtMillis DESC, runId")
     abstract fun listRuns(): List<TestRunEntity>
 
+    @Query("SELECT DISTINCT actionKind FROM test_events WHERE runId = :runId")
+    abstract fun serviceTypes(runId: String): List<String>
+
     @Query("SELECT COUNT(*) FROM test_events WHERE runId = :runId")
     abstract fun eventCount(runId: String): Int
 
