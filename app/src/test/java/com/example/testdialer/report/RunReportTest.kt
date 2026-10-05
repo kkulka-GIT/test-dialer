@@ -40,14 +40,6 @@ class RunReportTest {
         assertEquals(snapshot(), stored)
     }
 
-    @Test fun `CSV shares a read-only file using CSV MIME type`() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val intent = RunReportFiles.shareIntent(context, RunReportFormatter.csv(snapshot()), "csv")
-        assertEquals("text/csv", intent.type)
-        assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        assertEquals(0, intent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-    }
-
     private fun snapshot(): StoredTestRun {
         val scenario = ScenarioDefinition(ScenarioId("scenario"), 1, "Próba \"SIM\"", steps = listOf(
             ScenarioStepDefinition(StepId("sms"), 0, "SMS", "Wyślij", TestAction.Sms("+48123456789", "szablon")),
@@ -137,6 +129,10 @@ class RunReportTest {
 
     @Test fun `shared files use read only content URI and independent utf8 snapshots`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val csv = RunReportFiles.shareIntent(context, RunReportFormatter.csv(snapshot()), "csv")
+        assertEquals("text/csv", csv.type)
+        assertEquals(Intent.FLAG_GRANT_READ_URI_PERMISSION, csv.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        assertEquals(0, csv.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         val first = RunReportFiles.shareIntent(context, "Zażółć", false)
         val second = RunReportFiles.shareIntent(context, "{}", true)
         val uri = first.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)!!
