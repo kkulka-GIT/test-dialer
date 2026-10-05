@@ -1,7 +1,7 @@
 # Autonomiczny rozwój Test Dialera — 2026-10-05
 
 Cel: czytelny mobilny warsztat testera, szybkie uruchamianie powtarzalnych testów i użyteczne raporty.
-Kontekst: użytkownik dał wolną rękę do iteracyjnego wdrożenia propozycji i dalszego intuicyjnego rozwoju bez interwencji. Baza: PR #18 (6367e46), zawierający #16/#17, aby zachować eksport, ilości danych i poprawki odbioru telefonu/VPN.
+Kontekst: użytkownik dał wolną rękę do iteracyjnego wdrożenia propozycji i dalszego intuicyjnego rozwoju bez interwencji. Baza: PR #18 (7e0c335), zawierający #16/#17, aby zachować eksport, ilości danych i poprawki odbioru telefonu/VPN.
 Tryb: incremental, osobny feature/autonomous-ux-20261005; commit/push po checkpointach, CI na PR. Bez merge do main.
 
 ## Iteracje
@@ -17,3 +17,5 @@ Tryb: incremental, osobny feature/autonomous-ux-20261005; commit/push po checkpo
 Kryteria: brak automatycznych połączeń/SMS; brak utraty historii; neutralne obserwacje oddzielone od oceny billingu; nowy test wymaga jawnej akcji; CI/testy/APK PASS. Testy fizycznej SIM i systemowego TTS oznaczone NOT TESTED, dopóki brak urządzenia.
 Poza zakresem: konta/backend, automatyczne naliczanie z operatora, migracja legacy, scalanie main, pełna przebudowa Compose.
 Raport: brain/reports/2026-10-05-autonomous-ux.md; rzeczywisty stan checkpointów i testów.
+
+Stan: wszystkie osiem iteracji zakończone. CI #121 PASS, 155 testów bez błędów; APK i przegląd zrzutów gotowe. Szczegóły i ograniczenia w raporcie.

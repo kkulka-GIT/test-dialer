@@ -47,7 +47,9 @@ Baza: PR #18 / 7e0c335, zawierający #16 i #17. Nowy PR #19: https://github.com/
 
 ## Weryfikacja i ograniczenia
 - diff --check: PASS na checkpointach.
-- CI/testy/APK: w toku; końcowy wynik będzie uzupełniony po zakończeniu.
+- CI #121: PASS — https://github.com/kkulka-GIT/test-dialer/actions/runs/37358641758. Zweryfikowany kod: 6e2b9390529ee1bbb202391522cd14ffdb6dd5ca. 155 testów, 0 failures/errors/skips; debug i preview APK zbudowane, identyfikator preview sprawdzony przez CI.
+- Przejrzano zrzuty ekranu głównego, formularza SMS, wyszukiwania oraz motywu nocnego z czcionką 160%; etykiety i przyciski pozostają czytelne.
+- Dostarczone APK: Test-Dialer-Lab-121.apk; SHA-256: c3c18e4e11602729edf348adf0d52307d3604e155b70d383f215f2ff97f917b1. Końcowy commit dokumentacji nie zmienia kodu aplikacji.
 - Regresje nowych funkcji: granice dnia/DST, łączone filtry, trwałość i walidacja szablonów, neutralność ocen, quoting/formuły CSV, uprawnienia eksportu, pełny przepływ szablonu, fokus wyszukiwania, motyw nocny i duży tekst.
 - Wcześniejsze CI wykryły testy starego zachowania Dodaj test i napisów oraz izolację FileProvider pomiędzy sandboxami Robolectric; poprawiono testy, zachowując wymagania produktowe.
 - Telefon, fizyczna SIM/VPN, realny TalkBack/TTS i zewnętrzne aplikacje udostępniania: NOT TESTED przez agenta.
