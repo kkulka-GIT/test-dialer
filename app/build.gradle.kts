@@ -24,9 +24,9 @@ android {
     buildTypes {
         create("preview") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".preview.datafix"
+            applicationIdSuffix = ".preview.evolution"
             versionNameSuffix = "-preview"
-            resValue("string", "app_name", "Test Dialer Data 2")
+            resValue("string", "app_name", "Test Dialer Lab")
             matchingFallbacks += listOf("debug")
         }
     }

@@ -71,6 +71,10 @@ import java.util.Locale
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
+    private val speech by lazy { com.example.testdialer.accessibility.SpeechAnnouncements(applicationContext).apply {
+        onUnavailable = { if (!isDestroyed && !isFinishing) Toast.makeText(this@MainActivity, "Polski głos TTS jest niedostępny. Sprawdź ustawienia syntezy mowy telefonu.", Toast.LENGTH_LONG).show() }
+    } }
+    private var lastSpokenKey: String? = null
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
     private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
@@ -178,6 +182,7 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         pendingTemplateId = savedInstanceState?.getString("pendingTemplateId")
         registerFilter = com.example.testdialer.register.RegisterFilter(
             query = savedInstanceState?.getString("registerQuery").orEmpty(),
@@ -264,6 +269,7 @@ class MainActivity : ComponentActivity() {
                 registerViewModel.load()
                 state.completed?.let { activeRunViewModel.recordExternal(ServiceType.SMS, it) }
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
+                announceResult("sms:${state.completed?.run?.id?.value}", "Obserwacja testu SMS została zapisana")
             }
             if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.SMS)
         }
@@ -346,6 +352,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("lastSpokenKey", lastSpokenKey)
         outState.putString("pendingTemplateId", pendingTemplateId)
         outState.putString("registerQuery", registerFilter.query)
         outState.putString("registerStatus", registerFilter.status?.name)
@@ -374,12 +381,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        speech.close()
         reportExecutor.shutdownNow()
         super.onDestroy()
     }
 
     override fun onStop() {
         if (!isChangingConfigurations && cellularDataState.busy) cellularDataViewModel.cancel()
+        speech.stop()
         unregisterNetworkCallback()
         super.onStop()
     }
@@ -427,7 +436,36 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun announceResult(key: String, message: String) {
+        if (key == lastSpokenKey) return
+        // Mark even a restored result as seen; only foreground completions are spoken.
+        lastSpokenKey = key
+        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) speech.say(message)
+    }
+
     private fun showAppearanceSettings() {
+        val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
+        val enabled = preferences.getBoolean("speech", false)
+        AlertDialog.Builder(this).setTitle("Wygląd i dźwięk")
+            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie")) { _, index ->
+                when (index) {
+                    0 -> showThemeSettings()
+                    1 -> {
+                        preferences.edit().putBoolean("speech", !enabled).apply()
+                        if (enabled) speech.stop() else speech.say("Komunikaty głosowe włączone")
+                    }
+                    2 -> {
+                        if (!enabled) Toast.makeText(this, "Najpierw włącz komunikaty głosowe", Toast.LENGTH_SHORT).show()
+                        else {
+                            val active = activeRunState.active
+                            speech.say(if (active == null) "Brak aktywnej sesji. Użyj Dodaj test, aby rozpocząć." else "Sesja ${active.stored.scenario.name}. Zapisanych zdarzeń ${active.stored.run.events.size}. Testów do wykonania ${active.tasks.count { it.status == ActiveTaskStatus.PENDING }}.")
+                        }
+                    }
+                }
+            }.setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showThemeSettings() {
         val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
         AlertDialog.Builder(this).setTitle("Motyw ekranu")
             .setSingleChoiceItems(arrayOf("Zgodny z telefonem", "Jasny", "Ciemny"), preferences.getInt("theme", 0)) { dialog, index ->
@@ -1422,12 +1460,14 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
         val appContext = applicationContext
         val note = runNotes.get(stored.run.id)
+        val reviews = stored.run.events.associate { it.id.value to billingReviews.get(it.id) }.filterValues { it.reviewedAtMillis > 0 }
+        val interruptedAt = billingReviews.interruptedAt(stored.run.id)
         reportExecutor.execute {
             val result = runCatching {
                 val content = when (option) {
-                    2 -> RunReportFormatter.json(stored, note)
-                    3 -> RunReportFormatter.csv(stored, note)
-                    else -> RunReportFormatter.text(stored, note)
+                    2 -> RunReportFormatter.json(stored, note, reviews, interruptedAt)
+                    3 -> RunReportFormatter.csv(stored, note, reviews, interruptedAt)
+                    else -> RunReportFormatter.text(stored, note, reviews, interruptedAt)
                 }
                 if (option == 0) {
                     require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
@@ -2134,6 +2174,7 @@ class MainActivity : ComponentActivity() {
         activeRunViewModel.recordVoice(phoneNumber, outcome)
         awaitingVoiceOutcome = false
         resultSaved = true
+        announceResult("voice:${System.currentTimeMillis()}", "Wynik testu połączenia zapisany: ${when (outcome) { VoiceTestResult.Outcome.SUCCESS -> "udało się"; VoiceTestResult.Outcome.FAILURE -> "nie udało się"; VoiceTestResult.Outcome.NOT_CHECKED -> "nie sprawdzono" }}")
         renderRegister()
         Toast.makeText(this@MainActivity, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)

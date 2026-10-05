@@ -20,10 +20,10 @@ internal class SystemStatusStripView(
     wifiLabel: String,
     wifiSymbol: String,
 ) : LinearLayout(context) {
-    private val simBadge = createBadge(simSymbol, simLabel)
-    private val networkBadge = createBadge(networkSymbol, networkLabel)
-    private val cellularBadge = createBadge(cellularSymbol, cellularLabel)
-    private val wifiBadge = createBadge(wifiSymbol, wifiLabel)
+    private val simBadge = createBadge(com.example.testdialer.R.drawable.ic_status_sim, simLabel)
+    private val networkBadge = createBadge(com.example.testdialer.R.drawable.ic_status_network, networkLabel)
+    private val cellularBadge = createBadge(com.example.testdialer.R.drawable.ic_status_data, cellularLabel)
+    private val wifiBadge = createBadge(com.example.testdialer.R.drawable.ic_status_wifi, wifiLabel)
 
     init {
         orientation = HORIZONTAL
@@ -57,18 +57,17 @@ internal class SystemStatusStripView(
         ).joinToString(". ")
     }
 
-    private fun createBadge(symbol: String, label: String): LinearLayout = LinearLayout(context).apply {
+    private fun createBadge(icon: Int, label: String): LinearLayout = LinearLayout(context).apply {
         orientation = VERTICAL
         gravity = Gravity.CENTER
         minimumHeight = dp(36)
         setPadding(dp(6), dp(4), dp(6), dp(4))
         layoutParams = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         tag = label
-        addView(TextView(context).apply {
-            text = symbol
-            textSize = 14f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(palette.textPrimary)
+        addView(android.widget.ImageView(context).apply {
+            setImageResource(icon)
+            layoutParams = LayoutParams(dp(20), dp(20))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         })
         addView(TextView(context).apply {
             text = label
@@ -84,7 +83,9 @@ internal class SystemStatusStripView(
             setColor(if (available) palette.button else palette.background)
         }
         repeat(badge.childCount) { index ->
-            (badge.getChildAt(index) as? TextView)?.setTextColor(if (available) palette.ok else palette.textSecondary)
+            val color = if (available) palette.ok else palette.textSecondary
+            (badge.getChildAt(index) as? TextView)?.setTextColor(color)
+            (badge.getChildAt(index) as? android.widget.ImageView)?.imageTintList = android.content.res.ColorStateList.valueOf(color)
         }
         badge.contentDescription = badgeDescription(badge, available)
     }
