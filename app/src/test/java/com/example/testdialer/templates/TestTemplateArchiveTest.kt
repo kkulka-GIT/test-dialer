@@ -76,6 +76,13 @@ class TestTemplateArchiveTest {
         assertTrue(TestTemplateArchive.decode(TestTemplateArchive.encode(emptyList())).isEmpty())
     }
 
+    @Test fun `archive limit accommodates maximum escaped sms templates`() {
+        val largest = List(TestTemplateStore.MAX_ITEMS) { index -> TestTemplate("$index", "N".repeat(80), TestAction.Sms("1".repeat(500), "\u0001".repeat(10000))) }
+        val text = TestTemplateArchive.encode(largest)
+        assertTrue(text.toByteArray().size < TestTemplateArchive.MAX_FILE_BYTES)
+        assertEquals(TestTemplateStore.MAX_ITEMS, TestTemplateArchive.decode(text).size)
+    }
+
     @Test fun `invalid incoming item cannot partially save valid neighbor`() {
         val items = sample() + TestTemplate("invalid", " ", TestAction.Voice("1"))
         assertThrows(IllegalArgumentException::class.java) { store.importItems(items) }

@@ -11,7 +11,7 @@ import java.util.UUID
 
 /** A portable, parameter-only format. Decode is strict and has no persistence or execution side effects. */
 object TestTemplateArchive {
-    const val MAX_FILE_BYTES = 1_048_576
+    const val MAX_FILE_BYTES = 4_194_304
     private const val FORMAT = "test-dialer-templates"
 
     fun read(input: InputStream): List<TestTemplate> {
@@ -20,7 +20,7 @@ object TestTemplateArchive {
         while (true) {
             val count = input.read(buffer)
             if (count < 0) break
-            require(output.size() + count <= MAX_FILE_BYTES) { "Plik przekracza 1 MB." }
+            require(output.size() + count <= MAX_FILE_BYTES) { "Plik przekracza 4 MB." }
             output.write(buffer, 0, count)
         }
         val text = Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
@@ -45,7 +45,7 @@ object TestTemplateArchive {
     }
 
     fun decode(text: String): List<TestTemplate> {
-        require(text.toByteArray(Charsets.UTF_8).size <= MAX_FILE_BYTES) { "Plik przekracza 1 MB." }
+        require(text.toByteArray(Charsets.UTF_8).size <= MAX_FILE_BYTES) { "Plik przekracza 4 MB." }
         val root = JSONObject(text)
         require(root.opt("format") == FORMAT) { "To nie jest plik szablonów Test Dialer." }
         require(root.opt("schemaVersion") is Int && root.getInt("schemaVersion") == 1) { "Nieobsługiwana wersja pliku szablonów." }
