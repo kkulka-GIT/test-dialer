@@ -142,7 +142,7 @@
     <string name="manual_session_recorded">Zdarzenie zapisane. Możesz teraz zakończyć sesję.</string>
     <string name="manual_session_complete">Zakończ sesję</string>
     <string name="manual_session_saving">Zapisywanie…</string>
-    <string name="manual_history_title">sesjay</string>
+    <string name="manual_history_title">Sesje testowe</string>
     <string name="manual_history_description">Historia zdarzeń przeznaczonych do korelacji z CDR-ami i systemami ratingowymi.</string>
     <string name="manual_history_empty">Nie ma jeszcze ręcznych sesji testowych.</string>
     <string name="legacy_voice_history_title">Dotychczasowe wyniki Voice</string>
