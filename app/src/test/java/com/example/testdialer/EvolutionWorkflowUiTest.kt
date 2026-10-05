@@ -301,7 +301,8 @@ class EvolutionWorkflowUiTest {
         ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 0, 0)
         ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 0, 0)
         val reopened = ShadowAlertDialog.getLatestAlertDialog()
-        assertTrue(reopened.message.toString().contains("100000000 B"))
+        assertTrue(views(reopened.window!!.decorView).filterIsInstance<android.widget.TextView>()
+            .any { it.text.toString().contains("100000000 B") })
         reopened.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         val stateField = MainActivity::class.java.getDeclaredField("activeRunState").apply { isAccessible = true }
         await { (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active != null }
