@@ -165,6 +165,65 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `comparison filters differences and shares a read-only text snapshot`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val comparison = com.example.testdialer.report.RunComparison("a", "b", "Baza", "Powtórka", true, listOf(
+            com.example.testdialer.report.ComparisonRow("Pole identyczne", "1", "1"),
+            com.example.testdialer.report.ComparisonRow("Pole zmienione", "0 B", "100 B")))
+        MainActivity::class.java.getDeclaredMethod("showComparison", com.example.testdialer.report.RunComparison::class.java).apply { isAccessible = true; invoke(activity, comparison) }
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val root = dialog.window!!.decorView
+        fun texts() = views(root).filterIsInstance<android.widget.TextView>().map { it.text.toString() }.joinToString("\n")
+        assertTrue(texts().contains("Pole identyczne"))
+        val toggle = views(root).filterIsInstance<Button>().first { it.text.toString() == "Pokaż tylko różnice" }
+        toggle.performClick()
+        assertFalse(texts().contains("Pole identyczne"))
+        assertTrue(texts().contains("Pole zmienione"))
+        assertTrue(texts().contains("nie potwierdza poprawności naliczenia", ignoreCase = true))
+        captureRoot(root, "phase3-comparison")
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        var started: android.content.Intent? = null
+        await { started = Shadows.shadowOf(activity).nextStartedActivity; started != null }
+        val send = started!!.getParcelableExtra(android.content.Intent.EXTRA_INTENT, android.content.Intent::class.java)!!
+        assertEquals(android.content.Intent.ACTION_SEND, send.action)
+        assertEquals("text/plain", send.type)
+        assertTrue(send.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        val uri = send.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java)!!
+        val exported = activity.contentResolver.openInputStream(uri)!!.bufferedReader().use { it.readText() }
+        assertTrue(exported.contains("Run A: a"))
+        assertTrue(exported.contains("Pole zmienione"))
+        assertFalse(exported.contains("Pole identyczne"))
+        assertTrue(TestTemplateStore(context).list().isEmpty())
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `comparison without another session explains what is missing without executing a service`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        await { !getRegisterState(activity).busy }
+        setRegisterState(activity, com.example.testdialer.register.RegisterUiState())
+        MainActivity::class.java.declaredMethods.first { it.name.startsWith("chooseComparison") }.apply {
+            isAccessible = true
+            invoke(activity, "only")
+        }
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals("Zapisz co najmniej dwie sesje, aby porównać wyniki.", org.robolectric.shadows.ShadowToast.getTextOfLatestToast())
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    private fun captureRoot(root: View, name: String) {
+        root.measure(View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY))
+        root.layout(0, 0, 360, 800)
+        val bitmap = Bitmap.createBitmap(360, 800, Bitmap.Config.ARGB_8888)
+        root.draw(Canvas(bitmap))
+        val file = File("build/reports/screenshots/$name.png").apply { parentFile.mkdirs() }
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+    }
+
     private fun getRegisterState(activity: MainActivity) = MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true }.get(activity) as com.example.testdialer.register.RegisterUiState
     private fun setRegisterState(activity: MainActivity, state: com.example.testdialer.register.RegisterUiState) {
         MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true; set(activity, state) }
