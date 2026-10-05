@@ -4,16 +4,25 @@ import com.example.testdialer.domain.TestAction
 import com.example.testdialer.persistence.StoredTestRun
 import org.json.JSONArray
 import org.json.JSONObject
+import com.example.testdialer.review.BillingReview
 import java.time.Instant
 
 /** Versioned, read-only snapshot. Epoch milliseconds retain exact correlation timestamps. */
 object RunReportFormatter {
-    fun json(stored: StoredTestRun, testerNote: String = ""): String {
+    fun json(stored: StoredTestRun, testerNote: String = "", reviews: Map<String, BillingReview> = emptyMap(), interruptedAtMillis: Long = 0): String {
         val run = stored.run
         return obj(
             "format" to "test-dialer-run", "schemaVersion" to 1,
             "revision" to stored.revision,
             "testerNote" to testerNote,
+            "testerAnnotations" to obj(
+                "schemaVersion" to 1, "source" to "TESTER",
+                "markedInterruptedAtMillis" to interruptedAtMillis.takeIf { it > 0 },
+                "billingReviews" to array(run.events.mapNotNull { event -> reviews[event.id.value]?.let { review -> obj(
+                    "eventId" to event.id.value, "expected" to review.expected, "actual" to review.actual,
+                    "verdict" to review.verdict.name, "reviewedAtMillis" to review.reviewedAtMillis,
+                ) } }),
+            ),
             "timeSemantics" to "epochMillis=UTC; sequenceNumber=run order; monotonicNanos=source process only",
             "scenario" to obj(
                 "id" to stored.scenario.id.value, "version" to stored.scenario.version,
@@ -57,15 +66,16 @@ object RunReportFormatter {
         ).toString(2)
     }
 
-    fun text(stored: StoredTestRun, testerNote: String = ""): String = buildString {
+    fun text(stored: StoredTestRun, testerNote: String = "", reviews: Map<String, BillingReview> = emptyMap(), interruptedAtMillis: Long = 0): String = buildString {
         val run = stored.run
-        appendLine("TEST DIALER — RAPORT RUNU")
+        appendLine("TEST DIALER — RAPORT SESJI")
         appendLine(stored.scenario.name)
         appendLine("Run ID: ${run.id.value}")
         appendLine("Status: ${run.status.name} | Rewizja: ${stored.revision}")
         appendLine("Start UTC: ${utc(run.startedAtMillis)}")
         appendLine("Koniec UTC: ${run.completedAtMillis?.let(::utc) ?: "—"}")
         appendLine("Zdarzenia: ${run.events.size}")
+        if (interruptedAtMillis > 0) appendLine("Tester oznaczył przegląd jako przerwany: ${utc(interruptedAtMillis)}; historyczny status: ${run.status.name}")
         appendLine("Obserwacje nie są oceną poprawności naliczenia. Pełna oś czasu jest w JSON.")
         if (testerNote.isNotBlank()) {
             appendLine()
@@ -86,11 +96,48 @@ object RunReportFormatter {
                 appendLine("Obserwacja: ${it.status.name} | ${it.source.name} | ${it.code}")
                 it.description?.let(::appendLine)
             } ?: appendLine("Obserwacja: brak")
+            reviews[event.id.value]?.let {
+                appendLine("OCENA ROZLICZENIA — źródło: TESTER")
+                appendLine("Oczekiwano: ${it.expected}")
+                appendLine("Otrzymano: ${it.actual}")
+                appendLine("Ocena: ${it.verdict.name} | ${utc(it.reviewedAtMillis)}")
+            }
             event.correlation.sourceAddress?.let { appendLine("Źródło: $it") }
             event.correlation.destinationAddress?.let { appendLine("Cel korelacji: $it") }
             event.correlation.subscriberAlias?.let { appendLine("Abonent: $it") }
             event.correlation.references.forEach { appendLine("${it.namespace}: ${it.value}") }
         }
+    }
+
+    /** RFC-style quoting plus spreadsheet formula neutralization for every user-controlled cell. */
+    fun csv(stored: StoredTestRun, testerNote: String = "", reviews: Map<String, BillingReview> = emptyMap(), interruptedAtMillis: Long = 0): String = buildString {
+        val headers = listOf("run_id", "scenario", "run_status", "event_id", "step_id", "service", "occurred_at_utc",
+            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code", "references_json", "tester_note", "billing_expected", "billing_actual", "billing_verdict", "billing_reviewed_at_utc", "tester_marked_interrupted_at_utc")
+        append(headers.joinToString(",") { csvCell(it) }); append("\r\n")
+        val events = stored.run.events.map { it as com.example.testdialer.domain.TestEvent? }.ifEmpty { listOf(null) }
+        events.forEach { event ->
+            val target = when (val action = event?.action) {
+                is TestAction.Voice -> action.destination
+                is TestAction.Sms -> action.destination
+                is TestAction.Data -> action.target
+                null -> ""
+            }
+            val values = listOf(stored.run.id.value, stored.scenario.name, stored.run.status.name,
+                event?.id?.value.orEmpty(), event?.stepId?.value.orEmpty(), event?.action?.serviceType?.name.orEmpty(),
+                event?.occurredAtMillis?.let(::utc).orEmpty(), event?.occurredAtMillis?.toString().orEmpty(), target,
+                (event?.action as? TestAction.Sms)?.message.orEmpty(), event?.observation?.status?.name.orEmpty(),
+                event?.observation?.source?.name.orEmpty(), event?.observation?.code.orEmpty(),
+                event?.correlation?.references?.let { refs -> array(refs.map { obj("namespace" to it.namespace, "value" to it.value) }).toString() }.orEmpty(), testerNote,
+                reviews[event?.id?.value]?.expected.orEmpty(), reviews[event?.id?.value]?.actual.orEmpty(),
+                reviews[event?.id?.value]?.verdict?.name ?: "NOT_CHECKED", reviews[event?.id?.value]?.reviewedAtMillis?.takeIf { it > 0 }?.let(::utc).orEmpty(),
+                interruptedAtMillis.takeIf { it > 0 }?.let(::utc).orEmpty())
+            append(values.joinToString(",") { csvCell(it) }); append("\r\n")
+        }
+    }
+
+    internal fun csvCell(value: String): String {
+        val safe = if (value.trimStart().firstOrNull() in listOf('=', '+', '-', '@')) "'" + value else value
+        return "\"" + safe.replace("\"", "\"\"") + "\""
     }
 
     private fun action(action: TestAction): JSONObject = when (action) {

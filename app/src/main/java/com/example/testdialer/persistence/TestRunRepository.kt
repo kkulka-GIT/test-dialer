@@ -14,6 +14,7 @@ data class TestRunSummary(
     val completedAtMillis: Long?,
     val revision: Long,
     val eventCount: Int = 0,
+    val serviceTypes: Set<com.example.testdialer.domain.ServiceType> = emptySet(),
 )
 
 interface TestRunRepository {
@@ -67,6 +68,7 @@ class RoomTestRunRepository(
                 revision = run.revision,
                 completedAtMillis = run.completedAtMillis,
                 eventCount = dao.eventCount(run.runId),
+                serviceTypes = dao.serviceTypes(run.runId).map { com.example.testdialer.domain.ServiceType.valueOf(it) }.toSet(),
             )
         }
 }

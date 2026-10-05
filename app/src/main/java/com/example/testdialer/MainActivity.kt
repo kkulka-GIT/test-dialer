@@ -71,7 +71,19 @@ import java.util.Locale
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
+    private val speech by lazy { com.example.testdialer.accessibility.SpeechAnnouncements(applicationContext).apply {
+        onUnavailable = { if (!isDestroyed && !isFinishing && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) Toast.makeText(this@MainActivity, "Polski głos TTS jest niedostępny. Sprawdź ustawienia syntezy mowy telefonu.", Toast.LENGTH_LONG).show() }
+    } }
+    private var executionFocused = false
+    private var lastSpokenKey: String? = null
     private val reportExecutor = Executors.newSingleThreadExecutor()
+    private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
+    private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
+    private var pendingTemplateId: String? = null
+    private var pendingAdditionalType: TestType? = null
+    private lateinit var registerFilterLabel: Button
+    private lateinit var registerFiltersHost: LinearLayout
+    private var registerFilter = com.example.testdialer.register.RegisterFilter()
     private var reportBusy = false
     private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
     private var dataAmountDraft = "1"
@@ -140,6 +152,17 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val mode = newBase.getSharedPreferences("ui-settings", MODE_PRIVATE).getInt("theme", 0)
+        val themed = if (mode == 0) newBase else {
+            val config = android.content.res.Configuration(newBase.resources.configuration)
+            config.uiMode = (config.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                if (mode == 2) android.content.res.Configuration.UI_MODE_NIGHT_YES else android.content.res.Configuration.UI_MODE_NIGHT_NO
+            newBase.createConfigurationContext(config)
+        }
+        super.attachBaseContext(themed)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -165,6 +188,16 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
+        lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
+        pendingTemplateId = savedInstanceState?.getString("pendingTemplateId")
+        registerFilter = com.example.testdialer.register.RegisterFilter(
+            query = savedInstanceState?.getString("registerQuery").orEmpty(),
+            status = savedInstanceState?.getString("registerStatus")?.let { value -> TestRunStatus.entries.firstOrNull { it.name == value } },
+            service = savedInstanceState?.getString("registerService")?.let { value -> ServiceType.entries.firstOrNull { it.name == value } },
+            days = savedInstanceState?.getInt("registerDays", 0)?.takeIf { it > 0 },
+        )
+        pendingAdditionalType = savedInstanceState?.getString("pendingAdditionalType")?.let { saved -> TestType.entries.firstOrNull { it.name == saved } }
         dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
         dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
         runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
@@ -213,6 +246,21 @@ class MainActivity : ComponentActivity() {
         contentHost.addView(testSection)
         contentHost.addView(registerSection)
 
+        root.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dimen(20), dimen(4), dimen(12), dimen(4))
+            addView(createStatusText("TEST DIALER").apply {
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(ColorPalette.accent)
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            addView(Button(this@MainActivity).apply {
+            text = "Ustawienia"
+            contentDescription = "Ustawienia wyglądu i komunikatów głosowych"
+            setOnClickListener { showAppearanceSettings() }
+            })
+        })
         root.addView(contentHost)
         root.addView(createBottomNavigation())
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
@@ -238,6 +286,7 @@ class MainActivity : ComponentActivity() {
                 registerViewModel.load()
                 state.completed?.let { activeRunViewModel.recordExternal(ServiceType.SMS, it) }
                 testScenarioHost.announceForAccessibility(getString(R.string.sms_saved_announcement))
+                announceResult("sms:${state.completed?.run?.id?.value}", "Obserwacja testu SMS została zapisana")
             }
             if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.SMS)
         }
@@ -254,8 +303,19 @@ class MainActivity : ComponentActivity() {
             if (state.error != null) activeRunViewModel.cancelExecution(ServiceType.DATA)
         }
         activeRunViewModel.state.observe(this) { state ->
+            if (activeRunState.active != null && state.active == null) executionFocused = false
             activeRunState = state
             renderActiveRun()
+            if (state.active != null && !state.busy) {
+                pendingTemplateId?.let { id ->
+                    pendingTemplateId = null
+                    templates.list().firstOrNull { it.id == id }?.let(::applyTemplate)
+                }
+                pendingAdditionalType?.let { type ->
+                    pendingAdditionalType = null
+                    selectAdditionalTest(type)
+                }
+            } else if (state.error != null) { pendingAdditionalType = null; pendingTemplateId = null }
             state.message?.let { runHomeView.announceForAccessibility(it) }
             if (state.active == null) selectedActiveTaskId = null
             registerViewModel.load()
@@ -269,6 +329,8 @@ class MainActivity : ComponentActivity() {
                 registerViewModel.clearEvent()
             } else if (currentSection == AppSection.REGISTER && registerState.selectedRun != null) {
                 registerViewModel.clearRun()
+            } else if (currentSection == AppSection.TEST && executionFocused) {
+                setExecutionFocus(false)
             } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
             } else {
@@ -310,6 +372,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("executionFocused", executionFocused)
+        outState.putString("lastSpokenKey", lastSpokenKey)
+        outState.putString("pendingTemplateId", pendingTemplateId)
+        outState.putString("registerQuery", registerFilter.query)
+        outState.putString("registerStatus", registerFilter.status?.name)
+        outState.putString("registerService", registerFilter.service?.name)
+        outState.putInt("registerDays", registerFilter.days ?: 0)
+        outState.putString("pendingAdditionalType", pendingAdditionalType?.name)
         outState.putString("dataAmountDraft", dataAmountDraft)
         outState.putString("dataUnitDraft", dataUnitDraft)
         outState.putString("runNameDraft", runNameDraft)
@@ -332,12 +402,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        speech.close()
         reportExecutor.shutdownNow()
         super.onDestroy()
     }
 
     override fun onStop() {
         if (!isChangingConfigurations && cellularDataState.busy) cellularDataViewModel.cancel()
+        speech.stop()
         unregisterNetworkCallback()
         super.onStop()
     }
@@ -383,6 +455,45 @@ class MainActivity : ComponentActivity() {
         } else if (operationalSection == AppSection.REGISTER) {
             renderRegister()
         }
+    }
+
+    private fun announceResult(key: String, message: String) {
+        if (key == lastSpokenKey) return
+        // Mark even a restored result as seen; only foreground completions are spoken.
+        lastSpokenKey = key
+        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) speech.say(message)
+    }
+
+    private fun showAppearanceSettings() {
+        val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
+        val enabled = preferences.getBoolean("speech", false)
+        AlertDialog.Builder(this).setTitle("Wygląd i dźwięk")
+            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie")) { _, index ->
+                when (index) {
+                    0 -> showThemeSettings()
+                    1 -> {
+                        preferences.edit().putBoolean("speech", !enabled).apply()
+                        if (enabled) speech.stop() else speech.say("Komunikaty głosowe włączone")
+                    }
+                    2 -> {
+                        if (!enabled) Toast.makeText(this, "Najpierw włącz komunikaty głosowe", Toast.LENGTH_SHORT).show()
+                        else {
+                            val active = activeRunState.active
+                            speech.say(if (active == null) "Brak aktywnej sesji. Użyj Dodaj test, aby rozpocząć." else "Sesja ${active.stored.scenario.name}. Zapisanych zdarzeń ${active.stored.run.events.size}. Testów do wykonania ${active.tasks.count { it.status == ActiveTaskStatus.PENDING }}.")
+                        }
+                    }
+                }
+            }.setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showThemeSettings() {
+        val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
+        AlertDialog.Builder(this).setTitle("Motyw ekranu")
+            .setSingleChoiceItems(arrayOf("Zgodny z telefonem", "Jasny", "Ciemny"), preferences.getInt("theme", 0)) { dialog, index ->
+                preferences.edit().putInt("theme", index).apply()
+                dialog.dismiss()
+                recreate()
+            }.setNegativeButton("Zamknij", null).show()
     }
 
     private fun createBottomNavigation(): View {
@@ -444,11 +555,15 @@ class MainActivity : ComponentActivity() {
             tasksTitle = getString(R.string.run_tasks_title),
             tasksDescription = getString(R.string.run_tasks_description),
             onAddTest = {
-                runHomeView.announceTasks(getString(R.string.run_tasks_announcement))
+                showAddTest()
             },
         )
         systemStatusStrip = createSystemStatusStrip()
         runHomeView.statusHost.addView(systemStatusStrip)
+        runHomeView.executionNavigationHost.addView(Button(this).apply {
+            text = "Wróć do sesji i listy testów"
+            setOnClickListener { setExecutionFocus(false) }
+        })
         runHomeView.selectorHost.addView(createTestTypeSelectorCard())
         testScenarioHost = runHomeView.scenarioHost
         manualSessionHost = runHomeView.manualSessionHost
@@ -472,6 +587,7 @@ class MainActivity : ComponentActivity() {
         }
         val active = state.active
         if (active == null) {
+            runHomeView.showExecutionOnly(false, false)
             runHomeView.executionContextHost.removeAllViews()
             runHomeView.runHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.run_empty_title)))
@@ -589,6 +705,7 @@ class MainActivity : ComponentActivity() {
         runHomeView.scenarioHost.visibility = View.VISIBLE
         runHomeView.manualSessionHost.visibility = View.GONE
         renderExecutionContext(currentTestType)
+        runHomeView.showExecutionOnly(executionFocused)
     }
 
     private fun openActiveTask(stepId: StepId?, action: TestAction) {
@@ -625,9 +742,56 @@ class MainActivity : ComponentActivity() {
         }
         updateTestTypeChips()
         renderScenario(currentTestType)
+        setExecutionFocus(true)
         testScenarioHost.isFocusableInTouchMode = true
         testScenarioHost.requestFocus()
         testScenarioHost.announceForAccessibility(getString(R.string.task_opened_announcement, currentTestType.name))
+        testScenarioHost.post {
+            testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
+        }
+    }
+
+    private fun setExecutionFocus(focused: Boolean) {
+        executionFocused = focused
+        runHomeView.showExecutionOnly(focused && activeRunState.active != null, activeRunState.active != null)
+        if (!focused) {
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .hideSoftInputFromWindow(testScenarioHost.windowToken, 0)
+            runHomeView.runHost.isFocusableInTouchMode = true
+            runHomeView.runHost.requestFocus()
+        }
+    }
+
+    private fun showAddTest() {
+        if (activeRunState.busy || activeRunViewModel.executionInProgress() || isTestTypeSwitchLocked()) {
+            Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Dodaj test")
+            .setItems(arrayOf("Połączenie", "SMS", "Dane", "Zapisane szablony")) { _, index ->
+                if (index == 3) { showTemplates(); return@setItems }
+                val type = TestType.entries[index]
+                if (activeRunState.active == null) {
+                    pendingAdditionalType = type
+                    activeRunViewModel.startEmpty(runNameDraft.ifBlank { "Szybki test" })
+                } else selectAdditionalTest(type)
+            }.setNegativeButton("Anuluj", null).show()
+    }
+
+    private fun selectAdditionalTest(type: TestType) {
+        if (isTestTypeSwitchLocked() || activeRunViewModel.executionInProgress()) return
+        selectedActiveTaskId = null
+        clearDraft(type)
+        if (type == TestType.VOICE) resultSaved = false
+        if (type == TestType.SMS) guidedSmsViewModel.startAnother()
+        if (type == TestType.DATA) cellularDataViewModel.startAnother()
+        currentTestType = type
+        updateTestTypeChips()
+        renderScenario(type)
+        showSection(AppSection.TEST)
+        setExecutionFocus(true)
+        testScenarioHost.isFocusableInTouchMode = true
+        testScenarioHost.requestFocus()
         testScenarioHost.post {
             testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
         }
@@ -659,6 +823,9 @@ class MainActivity : ComponentActivity() {
             getString(R.string.register_description),
         ))
         content.addView(spaceVertical(dimen(16)))
+        registerFiltersHost = createRegisterFilters()
+        content.addView(registerFiltersHost)
+        content.addView(spaceVertical(dimen(12)))
         registerListHost = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
@@ -772,6 +939,13 @@ class MainActivity : ComponentActivity() {
 
     private fun renderRegister() {
         if (!::registerListHost.isInitialized) return
+        if (::registerFilterLabel.isInitialized) {
+            val filters = listOfNotNull(registerFilter.status?.let(::localizeRunStatus),
+                registerFilter.service?.let { when (it) { ServiceType.VOICE -> "Połączenie"; ServiceType.SMS -> "SMS"; ServiceType.DATA -> "Dane" } },
+                registerFilter.days?.let { if (it == 1) "Dzisiaj" else "$it dni" })
+            registerFilterLabel.text = if (filters.isEmpty()) "Filtry: wszystkie sesje" else "Filtry: ${filters.joinToString(" · ")}"
+        }
+        registerFiltersHost.visibility = if (registerState.selectedRun == null) View.VISIBLE else View.GONE
         registerListHost.removeAllViews()
         registerState.selectedRun?.let { selected ->
             if (registerState.selectedEventId != null) {
@@ -803,13 +977,14 @@ class MainActivity : ComponentActivity() {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createBodyText(getString(R.string.register_loading)))
         }
-        val summaries = registerState.runs
+        val summaries = registerFilter.apply(registerState.runs, System.currentTimeMillis())
+        registerListHost.addView(createStatusText("Znaleziono sesji: ${summaries.size} / ${registerState.runs.size}"))
         if (summaries.isEmpty()) {
             registerListHost.addView(spaceVertical(dimen(12)))
             registerListHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.register_runs_empty_title)))
                 addView(spaceVertical(dimen(8)))
-                addView(createBodyText(getString(R.string.register_runs_empty_body)))
+                addView(createBodyText(if (registerState.runs.isEmpty()) getString(R.string.register_runs_empty_body) else "Brak sesji pasujących do filtrów. Zmień wyszukiwanie lub wyczyść filtry."))
             })
         } else {
             summaries.forEach { summary ->
@@ -845,6 +1020,51 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun createRegisterFilters(): LinearLayout = createCard {
+        val search = createOptionalInput("Szukaj nazwy sesji lub ID").apply {
+            setText(registerFilter.query)
+            contentDescription = "Wyszukiwanie sesji po nazwie lub identyfikatorze"
+            isSingleLine = true
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+            setOnEditorActionListener { view, action, _ ->
+                if (action == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                    (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(view.windowToken, 0)
+                    clearFocus(); true
+                } else false
+            }
+            trackDraft { query -> registerFilter = registerFilter.copy(query = query); renderRegister() }
+        }
+        addView(search)
+        addView(Button(this@MainActivity).apply {
+            registerFilterLabel = this
+            text = "Filtry: wszystkie sesje"
+            setOnClickListener { showRegisterFilters() }
+        })
+        addView(Button(this@MainActivity).apply {
+            text = "Wyczyść filtry"
+            setOnClickListener { registerFilter = com.example.testdialer.register.RegisterFilter(); search.setText(""); renderRegister() }
+        })
+    }
+
+    private fun showRegisterFilters() {
+        AlertDialog.Builder(this).setTitle("Filtr rejestru")
+            .setItems(arrayOf("Status sesji", "Typ usługi", "Data rozpoczęcia")) { _, category ->
+                val options = when (category) {
+                    0 -> arrayOf("Wszystkie", "Utworzona", "W toku", "Zakończona", "Przerwana")
+                    1 -> arrayOf("Wszystkie", "Połączenie", "SMS", "Dane")
+                    else -> arrayOf("Cała historia", "Dzisiaj", "Ostatnie 7 dni", "Ostatnie 30 dni")
+                }
+                AlertDialog.Builder(this).setTitle("Wybierz filtr").setItems(options) { _, choice ->
+                    registerFilter = when (category) {
+                        0 -> registerFilter.copy(status = if (choice == 0) null else TestRunStatus.entries[choice - 1])
+                        1 -> registerFilter.copy(service = if (choice == 0) null else ServiceType.entries[choice - 1])
+                        else -> registerFilter.copy(days = listOf(null, 1, 7, 30)[choice])
+                    }
+                    renderRegister()
+                }.setNegativeButton("Anuluj", null).show()
+            }.setNegativeButton("Zamknij", null).show()
+    }
+
     private fun createRegisterError(message: String): View = createCard {
         isFocusable = true
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -870,6 +1090,7 @@ class MainActivity : ComponentActivity() {
                 summary.eventCount,
             )
             addView(createCardTitle(summary.scenarioName))
+            if (billingReviews.interruptedAt(summary.runId) > 0) addView(createTag("Przegląd: sesja przerwana"))
             addView(spaceVertical(dimen(6)))
             addView(createBodyText(getString(R.string.register_run_item_status, status)))
             addView(spaceVertical(dimen(4)))
@@ -887,6 +1108,10 @@ class MainActivity : ComponentActivity() {
             setOnClickListener { registerViewModel.selectRun(summary.runId) }
         }
     }
+
+    private fun canMarkInterrupted(id: RunId, status: TestRunStatus): Boolean =
+        status == TestRunStatus.RUNNING && activeRunState.active?.stored?.run?.id != id &&
+            manualSessionState.active?.stored?.run?.id != id && !isTestTypeSwitchLocked() && !activeRunViewModel.executionInProgress()
 
     private fun createRunDetail(stored: StoredTestRun): View {
         val run = stored.run
@@ -913,12 +1138,31 @@ class MainActivity : ComponentActivity() {
                     addView(createBodyText(getString(R.string.register_run_detail_completed, formatDateWithMillis(it))))
                 }
                 addView(spaceVertical(dimen(8)))
+                addView(optionalFields("Identyfikatory techniczne") {
                 addView(createMicroText(getString(R.string.register_run_detail_id, run.id.value)).apply {
                     setTextIsSelectable(true)
                 })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
+                })
                 addView(spaceVertical(dimen(14)))
+                if (canMarkInterrupted(run.id, run.status)) {
+                    val interrupted = billingReviews.interruptedAt(run.id)
+                    addView(createBodyText(if (interrupted > 0) "Oznaczona jako przerwana przez testera: ${formatDateWithMillis(interrupted)}. Historyczny stan zapisu pozostaje w toku." else "Ta sesja pozostała w toku po przerwaniu pracy. Pobieranie nie jest wznawiane. Możesz zachować historię i rozpocząć nową sesję."))
+                    if (interrupted == 0L) addView(Button(this@MainActivity).apply {
+                        text = "Oznacz przegląd sesji jako przerwany"
+                        setOnClickListener {
+                            AlertDialog.Builder(this@MainActivity).setTitle("Oznaczyć sesję jako przerwaną?")
+                                .setMessage("Zapiszę oznaczenie testera. Zdarzenia, czasy i wyniki sesji pozostaną zachowane.")
+                                .setPositiveButton("Oznacz") { _, _ ->
+                                    reportExecutor.execute {
+                                        val saved = billingReviews.markInterrupted(run.id, System.currentTimeMillis())
+                                        runOnUiThread { if (!isDestroyed && !isFinishing) { if (saved) renderRegister() else Toast.makeText(this@MainActivity, "Nie udało się zapisać oznaczenia", Toast.LENGTH_LONG).show() } }
+                                    }
+                                }.setNegativeButton("Anuluj", null).show()
+                        }
+                    })
+                }
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.report_contents)))
@@ -1005,11 +1249,13 @@ class MainActivity : ComponentActivity() {
                 addView(spaceVertical(dimen(5)))
                 addView(createBodyText(getString(R.string.register_event_detail_time, formatDateWithMillis(event.occurredAtMillis))))
                 addView(spaceVertical(dimen(10)))
+                addView(optionalFields("Identyfikatory techniczne") {
                 addView(createMicroText(getString(R.string.register_event_detail_event_id, event.id.value)).apply { setTextIsSelectable(true) })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_event_detail_run_id, event.runId.value)).apply { setTextIsSelectable(true) })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_event_detail_step_id, event.stepId.value)).apply { setTextIsSelectable(true) })
+                })
                 addView(spaceVertical(dimen(12)))
                 addView(reportButton(getString(R.string.repeat_event)) {
                     if (activeRunState.active == null) {
@@ -1032,6 +1278,11 @@ class MainActivity : ComponentActivity() {
                 })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.repeat_event_description)))
+                addView(spaceVertical(dimen(8)))
+                addView(Button(this@MainActivity).apply {
+                    text = "Zapisz jako szablon"
+                    setOnClickListener { saveTemplate(event) }
+                })
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
@@ -1044,6 +1295,20 @@ class MainActivity : ComponentActivity() {
             })
             addView(spaceVertical(dimen(12)))
             addView(createCard {
+                addView(createCardTitle("Rozliczenie — ocena testera"))
+                val review = billingReviews.get(event.id)
+                addView(createBodyText("Oczekiwano: ${review.expected.ifBlank { "nie określono" }}"))
+                addView(createBodyText("Otrzymano: ${review.actual.ifBlank { "nie sprawdzono" }}"))
+                addView(createTag("Ocena rozliczenia: ${billingVerdictLabel(review.verdict)}"))
+                if (review.reviewedAtMillis > 0) addView(createStatusText("Ocena testera z ${formatDateWithMillis(review.reviewedAtMillis)}"))
+                stored.scenario.steps.firstOrNull { it.id == event.stepId }?.expectedResult?.let {
+                    addView(createStatusText("Oczekiwanie scenariusza: ${it.description}"))
+                }
+                addView(Button(this@MainActivity).apply {
+                    text = "Edytuj oczekiwanie i ocenę"
+                    setOnClickListener { editBillingReview(event.id) }
+                })
+                addView(spaceVertical(dimen(12)))
                 addView(createCardTitle(getString(R.string.register_observation_title)).apply { ViewCompat.setAccessibilityHeading(this, true) })
                 addView(spaceVertical(dimen(8)))
                 val observation = event.observation
@@ -1114,6 +1379,115 @@ class MainActivity : ComponentActivity() {
             }.show()
     }
 
+    private fun saveTemplate(event: TestEvent) {
+        val input = createOptionalInput("Nazwa szablonu").apply {
+            setText(eventTypeLabel(event))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(80))
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("Zapisz parametry jako szablon")
+            .setView(input).setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (input.text.isBlank()) { input.error = "Podaj nazwę"; return@setOnClickListener }
+                val name = input.text.toString()
+                val bytes = event.correlation.references.firstOrNull { it.namespace == "requestedBytes" }?.value?.toLongOrNull()
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                reportExecutor.execute {
+                    val result = runCatching { check(templates.save(name, event.action, bytes)) { "Nie udało się zapisać szablonu" } }
+                    runOnUiThread {
+                        if (isDestroyed || isFinishing) return@runOnUiThread
+                        if (result.isSuccess) { dialog.dismiss(); Toast.makeText(this, "Szablon zapisany", Toast.LENGTH_SHORT).show() }
+                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; input.error = result.exceptionOrNull()?.message }
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun showTemplates() {
+        val items = templates.list()
+        if (items.isEmpty()) {
+            AlertDialog.Builder(this).setTitle("Szablony testów")
+                .setMessage("Otwórz wykonane zdarzenie w Rejestrze i wybierz Zapisz jako szablon. Szablon zachowa numer, treść SMS lub ilość danych.")
+                .setPositiveButton("OK", null).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Wybierz szablon")
+            .setItems(items.map { it.name + " · " + when (it.action.serviceType) { ServiceType.VOICE -> "Połączenie"; ServiceType.SMS -> "SMS"; ServiceType.DATA -> "Dane" } }.toTypedArray()) { _, index ->
+                val template = items[index]
+                AlertDialog.Builder(this).setTitle(template.name).setItems(arrayOf("Użyj parametrów", "Usuń szablon")) { _, choice ->
+                    if (choice == 0) {
+                        if (activeRunState.busy || activeRunViewModel.executionInProgress() || isTestTypeSwitchLocked()) {
+                            Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+                        } else if (activeRunState.active == null) {
+                            pendingTemplateId = template.id
+                            activeRunViewModel.startEmpty(template.name)
+                        } else applyTemplate(template)
+                    } else AlertDialog.Builder(this).setTitle("Usunąć szablon ${template.name}?")
+                        .setMessage("Wyniki wykonanych testów pozostaną zachowane.")
+                        .setPositiveButton("Usuń") { _, _ -> reportExecutor.execute {
+                            val success = templates.delete(template.id)
+                            runOnUiThread { if (!isDestroyed && !isFinishing) Toast.makeText(this, if (success) "Szablon usunięty" else "Nie udało się usunąć szablonu", Toast.LENGTH_SHORT).show() }
+                        } }.setNegativeButton("Anuluj", null).show()
+                }.setNegativeButton("Anuluj", null).show()
+            }.setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun applyTemplate(template: com.example.testdialer.templates.TestTemplate) {
+        if (template.action is TestAction.Data) {
+            dataAmountDraft = (template.requestedBytes ?: 1_000_000L).toString()
+            dataUnitDraft = "B"
+        }
+        openActiveTask(null, template.action)
+        showSection(AppSection.TEST)
+    }
+
+    private fun billingVerdictLabel(verdict: com.example.testdialer.review.BillingVerdict): String = when (verdict) {
+        com.example.testdialer.review.BillingVerdict.NOT_CHECKED -> "nie sprawdzono"
+        com.example.testdialer.review.BillingVerdict.PASS -> "zgodne (PASS)"
+        com.example.testdialer.review.BillingVerdict.FAIL -> "niezgodne (FAIL)"
+    }
+
+    private fun editBillingReview(eventId: EventId) {
+        val before = billingReviews.get(eventId)
+        val expected = createOptionalInput("Oczekiwane naliczenie, np. 0,79 PLN").apply { setText(before.expected); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
+        val actual = createOptionalInput("Rzeczywiste naliczenie / dowód, np. CDR").apply { setText(before.actual); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
+        val verdicts = com.example.testdialer.review.BillingVerdict.entries
+        val choice = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, verdicts.map(::billingVerdictLabel))
+            setSelection(verdicts.indexOf(before.verdict))
+            minimumHeight = dimen(48)
+            contentDescription = "Ocena poprawności rozliczenia przez testera"
+        }
+        val fields = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dimen(20), dimen(8), dimen(20), dimen(8))
+            addView(createBodyText("To ręczna ocena rozliczenia. Nie zmienia technicznego wyniku usługi."))
+            addView(expected); addView(actual); addView(choice)
+        }
+        val scroll = ScrollView(this).apply { addView(fields) }
+        val dialog = AlertDialog.Builder(this).setTitle("Oczekiwano / otrzymano").setView(scroll)
+            .setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val review = com.example.testdialer.review.BillingReview(expected.text.toString(), actual.text.toString(), verdicts[choice.selectedItemPosition], System.currentTimeMillis())
+                if (review.verdict != com.example.testdialer.review.BillingVerdict.NOT_CHECKED && (review.expected.isBlank() || review.actual.isBlank())) {
+                    actual.error = "Opisz oczekiwanie i otrzymany wynik, aby zapisać PASS/FAIL"; return@setOnClickListener
+                }
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                reportExecutor.execute {
+                    val result = runCatching { check(billingReviews.save(eventId, review)) }
+                    runOnUiThread {
+                        if (isDestroyed || isFinishing) return@runOnUiThread
+                        if (result.isSuccess) { dialog.dismiss(); renderRegister() }
+                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; actual.error = "Nie udało się zapisać oceny" }
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
     private fun startDataScenario() {
         if (activeRunState.active != null || activeRunState.busy || activeRunViewModel.executionInProgress()) return
         activeRunViewModel.startScenario(LocalScenarioCatalog.dataQuota())
@@ -1133,7 +1507,7 @@ class MainActivity : ComponentActivity() {
     private fun showReportOptions(stored: StoredTestRun) {
         AlertDialog.Builder(this)
             .setTitle(R.string.report_export)
-            .setItems(arrayOf(getString(R.string.report_copy), getString(R.string.report_share_text), getString(R.string.report_share_json))) { _, option ->
+            .setItems(arrayOf(getString(R.string.report_copy), getString(R.string.report_share_text), getString(R.string.report_share_json), "Udostępnij CSV")) { _, option ->
                 exportReport(stored, option)
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -1146,13 +1520,19 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
         val appContext = applicationContext
         val note = runNotes.get(stored.run.id)
+        val reviews = stored.run.events.associate { it.id.value to billingReviews.get(it.id) }.filterValues { it.reviewedAtMillis > 0 }
+        val interruptedAt = billingReviews.interruptedAt(stored.run.id)
         reportExecutor.execute {
             val result = runCatching {
-                val content = if (option == 2) RunReportFormatter.json(stored, note) else RunReportFormatter.text(stored, note)
+                val content = when (option) {
+                    2 -> RunReportFormatter.json(stored, note, reviews, interruptedAt)
+                    3 -> RunReportFormatter.csv(stored, note, reviews, interruptedAt)
+                    else -> RunReportFormatter.text(stored, note, reviews, interruptedAt)
+                }
                 if (option == 0) {
                     require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
                     content to null
-                } else content to RunReportFiles.shareIntent(appContext, content, option == 2)
+                } else content to RunReportFiles.shareIntent(appContext, content, when (option) { 2 -> "json"; 3 -> "csv"; else -> "txt" })
             }
             runOnUiThread {
                 reportBusy = false
@@ -1435,11 +1815,7 @@ class MainActivity : ComponentActivity() {
                 taskName,
                 stage,
             )
-            addView(createMicroText(getString(
-                R.string.execution_run_context,
-                active.stored.scenario.name,
-                active.stored.run.id.value,
-            )))
+            addView(createBodyText("Sesja: ${active.stored.scenario.name}"))
             addView(spaceVertical(dimen(4)))
             addView(createStatusText(getString(R.string.execution_task_stage, taskName, stage)))
         })
@@ -1556,6 +1932,19 @@ class MainActivity : ComponentActivity() {
                 setText(dataAmountDraft)
                 trackDraft { dataAmountDraft = it }
             }
+            val presets = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            listOf(1, 100, 500).forEach { megabytes ->
+                presets.addView(Button(this@MainActivity).apply {
+                    text = "$megabytes MB"
+                    contentDescription = "Ustaw limit pobierania $megabytes megabajtów"
+                    setOnClickListener {
+                        dataAmountDraft = megabytes.toString()
+                        dataUnitDraft = "MB"
+                        renderScenario(TestType.DATA)
+                    }
+                })
+            }
+            addView(optionalFields("Szybki wybór ilości danych") { addView(presets) })
             addView(createBodyText(getString(R.string.data_amount_hint)))
             addView(spaceVertical(dimen(6)))
             addView(amount)
@@ -1643,8 +2032,12 @@ class MainActivity : ComponentActivity() {
                 setText(initialMessage)
                 trackDraft { smsMessageDraft = it }
             }
+            addView(createBodyText(getString(R.string.sms_destination_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(destinationInput)
             addView(spaceVertical(dimen(10)))
+            addView(createBodyText(getString(R.string.sms_message_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(messageInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
@@ -1775,6 +2168,8 @@ class MainActivity : ComponentActivity() {
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
             voicePhoneInput.setText(voicePhoneDraft ?: (selectedTaskAction() as? TestAction.Voice)?.destination.orEmpty())
             voicePhoneInput.trackDraft { voicePhoneDraft = it }
+            addView(createBodyText(getString(R.string.voice_number_hint)))
+            addView(spaceVertical(dimen(6)))
             addView(voicePhoneInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
@@ -1841,6 +2236,7 @@ class MainActivity : ComponentActivity() {
         activeRunViewModel.recordVoice(phoneNumber, outcome)
         awaitingVoiceOutcome = false
         resultSaved = true
+        announceResult("voice:${System.currentTimeMillis()}", "Wynik testu połączenia zapisany: ${when (outcome) { VoiceTestResult.Outcome.SUCCESS -> "udało się"; VoiceTestResult.Outcome.FAILURE -> "nie udało się"; VoiceTestResult.Outcome.NOT_CHECKED -> "nie sprawdzono" }}")
         renderRegister()
         Toast.makeText(this@MainActivity, R.string.voice_result_saved, Toast.LENGTH_LONG).show()
         renderScenario(TestType.VOICE)
@@ -2145,17 +2541,5 @@ class MainActivity : ComponentActivity() {
         const val STATE_DATA_URL_DRAFT = "dataUrlDraft"
     }
 
-    private object ColorPalette {
-        const val background = 0xFFF3F6F8.toInt()
-        const val surface = 0xFFFFFFFF.toInt()
-        const val accent = 0xFF006C70.toInt()
-        const val button = 0xFFE5EEF0.toInt()
-        const val border = 0xFFD7E1EE.toInt()
-        const val textPrimary = 0xFF102A43.toInt()
-        const val textSecondary = 0xFF52606D.toInt()
-        const val onAccent = 0xFFFFFFFF.toInt()
-        const val ok = 0xFF2E7D32.toInt()
-        const val bad = 0xFFC62828.toInt()
-        const val neutral = 0xFF455A64.toInt()
-    }
+    private val ColorPalette get() = com.example.testdialer.ui.UiPalette(this)
 }

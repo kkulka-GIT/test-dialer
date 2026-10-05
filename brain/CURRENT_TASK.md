@@ -1,20 +1,21 @@
-# Current Task
+# Autonomiczny rozwój Test Dialera — 2026-10-05
 
-Status: FIX IMPLEMENTED — AUTOMATED VERIFICATION PASS; PHONE RETEST PENDING
+Cel: czytelny mobilny warsztat testera, szybkie uruchamianie powtarzalnych testów i użyteczne raporty.
+Kontekst: użytkownik dał wolną rękę do iteracyjnego wdrożenia propozycji i dalszego intuicyjnego rozwoju bez interwencji. Baza: PR #18 (7e0c335), zawierający #16/#17, aby zachować eksport, ilości danych i poprawki odbioru telefonu/VPN.
+Tryb: incremental, osobny feature/autonomous-ux-20261005; commit/push po checkpointach, CI na PR. Bez merge do main.
 
-Goal: address user acceptance failures of APK #104. Authorization: user explicitly requested removal of SMS coupling, task-opening repair and verification of incorrect VPN rejection on 2026-09-28.
-Mode: incremental, autonomous within this scope; no merge authorization.
+## Iteracje
+1. Czytelność: ujednolicić paletę, polskie nazwy i tekst; dodać motyw jasny/ciemny/systemowy; zachować TalkBack i skalowanie.
+2. Dodawanie i wykonanie: prawdziwy wybór typu po Dodaj test; otwieranie formularza; szybkie ilości 1/100/500 MB; szczegóły techniczne zwijane.
+3. Rejestr i raporty: wyszukiwanie nazw/ID, filtr statusu i daty; CSV z bezpiecznymi komórkami i istniejącym FileProvider.
+4. Szablony: zapisz parametry zdarzenia, wybierz nazwany szablon, wypełnij nowy test bez automatycznego wykonania; usuwanie tylko wskazanego szablonu.
+5. Ocena: oddzielne oczekiwanie, faktyczny wynik i ręczna ocena rozliczenia na zdarzeniu; eksport z oznaczeniem źródła tester.
+6. Przerwane sesje: jawny komunikat dla historycznych RUNNING i możliwość oznaczenia przeglądu jako przerwane bez wznowienia transferu lub przepisywania osi historii.
+7. Audio: opcjonalny TTS ważnych wyników, ustawienie zapamiętane lokalnie, poprawny lifecycle.
+8. Weryfikacja: CI, istniejące regresje + sensowne testy nowych funkcji; zrzuty w motywach i dużej czcionce; raport stanu i APK.
 
-Scope: Data-only Run, manual package notes, task form focus/scroll, selection of an available direct cellular network despite default VPN. No USSD or operator integration; no new permissions or history migration.
-Acceptance: start Data Run without SMS input; Open reveals the form; physical cellular can be selected with VPN default; no Wi-Fi/VPN fallback if cellular unavailable; tests/build/APK PASS.
+Kryteria: brak automatycznych połączeń/SMS; brak utraty historii; neutralne obserwacje oddzielone od oceny billingu; nowy test wymaga jawnej akcji; CI/testy/APK PASS. Testy fizycznej SIM i systemowego TTS oznaczone NOT TESTED, dopóki brak urządzenia.
+Poza zakresem: konta/backend, automatyczne naliczanie z operatora, migracja legacy, scalanie main, pełna przebudowa Compose.
+Raport: brain/reports/2026-10-05-autonomous-ux.md; rzeczywisty stan checkpointów i testów.
 
-Branch: fix/data-only-network-20260928
-Draft PR: https://github.com/kkulka-GIT/test-dialer/pull/18
-Base: PR #17, cc8db386070fc8354844dd4cd606ee9576709a9d
-Application checkpoint: 893968f0b3e035c5aa577db509f21e57f7c9a20e.
-
-Automated tests include six network selection cases and an actual task Open click with scroll/focus assertions. Physical SIM, device VPN configuration and handset install remain NOT TESTED by the assistant. User reported #104 phone acceptance FAIL despite automated PASS; the two are tracked separately.
-
-Installation: Test Dialer Data 2 (.preview.datafix) preserves earlier installed apps and their histories. CI signing remains ephemeral. Report: reports/2026-09-28-data-only-network-fix.md.
-
-CI #107 (36399191154): PASS, 140 tests, both APKs and preview identity. Verified test checkpoint f5fa0b8ead2d65d1cd8a6138b8c0a32601da71e6. Preview artifact 10958589846. Final screenshots reviewed.
+Stan: wszystkie osiem iteracji zakończone. CI #121 PASS, 155 testów bez błędów; APK i przegląd zrzutów gotowe. Szczegóły i ograniczenia w raporcie.

@@ -21,6 +21,10 @@ internal class RunHomeView(
     tasksDescription: String,
     onAddTest: () -> Unit,
 ) : LinearLayout(context) {
+    private val headingHost = verticalHost()
+    private val planningHost = verticalHost()
+    val executionNavigationHost = verticalHost()
+    private lateinit var addTestButton: Button
     val statusHost = verticalHost()
     val runHost = verticalHost()
     val taskListHost = verticalHost()
@@ -36,29 +40,14 @@ internal class RunHomeView(
 
     init {
         orientation = VERTICAL
-        addView(TextView(context).apply {
-            text = "TEST DIALER"
-            textSize = 12f
-            letterSpacing = 0.14f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF006C70.toInt())
-        })
-        addView(space(6))
-        addView(header(title))
-        addView(space(4))
-        addView(body(description))
+        headingHost.addView(header(title))
+        headingHost.addView(space(4))
+        headingHost.addView(body(description))
+        addView(headingHost)
         addView(space(10))
         addView(statusHost)
         addView(space(10))
-        addView(runHost)
-        addView(space(14))
-        addView(tasksHeading)
-        addView(space(6))
-        addView(body(tasksDescription))
-        addView(space(12))
-        addView(taskListHost)
-        addView(space(8))
-        addView(Button(context).apply {
+        addTestButton = Button(context).apply {
             text = addTestLabel
             isAllCaps = false
             textSize = 16f
@@ -66,20 +55,39 @@ internal class RunHomeView(
             contentDescription = addTestLabel
             background = GradientDrawable().apply {
                 cornerRadius = dp(12).toFloat()
-                setColor(0xFFF0F4F8.toInt())
-                setStroke(dp(1), BORDER)
+                setColor(palette.accent)
+                setStroke(dp(1), palette.border)
             }
-            setTextColor(TEXT_PRIMARY)
+            setTextColor(palette.onAccent)
             setOnClickListener { onAddTest() }
-        })
-        addView(space(8))
-        addView(selectorHost)
-        addView(space(8))
+        }
+        addView(addTestButton)
+        addView(space(10))
+        addView(runHost)
+        addView(space(14))
+        planningHost.addView(tasksHeading)
+        planningHost.addView(space(6))
+        planningHost.addView(body(tasksDescription))
+        planningHost.addView(space(12))
+        planningHost.addView(taskListHost)
+        planningHost.addView(space(8))
+        planningHost.addView(selectorHost)
+        planningHost.addView(space(8))
+        addView(planningHost)
+        addView(executionNavigationHost)
         addView(executionContextHost)
         addView(space(8))
         addView(scenarioHost)
         addView(space(12))
         addView(manualSessionHost)
+    }
+
+    fun showExecutionOnly(focused: Boolean, hasSession: Boolean = true) {
+        headingHost.visibility = if (focused) View.GONE else View.VISIBLE
+        runHost.visibility = if (focused) View.GONE else View.VISIBLE
+        planningHost.visibility = if (focused || !hasSession) View.GONE else View.VISIBLE
+        addTestButton.visibility = if (focused) View.GONE else View.VISIBLE
+        executionNavigationHost.visibility = if (focused) View.VISIBLE else View.GONE
     }
 
     fun announceTasks(message: String) {
@@ -94,8 +102,8 @@ internal class RunHomeView(
         setPadding(dp(14), dp(14), dp(14), dp(14))
         background = GradientDrawable().apply {
             cornerRadius = dp(14).toFloat()
-            setColor(SURFACE)
-            setStroke(dp(1), BORDER)
+            setColor(palette.surface)
+            setStroke(dp(1), palette.border)
         }
         elevation = dp(1).toFloat()
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -105,7 +113,7 @@ internal class RunHomeView(
         text = value
         textSize = 27f
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        setTextColor(TEXT_PRIMARY)
+        setTextColor(palette.textPrimary)
         ViewCompat.setAccessibilityHeading(this, true)
     }
 
@@ -113,13 +121,13 @@ internal class RunHomeView(
         text = value
         textSize = 18f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(TEXT_PRIMARY)
+        setTextColor(palette.textPrimary)
     }
 
     private fun body(value: String) = TextView(context).apply {
         text = value
         textSize = 16f
-        setTextColor(TEXT_SECONDARY)
+        setTextColor(palette.textSecondary)
     }
 
     private fun space(height: Int) = View(context).apply {
@@ -128,10 +136,5 @@ internal class RunHomeView(
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val SURFACE = 0xFFFFFFFF.toInt()
-        const val BORDER = 0xFFD7E1EE.toInt()
-        const val TEXT_PRIMARY = 0xFF102A43.toInt()
-        const val TEXT_SECONDARY = 0xFF52606D.toInt()
-    }
+    private val palette get() = UiPalette(context)
 }

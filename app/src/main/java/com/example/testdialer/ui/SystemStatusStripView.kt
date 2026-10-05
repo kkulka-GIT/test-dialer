@@ -20,10 +20,10 @@ internal class SystemStatusStripView(
     wifiLabel: String,
     wifiSymbol: String,
 ) : LinearLayout(context) {
-    private val simBadge = createBadge(simSymbol, simLabel)
-    private val networkBadge = createBadge(networkSymbol, networkLabel)
-    private val cellularBadge = createBadge(cellularSymbol, cellularLabel)
-    private val wifiBadge = createBadge(wifiSymbol, wifiLabel)
+    private val simBadge = createBadge(com.example.testdialer.R.drawable.ic_status_sim, simLabel)
+    private val networkBadge = createBadge(com.example.testdialer.R.drawable.ic_status_network, networkLabel)
+    private val cellularBadge = createBadge(com.example.testdialer.R.drawable.ic_status_data, cellularLabel)
+    private val wifiBadge = createBadge(com.example.testdialer.R.drawable.ic_status_wifi, wifiLabel)
 
     init {
         orientation = HORIZONTAL
@@ -31,8 +31,8 @@ internal class SystemStatusStripView(
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         background = GradientDrawable().apply {
             cornerRadius = dp(12).toFloat()
-            setColor(STRIP_BACKGROUND)
-            setStroke(dp(1), BORDER)
+            setColor(palette.surface)
+            setStroke(dp(1), palette.border)
         }
         setPadding(dp(4), dp(4), dp(4), dp(4))
         addView(simBadge)
@@ -57,34 +57,44 @@ internal class SystemStatusStripView(
         ).joinToString(". ")
     }
 
-    private fun createBadge(symbol: String, label: String): LinearLayout = LinearLayout(context).apply {
+    private fun createBadge(icon: Int, label: String): LinearLayout = LinearLayout(context).apply {
         orientation = VERTICAL
         gravity = Gravity.CENTER
         minimumHeight = dp(36)
         setPadding(dp(6), dp(4), dp(6), dp(4))
         layoutParams = LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         tag = label
-        addView(TextView(context).apply {
-            text = symbol
-            textSize = 12f
-            typeface = Typeface.DEFAULT_BOLD
-            setTextColor(TEXT)
+        addView(android.widget.ImageView(context).apply {
+            setImageResource(icon)
+            layoutParams = LayoutParams(dp(20), dp(20))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         })
         addView(TextView(context).apply {
             text = label
             gravity = Gravity.CENTER
-            textSize = 11f
-            setTextColor(TEXT)
+            textSize = 14f
+            setTextColor(palette.textPrimary)
         })
     }
 
     private fun updateBadge(badge: LinearLayout, available: Boolean) {
         badge.background = GradientDrawable().apply {
             cornerRadius = dp(9).toFloat()
-            setColor(if (available) AVAILABLE_BACKGROUND else UNAVAILABLE_BACKGROUND)
+            setColor(if (available) palette.button else palette.background)
         }
         repeat(badge.childCount) { index ->
-            (badge.getChildAt(index) as? TextView)?.setTextColor(if (available) AVAILABLE else UNAVAILABLE)
+            val color = if (available) palette.ok else palette.textSecondary
+            (badge.getChildAt(index) as? TextView)?.setTextColor(color)
+            (badge.getChildAt(index) as? android.widget.ImageView)?.imageTintList = android.content.res.ColorStateList.valueOf(color)
+        }
+        if (badge.childCount == 2) badge.addView(TextView(context).apply {
+            gravity = Gravity.CENTER
+            textSize = 12f
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        })
+        (badge.getChildAt(2) as TextView).apply {
+            text = if (available) "OK" else "Brak"
+            setTextColor(if (available) palette.ok else palette.textSecondary)
         }
         badge.contentDescription = badgeDescription(badge, available)
     }
@@ -98,13 +108,5 @@ internal class SystemStatusStripView(
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val AVAILABLE = 0xFF236B3A.toInt()
-        const val UNAVAILABLE = 0xFF66788A.toInt()
-        const val AVAILABLE_BACKGROUND = 0xFFE8F5EC.toInt()
-        const val UNAVAILABLE_BACKGROUND = 0xFFF0F3F6.toInt()
-        const val STRIP_BACKGROUND = 0xFFF8FAFC.toInt()
-        const val BORDER = 0xFFD7E1EE.toInt()
-        const val TEXT = 0xFF102A43.toInt()
-    }
+    private val palette get() = UiPalette(context)
 }
