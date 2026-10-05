@@ -80,6 +80,7 @@ class MainActivity : ComponentActivity() {
     private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
     private var pendingTemplateId: String? = null
     private var pendingAdditionalType: TestType? = null
+    private lateinit var registerFilterLabel: Button
     private lateinit var registerFiltersHost: LinearLayout
     private var registerFilter = com.example.testdialer.register.RegisterFilter()
     private var reportBusy = false
@@ -899,6 +900,12 @@ class MainActivity : ComponentActivity() {
 
     private fun renderRegister() {
         if (!::registerListHost.isInitialized) return
+        if (::registerFilterLabel.isInitialized) {
+            val filters = listOfNotNull(registerFilter.status?.let(::localizeRunStatus),
+                registerFilter.service?.let { when (it) { ServiceType.VOICE -> "Połączenie"; ServiceType.SMS -> "SMS"; ServiceType.DATA -> "Dane" } },
+                registerFilter.days?.let { if (it == 1) "Dzisiaj" else "$it dni" })
+            registerFilterLabel.text = if (filters.isEmpty()) "Filtry: wszystkie sesje" else "Filtry: ${filters.joinToString(" · ")}"
+        }
         registerFiltersHost.visibility = if (registerState.selectedRun == null) View.VISIBLE else View.GONE
         registerListHost.removeAllViews()
         registerState.selectedRun?.let { selected ->
@@ -978,11 +985,20 @@ class MainActivity : ComponentActivity() {
         val search = createOptionalInput("Szukaj nazwy sesji lub ID").apply {
             setText(registerFilter.query)
             contentDescription = "Wyszukiwanie sesji po nazwie lub identyfikatorze"
+            isSingleLine = true
+            imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+            setOnEditorActionListener { view, action, _ ->
+                if (action == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                    (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager).hideSoftInputFromWindow(view.windowToken, 0)
+                    clearFocus(); true
+                } else false
+            }
             trackDraft { query -> registerFilter = registerFilter.copy(query = query); renderRegister() }
         }
         addView(search)
         addView(Button(this@MainActivity).apply {
-            text = "Filtry: status, usługa, data"
+            registerFilterLabel = this
+            text = "Filtry: wszystkie sesje"
             setOnClickListener { showRegisterFilters() }
         })
         addView(Button(this@MainActivity).apply {
@@ -1035,6 +1051,7 @@ class MainActivity : ComponentActivity() {
                 summary.eventCount,
             )
             addView(createCardTitle(summary.scenarioName))
+            if (billingReviews.interruptedAt(summary.runId) > 0) addView(createTag("Przegląd: sesja przerwana"))
             addView(spaceVertical(dimen(6)))
             addView(createBodyText(getString(R.string.register_run_item_status, status)))
             addView(spaceVertical(dimen(4)))
@@ -1052,6 +1069,10 @@ class MainActivity : ComponentActivity() {
             setOnClickListener { registerViewModel.selectRun(summary.runId) }
         }
     }
+
+    private fun canMarkInterrupted(id: RunId, status: TestRunStatus): Boolean =
+        status == TestRunStatus.RUNNING && activeRunState.active?.stored?.run?.id != id &&
+            manualSessionState.active?.stored?.run?.id != id && !isTestTypeSwitchLocked() && !activeRunViewModel.executionInProgress()
 
     private fun createRunDetail(stored: StoredTestRun): View {
         val run = stored.run
@@ -1086,7 +1107,7 @@ class MainActivity : ComponentActivity() {
                 addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
                 })
                 addView(spaceVertical(dimen(14)))
-                if (run.status == TestRunStatus.RUNNING && activeRunState.active?.stored?.run?.id != run.id) {
+                if (canMarkInterrupted(run.id, run.status)) {
                     val interrupted = billingReviews.interruptedAt(run.id)
                     addView(createBodyText(if (interrupted > 0) "Oznaczona jako przerwana przez testera: ${formatDateWithMillis(interrupted)}. Historyczny stan zapisu pozostaje w toku." else "Ta sesja pozostała w toku po przerwaniu pracy. Pobieranie nie jest wznawiane. Możesz zachować historię i rozpocząć nową sesję."))
                     if (interrupted == 0L) addView(Button(this@MainActivity).apply {

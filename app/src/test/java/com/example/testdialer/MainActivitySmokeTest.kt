@@ -79,42 +79,22 @@ class MainActivitySmokeTest {
     }
 
     @Test
-    fun `add test focuses Tasks without creating a persisted run`() {
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        findButton(activity, activity.getString(R.string.nav_operations)).performClick()
+    fun `add test opens a chooser without persisting or executing until service is selected`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
         val repository = (activity.application as TestDialerApplication).testRunRepository
         val before = persistedRunCount(repository)
-        val runHome = descendants(activity.findViewById(android.R.id.content))
-            .filterIsInstance<RunHomeView>()
-            .single()
-        val scroll = generateSequence(runHome.parent) { it.parent }
-            .filterIsInstance<ScrollView>()
-            .first()
-        val viewportWidth = (360 * activity.resources.displayMetrics.density).toInt()
-        val viewportHeight = (240 * activity.resources.displayMetrics.density).toInt()
-        scroll.measure(
-            View.MeasureSpec.makeMeasureSpec(viewportWidth, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(viewportHeight, View.MeasureSpec.EXACTLY),
-        )
-        scroll.layout(0, 0, viewportWidth, viewportHeight)
-        val tasksBounds = Rect().also { bounds ->
-            runHome.tasksHeading.getDrawingRect(bounds)
-            scroll.offsetDescendantRectToMyCoords(runHome.tasksHeading, bounds)
-        }
-
-        assertEquals(0, scroll.scrollY)
-        assertTrue(tasksBounds.top >= scroll.height)
-
         findButton(activity, activity.getString(R.string.run_add_test)).performClick()
         Shadows.shadowOf(Looper.getMainLooper()).idle()
-
-        assertTrue(runHome.tasksHeading.hasFocus())
-        assertEquals(activity.getString(R.string.run_tasks_title), runHome.tasksHeading.text.toString())
-        assertTrue(scroll.scrollY > 0)
-        assertTrue(tasksBounds.bottom > scroll.scrollY)
-        assertTrue(tasksBounds.top < scroll.scrollY + scroll.height)
-        val after = persistedRunCount(repository)
-        assertEquals(before, after)
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertNotNull(dialog)
+        assertEquals("Połączenie", dialog.listView.adapter.getItem(0).toString())
+        assertEquals("SMS", dialog.listView.adapter.getItem(1).toString())
+        assertEquals("Dane", dialog.listView.adapter.getItem(2).toString())
+        assertEquals(before, persistedRunCount(repository))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        dialog.dismiss()
+        controller.pause().stop().destroy()
     }
 
     @Test

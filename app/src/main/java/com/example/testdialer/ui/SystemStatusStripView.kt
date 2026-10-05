@@ -87,6 +87,15 @@ internal class SystemStatusStripView(
             (badge.getChildAt(index) as? TextView)?.setTextColor(color)
             (badge.getChildAt(index) as? android.widget.ImageView)?.imageTintList = android.content.res.ColorStateList.valueOf(color)
         }
+        if (badge.childCount == 2) badge.addView(TextView(context).apply {
+            gravity = Gravity.CENTER
+            textSize = 12f
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        })
+        (badge.getChildAt(2) as TextView).apply {
+            text = if (available) "OK" else "Brak"
+            setTextColor(if (available) palette.ok else palette.textSecondary)
+        }
         badge.contentDescription = badgeDescription(badge, available)
     }
 
