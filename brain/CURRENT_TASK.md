@@ -6,3 +6,5 @@ Poza zakresem: biblioteka nazwanych planów, automatyczne wykonanie, kopiowanie 
 Kryteria: anulowanie niczego nie zapisuje; aktywna sesja blokuje powtórkę; źródło nie zmienia się; wszystkie nowe zadania PENDING i brak zdarzeń; formularz danych nie używa przypadkowej starej ilości; CI i APK PASS.
 Tryb incremental. Testy: kolejność/powtórzenia, niezależne ID, brakujące/niejednoznaczne ilości, limity, zachowanie aktywnej sesji, podgląd/anulowanie/formularz UI.
 Raport: brain/reports/2026-10-05-phase4.md.
+
+Stan: implementacja opublikowana, CI #133 QUEUED po kilku odczytach. Kryteria testy/APK nie są jeszcze spełnione. Następny przebieg ma najpierw dokończyć tę weryfikację lub naprawić znalezione błędy, bez nowej funkcji.
