@@ -141,6 +141,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val mode = getSharedPreferences("ui-settings", MODE_PRIVATE).getInt("theme", 0)
+        if (mode != 0) {
+            val config = android.content.res.Configuration(resources.configuration)
+            config.uiMode = (config.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or
+                if (mode == 2) android.content.res.Configuration.UI_MODE_NIGHT_YES else android.content.res.Configuration.UI_MODE_NIGHT_NO
+            applyOverrideConfiguration(config)
+        }
         super.onCreate(savedInstanceState)
 
         voiceResultStore = VoiceResultStore(this)
@@ -213,6 +220,11 @@ class MainActivity : ComponentActivity() {
         contentHost.addView(testSection)
         contentHost.addView(registerSection)
 
+        root.addView(Button(this).apply {
+            text = "Wygląd i dźwięk"
+            contentDescription = "Ustawienia wyglądu i komunikatów głosowych"
+            setOnClickListener { showAppearanceSettings() }
+        })
         root.addView(contentHost)
         root.addView(createBottomNavigation())
         ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
@@ -383,6 +395,16 @@ class MainActivity : ComponentActivity() {
         } else if (operationalSection == AppSection.REGISTER) {
             renderRegister()
         }
+    }
+
+    private fun showAppearanceSettings() {
+        val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
+        AlertDialog.Builder(this).setTitle("Motyw ekranu")
+            .setSingleChoiceItems(arrayOf("Zgodny z telefonem", "Jasny", "Ciemny"), preferences.getInt("theme", 0)) { dialog, index ->
+                preferences.edit().putInt("theme", index).apply()
+                dialog.dismiss()
+                recreate()
+            }.setNegativeButton("Zamknij", null).show()
     }
 
     private fun createBottomNavigation(): View {
@@ -2145,17 +2167,5 @@ class MainActivity : ComponentActivity() {
         const val STATE_DATA_URL_DRAFT = "dataUrlDraft"
     }
 
-    private object ColorPalette {
-        const val background = 0xFFF3F6F8.toInt()
-        const val surface = 0xFFFFFFFF.toInt()
-        const val accent = 0xFF006C70.toInt()
-        const val button = 0xFFE5EEF0.toInt()
-        const val border = 0xFFD7E1EE.toInt()
-        const val textPrimary = 0xFF102A43.toInt()
-        const val textSecondary = 0xFF52606D.toInt()
-        const val onAccent = 0xFFFFFFFF.toInt()
-        const val ok = 0xFF2E7D32.toInt()
-        const val bad = 0xFFC62828.toInt()
-        const val neutral = 0xFF455A64.toInt()
-    }
+    private val ColorPalette get() = com.example.testdialer.ui.UiPalette(this)
 }

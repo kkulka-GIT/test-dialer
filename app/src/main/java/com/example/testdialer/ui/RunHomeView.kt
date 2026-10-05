@@ -41,7 +41,7 @@ internal class RunHomeView(
             textSize = 12f
             letterSpacing = 0.14f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFF006C70.toInt())
+            setTextColor(palette.accent)
         })
         addView(space(6))
         addView(header(title))
@@ -66,10 +66,10 @@ internal class RunHomeView(
             contentDescription = addTestLabel
             background = GradientDrawable().apply {
                 cornerRadius = dp(12).toFloat()
-                setColor(0xFFF0F4F8.toInt())
-                setStroke(dp(1), BORDER)
+                setColor(palette.button)
+                setStroke(dp(1), palette.border)
             }
-            setTextColor(TEXT_PRIMARY)
+            setTextColor(palette.textPrimary)
             setOnClickListener { onAddTest() }
         })
         addView(space(8))
@@ -94,8 +94,8 @@ internal class RunHomeView(
         setPadding(dp(14), dp(14), dp(14), dp(14))
         background = GradientDrawable().apply {
             cornerRadius = dp(14).toFloat()
-            setColor(SURFACE)
-            setStroke(dp(1), BORDER)
+            setColor(palette.surface)
+            setStroke(dp(1), palette.border)
         }
         elevation = dp(1).toFloat()
         layoutParams = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -105,7 +105,7 @@ internal class RunHomeView(
         text = value
         textSize = 27f
         typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        setTextColor(TEXT_PRIMARY)
+        setTextColor(palette.textPrimary)
         ViewCompat.setAccessibilityHeading(this, true)
     }
 
@@ -113,13 +113,13 @@ internal class RunHomeView(
         text = value
         textSize = 18f
         typeface = Typeface.DEFAULT_BOLD
-        setTextColor(TEXT_PRIMARY)
+        setTextColor(palette.textPrimary)
     }
 
     private fun body(value: String) = TextView(context).apply {
         text = value
         textSize = 16f
-        setTextColor(TEXT_SECONDARY)
+        setTextColor(palette.textSecondary)
     }
 
     private fun space(height: Int) = View(context).apply {
@@ -128,10 +128,5 @@ internal class RunHomeView(
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val SURFACE = 0xFFFFFFFF.toInt()
-        const val BORDER = 0xFFD7E1EE.toInt()
-        const val TEXT_PRIMARY = 0xFF102A43.toInt()
-        const val TEXT_SECONDARY = 0xFF52606D.toInt()
-    }
+    private val palette get() = UiPalette(context)
 }

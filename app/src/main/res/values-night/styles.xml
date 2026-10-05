@@ -1,15 +1,15 @@
 <resources>
-    <style name="Theme.TestDialer" parent="android:style/Theme.Material.Light.NoActionBar">
+    <style name="Theme.TestDialer" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:colorAccent">@color/ui_accent</item>
         <item name="android:buttonStyle">@style/Widget.TestDialer.Button</item>
         <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:statusBarColor">@color/ui_background</item>
         <item name="android:navigationBarColor">@color/ui_surface</item>
-        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowActionModeOverlay">false</item>
     </style>
-    <style name="Widget.TestDialer.Button" parent="android:style/Widget.Material.Light.Button">
+    <style name="Widget.TestDialer.Button" parent="android:style/Widget.Material.Button">
         <item name="android:background">@drawable/button_secondary</item>
         <item name="android:backgroundTint">@null</item>
         <item name="android:textColor">@color/button_text</item>

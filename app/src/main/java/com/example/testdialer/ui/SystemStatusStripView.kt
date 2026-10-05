@@ -31,8 +31,8 @@ internal class SystemStatusStripView(
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         background = GradientDrawable().apply {
             cornerRadius = dp(12).toFloat()
-            setColor(STRIP_BACKGROUND)
-            setStroke(dp(1), BORDER)
+            setColor(palette.surface)
+            setStroke(dp(1), palette.border)
         }
         setPadding(dp(4), dp(4), dp(4), dp(4))
         addView(simBadge)
@@ -66,25 +66,25 @@ internal class SystemStatusStripView(
         tag = label
         addView(TextView(context).apply {
             text = symbol
-            textSize = 12f
+            textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(TEXT)
+            setTextColor(palette.textPrimary)
         })
         addView(TextView(context).apply {
             text = label
             gravity = Gravity.CENTER
-            textSize = 11f
-            setTextColor(TEXT)
+            textSize = 14f
+            setTextColor(palette.textPrimary)
         })
     }
 
     private fun updateBadge(badge: LinearLayout, available: Boolean) {
         badge.background = GradientDrawable().apply {
             cornerRadius = dp(9).toFloat()
-            setColor(if (available) AVAILABLE_BACKGROUND else UNAVAILABLE_BACKGROUND)
+            setColor(if (available) palette.button else palette.background)
         }
         repeat(badge.childCount) { index ->
-            (badge.getChildAt(index) as? TextView)?.setTextColor(if (available) AVAILABLE else UNAVAILABLE)
+            (badge.getChildAt(index) as? TextView)?.setTextColor(if (available) palette.ok else palette.textSecondary)
         }
         badge.contentDescription = badgeDescription(badge, available)
     }
@@ -98,13 +98,5 @@ internal class SystemStatusStripView(
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private companion object {
-        const val AVAILABLE = 0xFF236B3A.toInt()
-        const val UNAVAILABLE = 0xFF66788A.toInt()
-        const val AVAILABLE_BACKGROUND = 0xFFE8F5EC.toInt()
-        const val UNAVAILABLE_BACKGROUND = 0xFFF0F3F6.toInt()
-        const val STRIP_BACKGROUND = 0xFFF8FAFC.toInt()
-        const val BORDER = 0xFFD7E1EE.toInt()
-        const val TEXT = 0xFF102A43.toInt()
-    }
+    private val palette get() = UiPalette(context)
 }
