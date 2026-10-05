@@ -21,6 +21,8 @@ internal class RunHomeView(
     tasksDescription: String,
     onAddTest: () -> Unit,
 ) : LinearLayout(context) {
+    private val planningHost = verticalHost()
+    val executionNavigationHost = verticalHost()
     val statusHost = verticalHost()
     val runHost = verticalHost()
     val taskListHost = verticalHost()
@@ -52,13 +54,13 @@ internal class RunHomeView(
         addView(space(10))
         addView(runHost)
         addView(space(14))
-        addView(tasksHeading)
-        addView(space(6))
-        addView(body(tasksDescription))
-        addView(space(12))
-        addView(taskListHost)
-        addView(space(8))
-        addView(Button(context).apply {
+        planningHost.addView(tasksHeading)
+        planningHost.addView(space(6))
+        planningHost.addView(body(tasksDescription))
+        planningHost.addView(space(12))
+        planningHost.addView(taskListHost)
+        planningHost.addView(space(8))
+        planningHost.addView(Button(context).apply {
             text = addTestLabel
             isAllCaps = false
             textSize = 16f
@@ -72,14 +74,22 @@ internal class RunHomeView(
             setTextColor(palette.textPrimary)
             setOnClickListener { onAddTest() }
         })
-        addView(space(8))
-        addView(selectorHost)
-        addView(space(8))
+        planningHost.addView(space(8))
+        planningHost.addView(selectorHost)
+        planningHost.addView(space(8))
+        addView(planningHost)
+        addView(executionNavigationHost)
         addView(executionContextHost)
         addView(space(8))
         addView(scenarioHost)
         addView(space(12))
         addView(manualSessionHost)
+    }
+
+    fun showExecutionOnly(focused: Boolean) {
+        runHost.visibility = if (focused) View.GONE else View.VISIBLE
+        planningHost.visibility = if (focused) View.GONE else View.VISIBLE
+        executionNavigationHost.visibility = if (focused) View.VISIBLE else View.GONE
     }
 
     fun announceTasks(message: String) {

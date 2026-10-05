@@ -7,7 +7,7 @@
         <item name="android:windowLightNavigationBar">false</item>
         <item name="android:statusBarColor">@color/ui_background</item>
         <item name="android:navigationBarColor">@color/ui_surface</item>
-        <item name="android:windowActionModeOverlay">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
     </style>
     <style name="Widget.TestDialer.Button" parent="android:style/Widget.Material.Button">
         <item name="android:background">@drawable/button_secondary</item>

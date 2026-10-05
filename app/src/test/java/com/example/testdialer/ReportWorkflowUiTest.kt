@@ -148,7 +148,7 @@ class ReportWorkflowUiTest {
         val host = MainActivity::class.java.getDeclaredField("testScenarioHost").apply { isAccessible = true }.get(activity) as View
         assertTrue(host.hasFocus())
         val scroll = generateSequence(host.parent) { it.parent }.filterIsInstance<android.widget.ScrollView>().first()
-        assertTrue("Opening a task must reveal its form", scroll.scrollY > 0)
+        assertTrue("Opening a task must reveal its form", host.getGlobalVisibleRect(android.graphics.Rect()))
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         assertNull(org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog())
         controller.pause().stop().destroy()

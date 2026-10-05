@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
     private val speech by lazy { com.example.testdialer.accessibility.SpeechAnnouncements(applicationContext).apply {
         onUnavailable = { if (!isDestroyed && !isFinishing) Toast.makeText(this@MainActivity, "Polski głos TTS jest niedostępny. Sprawdź ustawienia syntezy mowy telefonu.", Toast.LENGTH_LONG).show() }
     } }
+    private var executionFocused = false
     private var lastSpokenKey: String? = null
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
@@ -151,14 +152,18 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        val mode = getSharedPreferences("ui-settings", MODE_PRIVATE).getInt("theme", 0)
-        if (mode != 0) {
-            val config = android.content.res.Configuration(resources.configuration)
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val mode = newBase.getSharedPreferences("ui-settings", MODE_PRIVATE).getInt("theme", 0)
+        val themed = if (mode == 0) newBase else {
+            val config = android.content.res.Configuration(newBase.resources.configuration)
             config.uiMode = (config.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK.inv()) or
                 if (mode == 2) android.content.res.Configuration.UI_MODE_NIGHT_YES else android.content.res.Configuration.UI_MODE_NIGHT_NO
-            applyOverrideConfiguration(config)
+            newBase.createConfigurationContext(config)
         }
+        super.attachBaseContext(themed)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         voiceResultStore = VoiceResultStore(this)
@@ -183,6 +188,7 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         pendingTemplateId = savedInstanceState?.getString("pendingTemplateId")
         registerFilter = com.example.testdialer.register.RegisterFilter(
@@ -312,6 +318,8 @@ class MainActivity : ComponentActivity() {
                 registerViewModel.clearEvent()
             } else if (currentSection == AppSection.REGISTER && registerState.selectedRun != null) {
                 registerViewModel.clearRun()
+            } else if (currentSection == AppSection.TEST && executionFocused) {
+                setExecutionFocus(false)
             } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
             } else {
@@ -353,6 +361,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean("executionFocused", executionFocused)
         outState.putString("lastSpokenKey", lastSpokenKey)
         outState.putString("pendingTemplateId", pendingTemplateId)
         outState.putString("registerQuery", registerFilter.query)
@@ -540,6 +549,10 @@ class MainActivity : ComponentActivity() {
         )
         systemStatusStrip = createSystemStatusStrip()
         runHomeView.statusHost.addView(systemStatusStrip)
+        runHomeView.executionNavigationHost.addView(Button(this).apply {
+            text = "Wróć do sesji i listy testów"
+            setOnClickListener { setExecutionFocus(false) }
+        })
         runHomeView.selectorHost.addView(createTestTypeSelectorCard())
         testScenarioHost = runHomeView.scenarioHost
         manualSessionHost = runHomeView.manualSessionHost
@@ -563,6 +576,7 @@ class MainActivity : ComponentActivity() {
         }
         val active = state.active
         if (active == null) {
+            runHomeView.showExecutionOnly(false)
             runHomeView.executionContextHost.removeAllViews()
             runHomeView.runHost.addView(createCard {
                 addView(createCardTitle(getString(R.string.run_empty_title)))
@@ -680,6 +694,7 @@ class MainActivity : ComponentActivity() {
         runHomeView.scenarioHost.visibility = View.VISIBLE
         runHomeView.manualSessionHost.visibility = View.GONE
         renderExecutionContext(currentTestType)
+        runHomeView.showExecutionOnly(executionFocused)
     }
 
     private fun openActiveTask(stepId: StepId?, action: TestAction) {
@@ -716,11 +731,23 @@ class MainActivity : ComponentActivity() {
         }
         updateTestTypeChips()
         renderScenario(currentTestType)
+        setExecutionFocus(true)
         testScenarioHost.isFocusableInTouchMode = true
         testScenarioHost.requestFocus()
         testScenarioHost.announceForAccessibility(getString(R.string.task_opened_announcement, currentTestType.name))
         testScenarioHost.post {
             testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
+        }
+    }
+
+    private fun setExecutionFocus(focused: Boolean) {
+        executionFocused = focused
+        runHomeView.showExecutionOnly(focused && activeRunState.active != null)
+        if (!focused) {
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .hideSoftInputFromWindow(testScenarioHost.windowToken, 0)
+            runHomeView.runHost.isFocusableInTouchMode = true
+            runHomeView.runHost.requestFocus()
         }
     }
 
@@ -751,6 +778,7 @@ class MainActivity : ComponentActivity() {
         updateTestTypeChips()
         renderScenario(type)
         showSection(AppSection.TEST)
+        setExecutionFocus(true)
         testScenarioHost.isFocusableInTouchMode = true
         testScenarioHost.requestFocus()
         testScenarioHost.post {
