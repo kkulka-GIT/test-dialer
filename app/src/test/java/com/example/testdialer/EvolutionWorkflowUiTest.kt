@@ -290,6 +290,7 @@ class EvolutionWorkflowUiTest {
         val preview = MainActivity::class.java.getDeclaredMethod("showRepeatPlanPreview", com.example.testdialer.active.LocalScenario::class.java).apply { isAccessible = true }
         preview.invoke(activity, plan)
         ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val save = ShadowAlertDialog.getLatestAlertDialog()
         val name = views(save.window!!.decorView).filterIsInstance<EditText>().single()
         name.setText("Plan regresyjny")
