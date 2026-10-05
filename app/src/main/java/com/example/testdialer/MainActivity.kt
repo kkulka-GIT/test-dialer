@@ -72,6 +72,7 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private val reportExecutor = Executors.newSingleThreadExecutor()
+    private var pendingAdditionalType: TestType? = null
     private var reportBusy = false
     private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
     private var dataAmountDraft = "1"
@@ -172,6 +173,7 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        pendingAdditionalType = savedInstanceState?.getString("pendingAdditionalType")?.let { saved -> TestType.entries.firstOrNull { it.name == saved } }
         dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
         dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
         runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
@@ -268,6 +270,12 @@ class MainActivity : ComponentActivity() {
         activeRunViewModel.state.observe(this) { state ->
             activeRunState = state
             renderActiveRun()
+            if (state.active != null && !state.busy) {
+                pendingAdditionalType?.let { type ->
+                    pendingAdditionalType = null
+                    selectAdditionalTest(type)
+                }
+            } else if (state.error != null) pendingAdditionalType = null
             state.message?.let { runHomeView.announceForAccessibility(it) }
             if (state.active == null) selectedActiveTaskId = null
             registerViewModel.load()
@@ -322,6 +330,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("pendingAdditionalType", pendingAdditionalType?.name)
         outState.putString("dataAmountDraft", dataAmountDraft)
         outState.putString("dataUnitDraft", dataUnitDraft)
         outState.putString("runNameDraft", runNameDraft)
@@ -466,7 +475,7 @@ class MainActivity : ComponentActivity() {
             tasksTitle = getString(R.string.run_tasks_title),
             tasksDescription = getString(R.string.run_tasks_description),
             onAddTest = {
-                runHomeView.announceTasks(getString(R.string.run_tasks_announcement))
+                showAddTest()
             },
         )
         systemStatusStrip = createSystemStatusStrip()
@@ -650,6 +659,39 @@ class MainActivity : ComponentActivity() {
         testScenarioHost.isFocusableInTouchMode = true
         testScenarioHost.requestFocus()
         testScenarioHost.announceForAccessibility(getString(R.string.task_opened_announcement, currentTestType.name))
+        testScenarioHost.post {
+            testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
+        }
+    }
+
+    private fun showAddTest() {
+        if (activeRunState.busy || activeRunViewModel.executionInProgress() || isTestTypeSwitchLocked()) {
+            Toast.makeText(this, R.string.test_already_in_progress, Toast.LENGTH_LONG).show()
+            return
+        }
+        AlertDialog.Builder(this).setTitle("Dodaj test")
+            .setItems(arrayOf("Połączenie", "SMS", "Dane")) { _, index ->
+                val type = TestType.entries[index]
+                if (activeRunState.active == null) {
+                    pendingAdditionalType = type
+                    activeRunViewModel.startEmpty(runNameDraft.ifBlank { "Szybki test" })
+                } else selectAdditionalTest(type)
+            }.setNegativeButton("Anuluj", null).show()
+    }
+
+    private fun selectAdditionalTest(type: TestType) {
+        if (isTestTypeSwitchLocked() || activeRunViewModel.executionInProgress()) return
+        selectedActiveTaskId = null
+        clearDraft(type)
+        if (type == TestType.VOICE) resultSaved = false
+        if (type == TestType.SMS) guidedSmsViewModel.startAnother()
+        if (type == TestType.DATA) cellularDataViewModel.startAnother()
+        currentTestType = type
+        updateTestTypeChips()
+        renderScenario(type)
+        showSection(AppSection.TEST)
+        testScenarioHost.isFocusableInTouchMode = true
+        testScenarioHost.requestFocus()
         testScenarioHost.post {
             testScenarioHost.requestRectangleOnScreen(android.graphics.Rect(0, 0, testScenarioHost.width, dimen(100)), false)
         }
@@ -935,11 +977,13 @@ class MainActivity : ComponentActivity() {
                     addView(createBodyText(getString(R.string.register_run_detail_completed, formatDateWithMillis(it))))
                 }
                 addView(spaceVertical(dimen(8)))
+                addView(optionalFields("Identyfikatory techniczne") {
                 addView(createMicroText(getString(R.string.register_run_detail_id, run.id.value)).apply {
                     setTextIsSelectable(true)
                 })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_run_detail_scenario, run.scenarioId.value, run.scenarioVersion)))
+                })
                 addView(spaceVertical(dimen(14)))
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
                 addView(spaceVertical(dimen(6)))
@@ -1027,11 +1071,13 @@ class MainActivity : ComponentActivity() {
                 addView(spaceVertical(dimen(5)))
                 addView(createBodyText(getString(R.string.register_event_detail_time, formatDateWithMillis(event.occurredAtMillis))))
                 addView(spaceVertical(dimen(10)))
+                addView(optionalFields("Identyfikatory techniczne") {
                 addView(createMicroText(getString(R.string.register_event_detail_event_id, event.id.value)).apply { setTextIsSelectable(true) })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_event_detail_run_id, event.runId.value)).apply { setTextIsSelectable(true) })
                 addView(spaceVertical(dimen(4)))
                 addView(createMicroText(getString(R.string.register_event_detail_step_id, event.stepId.value)).apply { setTextIsSelectable(true) })
+                })
                 addView(spaceVertical(dimen(12)))
                 addView(reportButton(getString(R.string.repeat_event)) {
                     if (activeRunState.active == null) {
@@ -1578,6 +1624,19 @@ class MainActivity : ComponentActivity() {
                 setText(dataAmountDraft)
                 trackDraft { dataAmountDraft = it }
             }
+            val presets = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            listOf(1, 100, 500).forEach { megabytes ->
+                presets.addView(Button(this@MainActivity).apply {
+                    text = "$megabytes MB"
+                    contentDescription = "Ustaw limit pobierania $megabytes megabajtów"
+                    setOnClickListener {
+                        dataAmountDraft = megabytes.toString()
+                        dataUnitDraft = "MB"
+                        renderScenario(TestType.DATA)
+                    }
+                })
+            }
+            addView(optionalFields("Szybki wybór ilości danych") { addView(presets) })
             addView(createBodyText(getString(R.string.data_amount_hint)))
             addView(spaceVertical(dimen(6)))
             addView(amount)
