@@ -224,6 +224,32 @@ class EvolutionWorkflowUiTest {
         bitmap.recycle()
     }
 
+    @Test fun `repeat preview cancellation is harmless and known data amount opens unchanged without transfer`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val stepId = com.example.testdialer.domain.StepId("repeat-known")
+        val plan = com.example.testdialer.active.LocalScenario("test-repeat", "Powtórka kontrolna", listOf(
+            com.example.testdialer.domain.ScenarioStepDefinition(stepId, 0, "1. Dane", "Sprawdź parametry", TestAction.Data("https://example.com/file"))), mapOf(stepId to 500000000L))
+        val preview = MainActivity::class.java.getDeclaredMethod("showRepeatPlanPreview", com.example.testdialer.active.LocalScenario::class.java).apply { isAccessible = true }
+        preview.invoke(activity, plan)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val stateField = MainActivity::class.java.getDeclaredField("activeRunState").apply { isAccessible = true }
+        assertNull((stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active)
+        preview.invoke(activity, plan)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { (stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState).active != null }
+        val state = stateField.get(activity) as com.example.testdialer.active.ActiveRunUiState
+        assertTrue(state.active!!.stored.run.events.isEmpty())
+        assertEquals(com.example.testdialer.active.ActiveTaskStatus.PENDING, state.active!!.tasks.single().status)
+        button(activity, activity.getString(R.string.task_open)).performClick()
+        assertEquals("500000000", MainActivity::class.java.getDeclaredField("dataAmountDraft").apply { isAccessible = true }.get(activity))
+        assertEquals("B", MainActivity::class.java.getDeclaredField("dataUnitDraft").apply { isAccessible = true }.get(activity))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        capture(activity, "phase4-repeat-data")
+        controller.pause().stop().destroy()
+    }
+
     private fun getRegisterState(activity: MainActivity) = MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true }.get(activity) as com.example.testdialer.register.RegisterUiState
     private fun setRegisterState(activity: MainActivity, state: com.example.testdialer.register.RegisterUiState) {
         MainActivity::class.java.getDeclaredField("registerState").apply { isAccessible = true; set(activity, state) }

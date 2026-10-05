@@ -760,6 +760,10 @@ class MainActivity : ComponentActivity() {
                 cellularDataViewModel.startAnother()
                 dataLabelDraft = null
                 dataUrlDraft = action.target
+                activeRunState.active?.tasks?.firstOrNull { it.step.id == stepId }?.let { task ->
+                    if (task.requestedBytes != null) { dataAmountDraft = task.requestedBytes.toString(); dataUnitDraft = "B" }
+                    else if (task.requireDataAmountSelection) { dataAmountDraft = ""; dataUnitDraft = "MB" }
+                }
             }
         }
         selectedActiveTaskId = stepId
@@ -1223,6 +1227,7 @@ class MainActivity : ComponentActivity() {
                 }
                 addView(reportButton(getString(R.string.report_export)) { showReportOptions(stored) })
                 addView(reportButton("Porównaj z inną sesją") { chooseComparison(stored.run.id) })
+                addView(reportButton("Przygotuj powtórkę sesji") { prepareSessionRepeat(stored.run.id) })
                 addView(spaceVertical(dimen(6)))
                 addView(createStatusText(getString(R.string.report_contents)))
                 addView(spaceVertical(dimen(10)))
@@ -1404,6 +1409,41 @@ class MainActivity : ComponentActivity() {
                 }
             })
         }
+    }
+
+    private fun repeatPreparationBlocked(): Boolean = activeRunState.active != null || activeRunState.busy ||
+        activeRunViewModel.executionInProgress() || manualSessionState.active != null || isTestTypeSwitchLocked()
+
+    private fun prepareSessionRepeat(sourceId: RunId) {
+        if (repeatPreparationBlocked()) { templateTransferMessage("Najpierw zakończ bieżącą sesję lub test."); return }
+        if (reportBusy) return
+        reportBusy = true
+        reportExecutor.execute {
+            val result = runCatching {
+                val stored = (application as TestDialerApplication).testRunRepository.get(sourceId) ?: error("Sesja jest niedostępna.")
+                com.example.testdialer.active.SessionRepeatPlan.from(stored)
+            }
+            runOnUiThread {
+                reportBusy = false
+                if (!isDestroyed && !isFinishing) result.fold(::showRepeatPlanPreview) { templateTransferMessage(it.message ?: "Nie udało się przygotować powtórki") }
+            }
+        }
+    }
+
+    private fun showRepeatPlanPreview(plan: com.example.testdialer.active.LocalScenario) {
+        val summary = plan.steps.joinToString("\n") { step -> step.title + if (step.action is TestAction.Data) {
+            plan.dataAmounts[step.id]?.let { " · $it B" } ?: " · ilość do podania"
+        } else "" }
+        AlertDialog.Builder(this).setTitle("Plan powtórki")
+            .setMessage("${plan.name}\n\n$summary\n\nNowa sesja zachowa parametry zapisanych zdarzeń. Wyniki, oceny i notatki pozostają w poprzedniej sesji. Każdą usługę uruchamiasz osobno z formularza.")
+            .setPositiveButton("Przygotuj nową sesję") { _, _ ->
+                if (repeatPreparationBlocked()) templateTransferMessage("Najpierw zakończ bieżącą sesję lub test.")
+                else {
+                    setExecutionFocus(false)
+                    activeRunViewModel.startScenario(plan)
+                    showSection(AppSection.TEST)
+                }
+            }.setNegativeButton("Anuluj", null).show()
     }
 
     private fun chooseComparison(baselineId: RunId) {

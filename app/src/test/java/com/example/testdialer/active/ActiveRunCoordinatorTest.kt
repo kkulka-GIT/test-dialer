@@ -21,6 +21,57 @@ import org.junit.Test
 class ActiveRunCoordinatorTest {
     private val repository = MemoryRepository()
 
+    @Test fun `repeat preserves recorded order and amounts but starts with no copied results`() {
+        val old = ActiveRunCoordinator(repository)
+        old.startEmpty("Źródło")
+        old.record(null, TestAction.Sms("123", "Treść"), observation("SMS"))
+        old.record(null, TestAction.Voice("456"), observation("VOICE"))
+        old.record(null, TestAction.Sms("123", "Treść"), observation("SMS"))
+        old.record(null, TestAction.Data("https://example.com"), observation("DATA"),
+            com.example.testdialer.domain.CorrelationMetadata(references = listOf(com.example.testdialer.domain.CorrelationReference("requestedBytes", "100000000"))))
+        val source = old.complete()
+        val plan = SessionRepeatPlan.from(source)
+        val repeat = ActiveRunCoordinator(repository).startScenario(plan)
+        assertEquals(source.run.events.map { it.action }, repeat.tasks.map { it.step.action })
+        assertEquals(100000000L, repeat.tasks.last().requestedBytes)
+        assertTrue(repeat.tasks.all { it.status == ActiveTaskStatus.PENDING })
+        assertTrue(repeat.stored.run.events.isEmpty())
+        assertTrue(repeat.stored.run.id != source.run.id)
+        assertTrue(repeat.stored.scenario.id != source.scenario.id)
+        assertTrue(repeat.tasks.none { task -> source.run.events.any { it.stepId == task.step.id } })
+        assertEquals(source, repository.get(source.run.id))
+    }
+
+    @Test fun `repeat missing invalid and ambiguous amounts require explicit selection`() {
+        val old = ActiveRunCoordinator(repository)
+        old.startEmpty("Dane")
+        listOf(emptyList(), listOf(com.example.testdialer.domain.CorrelationReference("requestedBytes", "0")),
+            listOf(com.example.testdialer.domain.CorrelationReference("requestedBytes", "1"), com.example.testdialer.domain.CorrelationReference("requestedBytes", "2")))
+            .forEach { refs -> old.record(null, TestAction.Data("https://example.com"), observation("DATA"), com.example.testdialer.domain.CorrelationMetadata(references = refs)) }
+        val plan = SessionRepeatPlan.from(old.complete())
+        val repeat = ActiveRunCoordinator(repository).startScenario(plan)
+        assertTrue(repeat.tasks.all { it.requireDataAmountSelection && it.requestedBytes == null })
+    }
+
+    @Test fun `repeat rejects empty and oversized sources and cannot replace an active session`() {
+        val old = ActiveRunCoordinator(repository)
+        old.startEmpty("Pusta")
+        val empty = old.complete()
+        assertThrows(IllegalArgumentException::class.java) { SessionRepeatPlan.from(empty) }
+        old.startEmpty("Duża")
+        repeat(SessionRepeatPlan.MAX_STEPS + 1) { old.record(null, TestAction.Voice("123"), observation("VOICE")) }
+        assertThrows(IllegalArgumentException::class.java) { SessionRepeatPlan.from(old.complete()) }
+        old.startEmpty("Krótka")
+        old.record(null, TestAction.Voice("123"), observation("VOICE"))
+        val source = old.complete()
+        val firstPlan = SessionRepeatPlan.from(source)
+        val secondPlan = SessionRepeatPlan.from(source)
+        assertTrue(firstPlan.steps.single().id != secondPlan.steps.single().id)
+        val active = old.startEmpty("Bieżąca")
+        assertThrows(IllegalArgumentException::class.java) { old.startScenario(firstPlan) }
+        assertEquals(active.stored.run.id, old.active()!!.stored.run.id)
+    }
+
     @Test
     fun `empty Run accepts multiple manual service Events and completes without rewriting history`() {
         val coordinator = ActiveRunCoordinator(repository)
