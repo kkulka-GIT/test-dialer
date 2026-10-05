@@ -78,6 +78,29 @@ class MainActivity : ComponentActivity() {
     private var lastSpokenKey: String? = null
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
+    private val exportTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                val archive = com.example.testdialer.templates.TestTemplateArchive.encode(templates.list())
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
+                    ?: error("Nie można otworzyć pliku do zapisu.")
+            }
+            templateTransferMessage(if (result.isSuccess) "Kopia szablonów zapisana" else "Nie udało się zapisać kopii: ${result.exceptionOrNull()?.message}")
+        }
+    }
+    private val importTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use(com.example.testdialer.templates.TestTemplateArchive::read)
+                    ?: error("Nie można otworzyć pliku.")
+            }
+            runOnUiThread {
+                if (!isDestroyed && !isFinishing) result.fold(::confirmTemplateImport) {
+                    templateTransferMessage("Nie udało się wczytać szablonów: ${it.message}")
+                }
+            }
+        }
+    }
     private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
     private var pendingTemplateId: String? = null
     private var pendingAdditionalType: TestType? = null
@@ -257,7 +280,7 @@ class MainActivity : ComponentActivity() {
             })
             addView(Button(this@MainActivity).apply {
             text = "Ustawienia"
-            contentDescription = "Ustawienia wyglądu i komunikatów głosowych"
+            contentDescription = "Ustawienia wyglądu, głosu i kopii szablonów"
             setOnClickListener { showAppearanceSettings() }
             })
         })
@@ -467,9 +490,10 @@ class MainActivity : ComponentActivity() {
     private fun showAppearanceSettings() {
         val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
         val enabled = preferences.getBoolean("speech", false)
-        AlertDialog.Builder(this).setTitle("Wygląd i dźwięk")
-            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie")) { _, index ->
+        AlertDialog.Builder(this).setTitle("Ustawienia")
+            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie", "Szablony i kopia zapasowa")) { _, index ->
                 when (index) {
+                    3 -> showTemplateBackup()
                     0 -> showThemeSettings()
                     1 -> {
                         preferences.edit().putBoolean("speech", !enabled).apply()
@@ -1410,7 +1434,8 @@ class MainActivity : ComponentActivity() {
         if (items.isEmpty()) {
             AlertDialog.Builder(this).setTitle("Szablony testów")
                 .setMessage("Otwórz wykonane zdarzenie w Rejestrze i wybierz Zapisz jako szablon. Szablon zachowa numer, treść SMS lub ilość danych.")
-                .setPositiveButton("OK", null).show()
+                .setPositiveButton("Importuj z pliku") { _, _ -> importTemplatesLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+                .setNegativeButton("Zamknij", null).show()
             return
         }
         AlertDialog.Builder(this).setTitle("Wybierz szablon")
@@ -1431,7 +1456,37 @@ class MainActivity : ComponentActivity() {
                             runOnUiThread { if (!isDestroyed && !isFinishing) Toast.makeText(this, if (success) "Szablon usunięty" else "Nie udało się usunąć szablonu", Toast.LENGTH_SHORT).show() }
                         } }.setNegativeButton("Anuluj", null).show()
                 }.setNegativeButton("Anuluj", null).show()
-            }.setNegativeButton("Zamknij", null).show()
+            }.setNeutralButton("Kopia / import") { _, _ -> showTemplateBackup() }.setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showTemplateBackup() {
+        AlertDialog.Builder(this).setTitle("Szablony i kopia zapasowa")
+            .setMessage("Kopia zawiera parametry testów, w tym numery i treść SMS. Zapisz ją w wybranym miejscu. Import dodaje szablony po podglądzie; nie uruchamia testów.")
+            .setPositiveButton("Zapisz kopię") { _, _ -> exportTemplatesLauncher.launch("test-dialer-szablony.json") }
+            .setNeutralButton("Importuj") { _, _ -> importTemplatesLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+            .setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun confirmTemplateImport(items: List<com.example.testdialer.templates.TestTemplate>) {
+        val preview = runCatching { templates.previewImport(items) }
+        if (preview.isFailure) { templateTransferMessage(preview.exceptionOrNull()?.message ?: "Nieprawidłowy plik"); return }
+        val counts = preview.getOrThrow()
+        if (counts.added == 0) { templateTransferMessage("Brak nowych szablonów. Pominięto powtórzenia: ${counts.skipped}."); return }
+        val descriptions = items.take(10).joinToString("\n") { it.name }
+        AlertDialog.Builder(this).setTitle("Podgląd importu")
+            .setMessage("Nowych: ${counts.added}. Powtórzenia pominięte: ${counts.skipped}.\n\n$descriptions" +
+                (if (items.size > 10) "\n… i pozostałe ${items.size - 10}" else "") + "\n\nIstniejące szablony i historia pozostaną zachowane.")
+            .setPositiveButton("Dodaj szablony") { _, _ -> reportExecutor.execute {
+                val result = runCatching { templates.importItems(items) }
+                templateTransferMessage(result.fold({ "Dodano: ${it.added}. Pominięto powtórzenia: ${it.skipped}." }, { "Import nie powiódł się: ${it.message}" }))
+            } }.setNegativeButton("Anuluj", null).show()
+    }
+
+    private fun templateTransferMessage(message: String) {
+        runOnUiThread { if (!isDestroyed && !isFinishing) {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) speech.say(message)
+        } }
     }
 
     private fun applyTemplate(template: com.example.testdialer.templates.TestTemplate) {

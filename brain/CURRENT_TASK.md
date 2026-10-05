@@ -1,21 +1,9 @@
-# Autonomiczny rozwój Test Dialera — 2026-10-05
-
-Cel: czytelny mobilny warsztat testera, szybkie uruchamianie powtarzalnych testów i użyteczne raporty.
-Kontekst: użytkownik dał wolną rękę do iteracyjnego wdrożenia propozycji i dalszego intuicyjnego rozwoju bez interwencji. Baza: PR #18 (7e0c335), zawierający #16/#17, aby zachować eksport, ilości danych i poprawki odbioru telefonu/VPN.
-Tryb: incremental, osobny feature/autonomous-ux-20261005; commit/push po checkpointach, CI na PR. Bez merge do main.
-
-## Iteracje
-1. Czytelność: ujednolicić paletę, polskie nazwy i tekst; dodać motyw jasny/ciemny/systemowy; zachować TalkBack i skalowanie.
-2. Dodawanie i wykonanie: prawdziwy wybór typu po Dodaj test; otwieranie formularza; szybkie ilości 1/100/500 MB; szczegóły techniczne zwijane.
-3. Rejestr i raporty: wyszukiwanie nazw/ID, filtr statusu i daty; CSV z bezpiecznymi komórkami i istniejącym FileProvider.
-4. Szablony: zapisz parametry zdarzenia, wybierz nazwany szablon, wypełnij nowy test bez automatycznego wykonania; usuwanie tylko wskazanego szablonu.
-5. Ocena: oddzielne oczekiwanie, faktyczny wynik i ręczna ocena rozliczenia na zdarzeniu; eksport z oznaczeniem źródła tester.
-6. Przerwane sesje: jawny komunikat dla historycznych RUNNING i możliwość oznaczenia przeglądu jako przerwane bez wznowienia transferu lub przepisywania osi historii.
-7. Audio: opcjonalny TTS ważnych wyników, ustawienie zapamiętane lokalnie, poprawny lifecycle.
-8. Weryfikacja: CI, istniejące regresje + sensowne testy nowych funkcji; zrzuty w motywach i dużej czcionce; raport stanu i APK.
-
-Kryteria: brak automatycznych połączeń/SMS; brak utraty historii; neutralne obserwacje oddzielone od oceny billingu; nowy test wymaga jawnej akcji; CI/testy/APK PASS. Testy fizycznej SIM i systemowego TTS oznaczone NOT TESTED, dopóki brak urządzenia.
-Poza zakresem: konta/backend, automatyczne naliczanie z operatora, migracja legacy, scalanie main, pełna przebudowa Compose.
-Raport: brain/reports/2026-10-05-autonomous-ux.md; rzeczywisty stan checkpointów i testów.
-
-Stan: wszystkie osiem iteracji zakończone. CI #121 PASS, 155 testów bez błędów; APK i przegląd zrzutów gotowe. Szczegóły i ograniczenia w raporcie.
+# Faza 2 — przenośne szablony i większy rejestr
+Cel: utrzymać ciągły iteracyjny rozwój i ułatwić pracę między instalacjami.
+Kontekst: użytkownik autoryzował dalszą ewolucję według doświadczenia agenta. Baza PR #19, 4a4a762; CI #122 PASS.
+Zakres: wersjonowane archiwum szablonów JSON, eksport/import przez systemowy wybór pliku, podgląd i deduplikacja importu, stronicowanie renderowanej historii bez ograniczania wyszukiwania. Tryb incremental, branch feature/template-portability-20261005.
+Poza zakresem: automatyczne wykonywanie usług, merge main, import historii, backend, klucze podpisywania.
+Kryteria: import nie nadpisuje istniejących szablonów; zły plik nie zmienia danych; podgląd przed dodaniem; powtórny import nie mnoży kopii; wszystkie filtry obejmują pełną listę; CI PASS i APK.
+Testy: round-trip parametrów, schemat/limity/typy, atomowość, duplikaty/kolizje ID, granice stron, UI wybierania plików i historia.
+Raportowanie: brain/reports/2026-10-05-phase2.md, checkpointy commit/push, faktyczne wyniki CI.
+Rozwój cykliczny: aktywna automatyzacja godzinowa; sprawdza aktualny stan przed zmianą i najpierw kończy niedokończone CI. Nie zakłada stałej dostępności środowiska ani automatycznego merge.
