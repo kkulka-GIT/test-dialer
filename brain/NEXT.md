@@ -1,4 +1,6 @@
 # Następny checkpoint
+
+Kompas: `PRODUCT_COMPASS.md`. Poniższy krok jest kandydatem do ponownej oceny według korzyści dla testera; najpierw sprawdź poprzednią pracę i CI. Nie realizuj go tylko z powodu godzinnego wywołania.
 Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 12 zakończona: notatki, oceny billingu i znaczniki przerwania zapisują się w Room; migracja i cache uruchamiane poza głównym wątkiem. Stara kopia zachowana, przy błędzie inicjalizacji tylko odczyt legacy i jawne odrzucenie zapisu. Źródła cd30186ea0bbb5d33656c3c9caaeb58925f20dd5; CI #159 PASS: 200 testów, zero failures/errors/skips, debug/preview APK i tożsamość PASS. Raport brain/reports/2026-10-06-phase12.md.
 
 Następnie przygotować addytywne atomowe przywracanie pełnej historii z deduplikacją i rollbackiem na bazie istniejącego podglądu kopii. Walidować całość przed zapisem i wymagać jawnego potwierdzenia podglądu. Istniejące rekordy i nowsze adnotacje mają pierwszeństwo; sprzeczne snapshoty nie są nadpisywane. Aktualizować wspólny cache adnotacji dopiero po zatwierdzonej transakcji. CREATED/RUNNING pozostają historyczne, nie stają się aktywnymi sesjami. Pierwszy checkpoint może ograniczyć się do warstwy transakcyjnej i testów, a dopiero kolejny do włączenia przycisku zapisu w podglądzie.

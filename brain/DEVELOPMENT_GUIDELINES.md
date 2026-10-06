@@ -2,6 +2,11 @@
 
 Autoryzacja: 2026-10-05 użytkownik polecił stałą autonomiczną ewolucję według wytycznych agenta, bez rutynowej interwencji. Decyzje użytkownika mają pierwszeństwo. Zasady obowiązują kolejne checkpointy i automatyzację.
 
+## Kompas produktu
+Obowiązuje `PRODUCT_COMPASS.md` — aktualna instrukcja użytkownika z 2026-10-06. Najważniejsza jest korzyść dla testera Voice/SMS/Data pracującego na telefonie i wiarygodna informacja do późniejszej korelacji. Agent może dostrzegać nowe potrzeby i korygować własne wcześniejsze decyzje. Lista kierunków poniżej to możliwości do oceny, nie roadmapa ani zobowiązanie do wykonania. Nie wymagać nowej funkcji ani commitu w każdej turze.
+
+Przed wyborem kroku zapisz w zadaniu: jaki konkretny problem testera rozwiązuje, jak poznamy poprawę oraz jaki koszt złożoności wprowadza. Jeżeli korzyść nie uzasadnia kosztu, wybierz mniejszą zmianę, uproszczenie albo brak zmiany. SIM/sieć/Wi-Fi/VPN/gotowość dokumentuj wtedy, gdy pomagają uniknąć pomyłki lub odtworzyć warunki wykonania.
+
 ## Kryteria wyboru zmiany
 1. Dostępność: mobilna obsługa, duży tekst, kontrast, etykiety utrzymujące znaczenie poza kolorem, TalkBack, opcjonalne audio. Nigdy nie zakładać fizycznej weryfikacji dostępności na podstawie samych zrzutów.
 2. Powtarzalność: jawne parametry, zapisane szablony/scenariusze, oddzielenie planu od wykonania. Załadowanie planu nie wykonuje usługi.
@@ -13,11 +18,11 @@ Autoryzacja: 2026-10-05 użytkownik polecił stałą autonomiczną ewolucję wed
 ## Pętla każdej iteracji
 1. Odczytaj AGENTS.md, CURRENT_TASK.md, NEXT.md, najnowszy raport, aktualne PR i CI. Sprawdź remote SHA i zakres aktywnej sesji.
 2. Najpierw dokończ/napraw aktualną iterację. Nie tworzyć nowych warstw PR podczas błędów w CI.
-3. Wybierz następny krok według korzyści dla testera, ryzyka utraty danych i dowodów z istniejącego produktu. Przy równych korzyściach wybierz mniejszą zmianę.
+3. Dopiero po ocenie poprzedniej pracy wybierz następny krok lub uzasadniony brak zmiany według korzyści dla testera, ryzyka utraty danych i dowodów z istniejącego produktu. Przy równych korzyściach wybierz mniejszą zmianę.
 4. Opisz cel, zakres, poza zakresem, kryteria i testy. Wykonaj, commit/push bez force, sprawdź CI i artefakty. Main nie jest automatycznie scalany.
-5. Zaktualizuj raport i NEXT faktycznym wynikiem. Rozróżniaj implementację, test symulowany i odbiór fizyczny. Zgłoś rzeczywistą blokadę, jeśli środowisko nie daje możliwości pracy.
+5. Zaktualizuj raport i NEXT faktycznym wynikiem, powodami decyzji, otwartymi sprawami i warunkiem wznowienia, jeżeli oczekujesz na wynik. Rozróżniaj implementację, test symulowany i odbiór fizyczny. Zgłoś rzeczywistą blokadę, jeśli środowisko nie daje możliwości pracy.
 
-## Kierunki po fazie 2
+## Możliwe kierunki do ponownej oceny
 - Stabilny podpis APK do aktualizacji z zachowaniem danych: chroniony klucz poza repo; bez klucza nie deklarować poprawnej aktualizacji starszego APK.
 - Wersjonowana kopia pełnej historii i ocen z podglądem przywracania, deduplikacją i testami atomowości.
 - Biblioteka wieloetapowych scenariuszy z jawnymi punktami kontrolnymi testera i wynikami oczekiwanymi; rozwijać istniejący model, nie dodawać automatycznych usług operatora.

@@ -109,3 +109,5 @@
 - APK naprawcze Test Dialer Data 2 używa .preview.datafix ze względu na niezgodne certyfikaty poprzednich buildów. Zachowuje stare instalacje. Stałe podpisywanie nadal wymaga osobnego rozwiązania.
 
 - 2026-10-06: faza 12 zastępuje produkcyjny zapis adnotacji SharedPreferences magazynem Room. Cache procesu jest współdzielony przez Activity, inicjalizowany i aktualizowany tylko w tle; potwierdzenie zapisu następuje po transakcji. Migracja nie usuwa starej kopii; awaria inicjalizacji pozwala ją odczytać i wstrzymuje zapis do restartu procesu. Edytory czekają na gotowość cache, eksport zbiera adnotacje w tle.
+
+- 2026-10-06: użytkownik przekazał kompas autonomicznego rozwoju (`PRODUCT_COMPASS.md`). Priorytet: lepsza praca testera Voice/SMS/Data na telefonie i użyteczne dowody do korelacji. Agent sam wybiera i koryguje kierunek, ocenia koszt złożoności, nie traktuje listy możliwości jako roadmapy i nie dodaje zmian dla samego godzinnego cyklu. CI i odbiór na urządzeniu pozostają rozdzielone. Zaktualizowano instrukcje projektu i prompt automatyzacji, bez zmiany częstotliwości.

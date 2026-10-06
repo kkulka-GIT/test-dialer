@@ -1,5 +1,9 @@
 # Kontrolowany tryb pracy agenta
 
+## Autonomiczny rozwój Test Dialera — aktualne upoważnienie
+
+Instrukcja użytkownika z 2026-10-06 w `brain/PRODUCT_COMPASS.md` ma pierwszeństwo przed historycznymi ograniczeniami zakresu/MVP w tych dokumentach. W ramach celu produktu agent może sam wybierać funkcje, poprawki i uproszczenia oraz korygować wcześniejsze własne decyzje bez rutynowej akceptacji. Zapisuje uzasadnienie i stan pracy. Godzinna tura nie wymaga nowej zmiany; najpierw ustala stan poprzedniej pracy, PR i CI. Nie zmienia celu użytkownika i zachowuje zasady ochrony danych, usług operatora, sekretów i main.
+
 ## Zasada pracy
 
 Agent pracuje w pętli `propose -> wait -> execute`.
