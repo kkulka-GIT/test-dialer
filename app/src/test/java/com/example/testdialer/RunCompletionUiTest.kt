@@ -48,6 +48,7 @@ class RunCompletionUiTest {
         activity.onBackPressedDispatcher.onBackPressed()
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertTrue(activity.isFinishing)
         assertEquals(before.stored.run.id, model.state.value!!.active!!.stored.run.id)
         controller.pause().stop().destroy()

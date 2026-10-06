@@ -421,8 +421,7 @@ class MainActivity : ComponentActivity() {
                     .setMessage(getString(R.string.run_exit_active_message, sessionName))
                     .setNegativeButton(R.string.run_exit_active_stay, null)
                     .setPositiveButton(R.string.run_exit_active_confirm) { _, _ ->
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
+                        finish()
                     }
                     .show()
             } else {
