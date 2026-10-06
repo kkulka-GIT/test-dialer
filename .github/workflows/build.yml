@@ -83,7 +83,25 @@ jobs:
               raise SystemExit('Invalid keystore encoding') from None
           (directory / 'keystore.jks').write_bytes(data)
           PY
-          keytool -exportcert -keystore "$RUNNER_TEMP/test-dialer-signing/keystore.jks"             -storepass:env ANDROID_KEYSTORE_PASSWORD -alias "$ANDROID_KEY_ALIAS"             -file "$RUNNER_TEMP/test-dialer-signing/certificate.der" >/dev/null 2>&1
+          python3 - <<'PYKEY'
+          import os, subprocess
+          from pathlib import Path
+          directory = Path(os.environ['RUNNER_TEMP']) / 'test-dialer-signing'
+          result = subprocess.run(['keytool', '-exportcert', '-keystore', str(directory / 'keystore.jks'),
+              '-storepass:env', 'ANDROID_KEYSTORE_PASSWORD', '-alias', os.environ['ANDROID_KEY_ALIAS'],
+              '-file', str(directory / 'certificate.der')], capture_output=True, text=True)
+          if result.returncode:
+              diagnostic = (result.stdout + result.stderr).lower()
+              if 'password was incorrect' in diagnostic or 'password is incorrect' in diagnostic or 'password verification failed' in diagnostic or 'password incorrect' in diagnostic:
+                  reason = 'keystore password rejected; check ANDROID_KEYSTORE_PASSWORD matches uploaded keystore'
+              elif 'does not exist' in diagnostic or 'no certificate' in diagnostic:
+                  reason = 'configured alias has no certificate; check ANDROID_KEY_ALIAS'
+              elif 'unrecognized keystore format' in diagnostic or 'invalid keystore format' in diagnostic:
+                  reason = 'unrecognized keystore format; check ANDROID_KEYSTORE_BASE64 encodes the binary keystore'
+              else:
+                  reason = 'keytool could not open configured keystore; raw diagnostic intentionally withheld'
+              raise SystemExit('Signing configuration error: ' + reason)
+          PYKEY
 
       - name: Build stable signed APK
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

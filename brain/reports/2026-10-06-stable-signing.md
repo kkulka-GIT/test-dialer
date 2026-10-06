@@ -7,3 +7,5 @@ Lokalne testy numeracji: 2 PASS, git diff --check PASS. Pełne CI i podpis: pend
 Podczas integracji opublikowanej fazy 14 wykryto uszkodzony binarny blob MainActivity w d33d16b. Przywrócono poprawny UTF-8 z zachowanej oryginalnej kopii roboczej zawierającej zmiany fazy 14, bez modyfikacji oryginału. CI sprawdzi odzyskany kod.
 
 CI #165/#166 zatrzymano przed podpisywaniem na regresjach testów UI fazy 14: ukryty przycisk Androida zamiast null, odczyt Room na main thread i porównanie Integer/Long. Poprawiono asercje widoczności i typu oraz odczyt na workerze, bez wyłączania regresji anulowania/przywracania. Lokalne 5 testów Python PASS obejmuje numerację i odrzucanie błędnego podpisu/tożsamości/pinu (syntetyczne publiczne dane; rzeczywistą kryptografię sprawdza apksigner w CI). Metadane APK zapisują rzeczywisty checkout SHA i osobno PR head SHA.
+
+CI #168: wszystkie testy aplikacji i skryptów PASS, ale keytool odrzucił otwarcie keystore przed zbudowaniem release. Dodano klasyfikację błędu bez wypisywania surowej diagnostyki ani Secrets. Cleanup PASS. Podpis nadal niepotwierdzony.
