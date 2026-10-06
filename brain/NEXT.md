@@ -1,2 +1,2 @@
-# Domknąć kopiowanie danych do korelacji
-Aktualny branch feature/stable-signing-20261006 / PR #21. Sprawdzić CI zmiany kopiowania zdarzenia i artefakt stable APK. Po PASS potwierdzić, że pin certyfikatu, applicationId i rosnący versionCode nadal przechodzą. Następnie ocenić małą poprawkę kontroli wykonania. Schowek i TalkBack wymagają odbioru na telefonie; CI potwierdza strukturę treści i brak pól oceny billingu.
+# Następny krok: kontrola wykonania
+Aktualny branch feature/stable-signing-20261006 / PR #21. Kopiowanie danych do korelacji oraz stable APK 117201 są domknięte przez CI #172. Wybrać małą poprawkę, która ogranicza pomyłkę testera podczas wykonywania scenariusza (preferuj widoczny następny krok, możliwość bezpiecznego wznowienia lub potwierdzenie stanu bez automatycznego uruchamiania usług). Nie dublować istniejącej kontroli wykonania. Schowek i TalkBack nadal wymagają zbiorczego odbioru na telefonie.
