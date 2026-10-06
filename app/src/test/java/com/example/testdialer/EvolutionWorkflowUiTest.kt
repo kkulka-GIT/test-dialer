@@ -199,7 +199,7 @@ class EvolutionWorkflowUiTest {
         val activity = controller.get()
         val step = com.example.testdialer.domain.StepId("incoming")
         val incoming = listOf(com.example.testdialer.active.SavedScenarioPlan("file", "Plan z kopii", com.example.testdialer.active.LocalScenario("file", "Plan z kopii", listOf(
-            com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij osobno", TestAction.Sms("123", "Test")))))
+            com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij osobno", TestAction.Sms("123", "Test"))))))
         val confirm = MainActivity::class.java.getDeclaredMethod("confirmPlanImport", List::class.java).apply { isAccessible = true }
         confirm.invoke(activity, incoming)
         ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
