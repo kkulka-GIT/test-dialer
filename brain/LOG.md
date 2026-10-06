@@ -57,3 +57,5 @@
 - 2026-10-06: zapisano kompas użytkownika i dostosowano zasady autonomii oraz instrukcję godzinnych tur. Bieżący PR #20 nadal na fazie 12; sprawdzone końcowe CI #160 PASS. Ten checkpoint zmienia wyłącznie instrukcje, nie kod aplikacji.
 
 - 2026-10-06: wdrożenie stałego podpisu na osobnym branchu, bez naruszania rozpoczętej pracy UI przywracania. Testy Python numeracji PASS; CI podpisu pending.
+
+- 2026-10-06 ok.18:00: scheduler enabled/HOURLY, last run17:02. CI #169: testy PASS, podpis blokowany przez odrzucone hasło keystore. Zapisano oczekiwanie na korektę Secrets przez użytkownika; brak finalnego APK, bez merge.

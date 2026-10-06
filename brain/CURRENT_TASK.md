@@ -1,6 +1,5 @@
-# Stabilne podpisywanie APK
-Cel/korzyść: jeden APK do telefonu aktualizowany bez reinstalacji i utraty danych po czystej instalacji.
-Branch feature/stable-signing-20261006 oparty na fazie 13 z PR #20 (d9ebfd80fcf7ffb59936cd836b0c5e82c984ba66). W oryginalnym checkoutcie są niezapisane zmiany UI przywracania; pozostawiono je nietknięte, użyto osobnego worktree.
-Zakres: release z istniejącym kluczem Secrets, stabilna tożsamość, monotoniczne wersje, apksigner i kontrola certyfikatu/tożsamości, jeden artefakt, usunięcie preview. Debug tylko do testów. Szczegóły SIGNING.md.
-Poza zakresem: nowy klucz, usługi operatora, kompatybilność ze starymi wariantami, kasowanie danych na telefonie, merge.
-Kryteria/testy: testy numeracji i pełne testy JVM, release build, apksigner, odcisk zgodny z keystore i pinem, aapt ID/wersja/nazwa/nie-debuggable, cleanup. Stan: przygotowane do CI, podpis niepotwierdzony do PASS. Raport reports/2026-10-06-stable-signing.md.
+# Stabilne podpisywanie APK — blokada konfiguracji
+Branch feature/stable-signing-20261006, Draft PR #21 zależny od #20; main bez merge.
+CI #169 (37443735529), head 59e34b67aaa33cbda210507e499f7cbfe5f5cd55: testy aplikacji i 5 testów Python PASS. Keytool odrzucił hasło keystore: ANDROID_KEYSTORE_PASSWORD nie otwiera keystore przesłanego przez ANDROID_KEYSTORE_BASE64. Tymczasowy materiał usunięty (cleanup PASS). Podpisany APK nie powstał; apksigner i tożsamość finalnego APK NIE POTWIERDZONE, publiczny pin jeszcze nie zapisany.
+Potrzebna czynność użytkownika: ustawić właściwe hasło istniejącego keystore w GitHub Secret ANDROID_KEYSTORE_PASSWORD, ewentualnie sprawdzić zgodność z przesłanym plikiem. Nie wysyłać hasła ani klucza do czatu, nie generować nowego klucza. Nie można odczytać wartości Secrets ani samodzielnie odtworzyć właściwego hasła.
+Po potwierdzeniu poprawki: rerun CI #169, zweryfikować podpis/ID/wersję i artefakt, zapisać publiczny pin, następny build z tym samym certyfikatem i wyższym versionCode. Fizyczna instalacja/aktualizacja z historią NOT TESTED. Szczegóły SIGNING.md i reports/2026-10-06-stable-signing.md.

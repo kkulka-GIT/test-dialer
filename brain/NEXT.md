@@ -1,5 +1,4 @@
-# Stabilny podpis — bieżący priorytet użytkownika
-Branch feature/stable-signing-20261006, oparty na PR #20. Najpierw domknąć CI podpisywania i zweryfikować końcowy artefakt. Przyszłe sesje czytają SIGNING.md i PRODUCT_COMPASS.md. Jedyny APK do telefonu: test-dialer-stable-apk (release); nie wracać do debug/preview ani zmiennego klucza. Nie merge do main.
-Po zakończeniu: odczytać stan PR i istniejącej pracy UI przywracania (lokalne niezapisane MainActivity/EvolutionWorkflowUiTest w oryginalnym checkoutcie). Zachować tę pracę i włączyć ją dopiero po uzgodnieniu aktualnego zdalnego stanu; nie kopiować starych ustawień builda. Kandydat produktowy pozostaje jawne potwierdzenie przywracania, ale kompas pozwala ponownie ocenić priorytet.
-
-W czasie pracy zdalny PR #20 opublikował fazę 14 (d33d16b); zmiany UI przywracania włączono do tego brancha bez zmiany podpisywania. Najpierw sprawdzić ich regresje w tym CI.
+# Najpierw odblokować stały podpis
+Czytać CURRENT_TASK.md i SIGNING.md. CI #169 zatrzymane przez odrzucone hasło keystore. Czeka na korektę Secrets przez użytkownika; brak stabilnego APK i pinu. Nie powtarzać bezcelowo buildów ani nie deklarować aktywnej diagnostyki w starej sesji. Jeżeli Secrets poprawiono, kontynuować weryfikację na feature/stable-signing-20261006 / PR #21; kontrolować zdalny SHA i PR-y przed zapisem.
+Godzinne tury mogą sprawdzać stan i raportować brak zmiany. Nie dublować pracy ani dodawać funkcji do czasu domknięcia podpisu. Harmonogram sprawdzony 2026-10-06 ok.18:00 Europe/Warsaw: włączony, RRULE HOURLY, ostatnie zapisane uruchomienie 17:02; API nie udostępniło pełnej historii ani next_run_time.
+Po udanej weryfikacji: zapisać publiczny pin certyfikatu, potwierdzić kolejny APK tym samym kluczem i wyższym kodem, udostępnić finalny APK. Zachować stabilną tożsamość i klucz, debug tylko do rozwoju, bez merge do main. Potem ponownie wybrać wartościowy krok według PRODUCT_COMPASS.md.
