@@ -166,6 +166,52 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `plan backup uses system document pickers without telecom action`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 4, 4)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(android.content.Intent.ACTION_OPEN_DOCUMENT, Shadows.shadowOf(activity).nextStartedActivity.action)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+
+        val step = com.example.testdialer.domain.StepId("backup")
+        com.example.testdialer.active.ScenarioPlanStore(context).save("Kopia", com.example.testdialer.active.LocalScenario("backup", "Kopia", listOf(
+            com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij", TestAction.Sms("123", "Test")))))
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 4, 4)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val backup = ShadowAlertDialog.getLatestAlertDialog()
+        captureRoot(backup.window!!.decorView, "phase6-plan-backup")
+        backup.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val create = Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CREATE_DOCUMENT, create.action)
+        assertEquals("application/json", create.type)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `plan import preview is cancellable and confirmation only adds parameters`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val step = com.example.testdialer.domain.StepId("incoming")
+        val incoming = listOf(com.example.testdialer.active.SavedScenarioPlan("file", "Plan z kopii", com.example.testdialer.active.LocalScenario("file", "Plan z kopii", listOf(
+            com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij osobno", TestAction.Sms("123", "Test")))))
+        val confirm = MainActivity::class.java.getDeclaredMethod("confirmPlanImport", List::class.java).apply { isAccessible = true }
+        confirm.invoke(activity, incoming)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
+        confirm.invoke(activity, incoming)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
+        assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `comparison filters differences and shares a read-only text snapshot`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()

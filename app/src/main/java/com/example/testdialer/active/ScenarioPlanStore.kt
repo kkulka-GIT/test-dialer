@@ -30,6 +30,15 @@ class ScenarioPlanStore(context: Context) {
 
     fun delete(id: String): Boolean = synchronized(preferences) { write(list().filterNot { it.id == id }) }
 
+    fun previewImport(incoming: List<SavedScenarioPlan>): ScenarioPlanImportResult = merge(list(), incoming).second
+
+    /** Validates and merges the complete archive before one durable write. Existing plans are never replaced. */
+    fun importItems(incoming: List<SavedScenarioPlan>): ScenarioPlanImportResult = synchronized(preferences) {
+        val (merged, result) = merge(list(), incoming)
+        if (result.added > 0) check(write(merged)) { "Nie udało się zapisać importu." }
+        result
+    }
+
     fun instantiate(id: String): LocalScenario {
         val saved = requireNotNull(list().firstOrNull { it.id == id }) { "Plan jest niedostępny." }
         val amounts = mutableMapOf<StepId, Long?>()
@@ -63,6 +72,23 @@ class ScenarioPlanStore(context: Context) {
         }
         return preferences.edit().putString("items", array.toString()).commit()
     }
+
+    private fun merge(before: List<SavedScenarioPlan>, incoming: List<SavedScenarioPlan>): Pair<List<SavedScenarioPlan>, ScenarioPlanImportResult> {
+        require(incoming.size <= MAX_PLANS) { "Plik zawiera za dużo planów." }
+        incoming.forEach(::validate)
+        val additions = mutableListOf<SavedScenarioPlan>()
+        incoming.forEach { candidate ->
+            if ((before + additions).none { sameContent(it, candidate) }) additions += candidate.copy(id = UUID.randomUUID().toString())
+        }
+        require(before.size + additions.size <= MAX_PLANS) { "Brak miejsca. Maksymalnie $MAX_PLANS planów; usuń zbędne i ponów import." }
+        return (before + additions) to ScenarioPlanImportResult(additions.size, incoming.size - additions.size)
+    }
+
+    private fun sameContent(a: SavedScenarioPlan, b: SavedScenarioPlan): Boolean =
+        a.name == b.name && a.scenario.steps.map { it.title to (it.instruction to it.action) } ==
+            b.scenario.steps.map { it.title to (it.instruction to it.action) } &&
+            a.scenario.steps.map { a.scenario.dataAmounts[it.id] } == b.scenario.steps.map { b.scenario.dataAmounts[it.id] } &&
+            a.scenario.steps.map { a.scenario.dataAmounts.containsKey(it.id) } == b.scenario.steps.map { b.scenario.dataAmounts.containsKey(it.id) }
 
     private fun decode(item: JSONObject): SavedScenarioPlan {
         val id = item.getString("id")
@@ -104,3 +130,5 @@ class ScenarioPlanStore(context: Context) {
         const val MAX_STEPS = 50
     }
 }
+
+data class ScenarioPlanImportResult(val added: Int, val skipped: Int)

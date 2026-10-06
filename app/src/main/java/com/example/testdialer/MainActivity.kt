@@ -79,6 +79,27 @@ class MainActivity : ComponentActivity() {
     private val reportExecutor = Executors.newSingleThreadExecutor()
     private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
     private val scenarioPlans by lazy { com.example.testdialer.active.ScenarioPlanStore(applicationContext) }
+    private val exportPlansLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                val archive = com.example.testdialer.active.ScenarioPlanArchive.encode(scenarioPlans.list())
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
+                    ?: error("Nie można otworzyć pliku do zapisu.")
+            }
+            templateTransferMessage(if (result.isSuccess) "Kopia planów zapisana" else "Nie udało się zapisać kopii planów: ${result.exceptionOrNull()?.message}")
+        }
+    }
+    private val importPlansLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use(com.example.testdialer.active.ScenarioPlanArchive::read)
+                    ?: error("Nie można otworzyć pliku.")
+            }
+            runOnUiThread { if (!isDestroyed && !isFinishing) result.fold(::confirmPlanImport) {
+                templateTransferMessage("Nie udało się wczytać planów: ${it.message}")
+            } }
+        }
+    }
     private val exportTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) reportExecutor.execute {
             val result = runCatching {
@@ -1471,7 +1492,8 @@ class MainActivity : ComponentActivity() {
         if (items.isEmpty()) {
             AlertDialog.Builder(this).setTitle("Zapisane plany sesji")
                 .setMessage("Plan możesz zapisać z podglądu powtórki historycznej sesji. Zapis zawiera tylko kroki i parametry, bez wyników, ocen oraz notatek.")
-                .setPositiveButton("Zamknij", null).show()
+                .setPositiveButton("Importuj z pliku") { _, _ -> importPlansLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+                .setNegativeButton("Zamknij", null).show()
             return
         }
         AlertDialog.Builder(this).setTitle("Zapisane plany sesji")
@@ -1487,7 +1509,32 @@ class MainActivity : ComponentActivity() {
                             .setPositiveButton("Usuń") { _, _ -> templateTransferMessage(if (scenarioPlans.delete(saved.id)) "Plan usunięty" else "Nie udało się usunąć planu") }
                             .setNegativeButton("Anuluj", null).show()
                     }.setNegativeButton("Anuluj", null).show()
-            }.setNegativeButton("Zamknij", null).show()
+            }.setNeutralButton("Kopia / import") { _, _ -> showPlanBackup() }
+            .setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showPlanBackup() {
+        AlertDialog.Builder(this).setTitle("Plany sesji i kopia zapasowa")
+            .setMessage("Kopia zawiera parametry wszystkich kroków, w tym numery i treści SMS. Import najpierw pokaże zawartość, doda tylko nowe plany i nie uruchomi testów.")
+            .setPositiveButton("Zapisz kopię") { _, _ -> exportPlansLauncher.launch("test-dialer-plany.json") }
+            .setNeutralButton("Importuj") { _, _ -> importPlansLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+            .setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun confirmPlanImport(items: List<com.example.testdialer.active.SavedScenarioPlan>) {
+        val preview = runCatching { scenarioPlans.previewImport(items) }
+        if (preview.isFailure) { templateTransferMessage(preview.exceptionOrNull()?.message ?: "Nieprawidłowy plik"); return }
+        val counts = preview.getOrThrow()
+        if (counts.added == 0) { templateTransferMessage("Brak nowych planów. Pominięto powtórzenia: ${counts.skipped}."); return }
+        val descriptions = items.take(8).joinToString("\n") { "${it.name} · ${it.scenario.steps.size} kroków" }
+        AlertDialog.Builder(this).setTitle("Podgląd importu planów")
+            .setMessage("Nowych: ${counts.added}. Powtórzenia pominięte: ${counts.skipped}.\n\n$descriptions" +
+                (if (items.size > 8) "\n… i pozostałe ${items.size - 8}" else "") +
+                "\n\nIstniejące plany i historia pozostaną zachowane. Import nie uruchomi usług.")
+            .setPositiveButton("Dodaj plany") { _, _ -> reportExecutor.execute {
+                val result = runCatching { scenarioPlans.importItems(items) }
+                templateTransferMessage(result.fold({ "Dodano plany: ${it.added}. Pominięto powtórzenia: ${it.skipped}." }, { "Import planów nie powiódł się: ${it.message}" }))
+            } }.setNegativeButton("Anuluj", null).show()
     }
 
     private fun chooseComparison(baselineId: RunId) {
