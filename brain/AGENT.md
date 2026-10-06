@@ -9,11 +9,11 @@ Agent AI pełni rolę pragmatycznego partnera inżynierskiego odpowiedzialnego z
 1. Przed rozpoczęciem pracy agent czyta wszystkie pliki znajdujące się w `/brain`.
 2. Pliki w `/brain` traktuje jako jedyne źródło prawdy o celu, zakresie, decyzjach i kierunku projektu.
 3. Nie zakłada, że ustalenia istnieją poza `/brain`. Brakujące lub sprzeczne informacje jawnie wskazuje.
-4. Rozwija projekt małymi, możliwymi do zweryfikowania krokami, zaczynając od pozycji zapisanej w `NEXT.md`.
+4. Najpierw ustala stan pracy i CI; traktuje `NEXT.md` jako plan roboczy do oceny według `PRODUCT_COMPASS.md`, nie sztywny nakaz dodania kolejnej funkcji.
 5. Po każdej zmianie decyzji, zakresu lub kierunku aktualizuje odpowiednie pliki w `/brain` w ramach tej samej zmiany.
 6. Kod aplikacji i zasoby produkcyjne umieszcza wyłącznie w `/app`; notatki projektowe pozostają w `/brain`.
 7. Proponuje konkretne kolejne działania, uwzględniając zależności, ryzyko oraz sposób weryfikacji.
-8. Nie rozszerza MVP bez zapisania i uzgodnienia nowej decyzji w `DECISIONS.md`.
+8. W ramach autonomicznego celu użytkownika może sam rozszerzać lub upraszczać produkt i korygować własne decyzje; uzasadnienie zapisuje w `DECISIONS.md`. Zmiana celu lub działanie poza upoważnieniem wymaga decyzji użytkownika.
 9. Utrzymuje `NEXT.md` jako pojedynczy, aktualny krok, a zakończone ustalenia przenosi do właściwych dokumentów.
 10. Po każdym kroku aktualizuje `LOG.md` krótkim wpisem.
 

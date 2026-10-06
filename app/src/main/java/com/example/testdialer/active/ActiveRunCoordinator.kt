@@ -25,6 +25,8 @@ enum class ActiveTaskStatus { PENDING, DONE, SKIPPED }
 data class ActiveTask(
     val step: ScenarioStepDefinition,
     val status: ActiveTaskStatus,
+    val requestedBytes: Long? = null,
+    val requireDataAmountSelection: Boolean = false,
 )
 
 data class ActiveRun(
@@ -44,6 +46,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         val scenario: ScenarioDefinition,
         val recorder: TestRunRecorder,
         var revision: Long,
+        val dataAmounts: Map<StepId, Long?> = emptyMap(),
     )
 
     private var session: Session? = null
@@ -71,7 +74,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         plannedSteps = emptyList(),
     )
 
-    fun startScenario(scenario: LocalScenario): ActiveRun = start(scenario.name, scenario.steps)
+    fun startScenario(scenario: LocalScenario): ActiveRun = start(scenario.name, scenario.steps, scenario.dataAmounts)
 
     fun record(
         stepId: StepId?,
@@ -172,7 +175,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
     fun active(): ActiveRun? = session?.let(::snapshot)
 
     @Synchronized
-    private fun start(name: String, plannedSteps: List<ScenarioStepDefinition>): ActiveRun {
+    private fun start(name: String, plannedSteps: List<ScenarioStepDefinition>, dataAmounts: Map<StepId, Long?> = emptyMap()): ActiveRun {
         check(activeExecution == null) { "Trwający test musi zostać zakończony przed rozpoczęciem Runu" }
         require(session == null) { "Run jest już aktywny" }
         val scenario = ScenarioDefinition(
@@ -185,7 +188,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
         val recorder = TestRunRecorder.start(scenario)
         return try {
             val stored = repository.saveSnapshot(scenario, recorder.snapshot())
-            val current = Session(scenario, recorder, stored.revision)
+            val current = Session(scenario, recorder, stored.revision, dataAmounts.toMap())
             session = current
             snapshot(current)
         } catch (error: Throwable) {
@@ -206,7 +209,7 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
 
     private fun snapshot(current: Session): ActiveRun = ActiveRun(
         stored = StoredTestRun(current.scenario, current.recorder.snapshot(), current.revision),
-        tasks = current.scenario.steps.filterNot { it.isManualSlot() }.map { ActiveTask(it, taskStatus(current, it.id)) },
+        tasks = current.scenario.steps.filterNot { it.isManualSlot() }.map { ActiveTask(it, taskStatus(current, it.id), current.dataAmounts[it.id], current.dataAmounts.containsKey(it.id) && current.dataAmounts[it.id] == null) },
     )
 
     private fun taskStatus(current: Session, stepId: StepId): ActiveTaskStatus {
@@ -245,7 +248,13 @@ class ActiveRunCoordinator(private val repository: TestRunRepository) {
     }
 }
 
-data class LocalScenario(val id: String, val name: String, val steps: List<ScenarioStepDefinition>)
+data class LocalScenario(val id: String, val name: String, val steps: List<ScenarioStepDefinition>,
+    val dataAmounts: Map<StepId, Long?> = emptyMap()) {
+    init {
+        require(dataAmounts.keys.all { key -> steps.any { it.id == key && it.action is TestAction.Data } })
+        require(dataAmounts.values.all { it == null || it in 1..com.example.testdialer.data.DataVolume.MAX_BYTES })
+    }
+}
 
 object LocalScenarioCatalog {
     fun dataQuota(): LocalScenario = LocalScenario("data-only-v2", "Test transmisji danych", listOf(

@@ -9,6 +9,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.database.sqlite.SQLiteConstraintException
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 data class PersistenceSnapshot(
     val scenario: ScenarioEntity,
@@ -18,6 +20,25 @@ data class PersistenceSnapshot(
     val references: List<CorrelationReferenceEntity>,
     val timeline: List<TimelineEntryEntity>,
 )
+
+data class AnnotationSnapshot(
+    val note: RunNoteEntity?,
+    val reviews: List<BillingReviewEntity>,
+    val interruption: RunInterruptionEntity?,
+)
+
+data class LegacyAnnotationBatch(
+    val notes: List<RunNoteEntity>,
+    val reviews: List<BillingReviewEntity>,
+    val interruptions: List<RunInterruptionEntity>,
+)
+
+data class LegacyMigrationResult(val notes: Int, val reviews: Int, val interruptions: Int)
+
+data class HistoryRestoreRecord(val snapshot: PersistenceSnapshot, val annotations: AnnotationSnapshot)
+data class HistoryRestoreResult(val addedRuns: Int, val existingRuns: Int, val annotations: LegacyMigrationResult)
+data class RestoredHistoryCache(val result: HistoryRestoreResult, val notes: List<RunNoteEntity>,
+    val reviews: List<BillingReviewEntity>, val interruptions: List<RunInterruptionEntity>)
 
 class SnapshotConflictException(message: String) : IllegalStateException(message)
 
@@ -52,6 +73,45 @@ abstract class TestRunDao {
 
     @Query("SELECT COUNT(*) FROM timeline_entries WHERE runId = :runId")
     abstract fun timelineCount(runId: String): Int
+
+    @Query("SELECT * FROM run_notes")
+    abstract fun allRunNotes(): List<RunNoteEntity>
+
+    @Query("SELECT * FROM billing_reviews")
+    abstract fun allBillingReviews(): List<BillingReviewEntity>
+
+    @Query("SELECT * FROM run_interruptions")
+    abstract fun allRunInterruptions(): List<RunInterruptionEntity>
+
+    @Query("SELECT * FROM run_notes WHERE runId = :runId")
+    abstract fun findRunNote(runId: String): RunNoteEntity?
+
+    @Query("SELECT r.* FROM billing_reviews r INNER JOIN test_events e ON e.eventId = r.eventId WHERE e.runId = :runId ORDER BY r.eventId")
+    abstract fun findBillingReviews(runId: String): List<BillingReviewEntity>
+
+    @Query("SELECT * FROM run_interruptions WHERE runId = :runId")
+    abstract fun findRunInterruption(runId: String): RunInterruptionEntity?
+
+    @Query("SELECT COUNT(*) > 0 FROM test_events WHERE eventId = :eventId")
+    protected abstract fun eventExists(eventId: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyNote(entity: RunNoteEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyReview(entity: BillingReviewEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyInterruption(entity: RunInterruptionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertRunNote(entity: RunNoteEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertBillingReviews(entities: List<BillingReviewEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertRunInterruption(entity: RunInterruptionEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertScenario(entity: ScenarioEntity)
@@ -92,15 +152,6 @@ abstract class TestRunDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertTimeline(entities: List<TimelineEntryEntity>)
 
-    @Query("DELETE FROM timeline_entries WHERE runId = :runId")
-    protected abstract fun deleteTimeline(runId: String)
-
-    @Query("DELETE FROM correlation_references WHERE eventId IN (SELECT eventId FROM test_events WHERE runId = :runId)")
-    protected abstract fun deleteReferences(runId: String)
-
-    @Query("DELETE FROM test_events WHERE runId = :runId")
-    protected abstract fun deleteEvents(runId: String)
-
     @Query("DELETE FROM test_runs WHERE runId = :runId")
     abstract fun deleteRun(runId: String): Int
 
@@ -119,6 +170,73 @@ abstract class TestRunDao {
             timeline = findTimeline(runId),
         )
     }
+
+    @androidx.room.Transaction
+    open fun loadAnnotations(runId: String): AnnotationSnapshot = AnnotationSnapshot(
+        findRunNote(runId), findBillingReviews(runId), findRunInterruption(runId),
+    )
+
+    /** One transaction boundary for future history restore; callers validate values before entry. */
+    @androidx.room.Transaction
+    open fun storeAnnotations(snapshot: AnnotationSnapshot) {
+        snapshot.note?.let(::upsertRunNote)
+        upsertBillingReviews(snapshot.reviews)
+        snapshot.interruption?.let(::upsertRunInterruption)
+    }
+
+    /** Imports only valid, missing rows; existing Room data always wins. */
+    @androidx.room.Transaction
+    open fun importLegacyAnnotations(batch: LegacyAnnotationBatch): LegacyMigrationResult {
+        val notes = batch.notes.count { findRun(it.runId) != null && insertLegacyNote(it) != -1L }
+        val reviews = batch.reviews.count { eventExists(it.eventId) && insertLegacyReview(it) != -1L }
+        val interruptions = batch.interruptions.count {
+            findRun(it.runId) != null && insertLegacyInterruption(it) != -1L
+        }
+        return LegacyMigrationResult(notes, reviews, interruptions)
+    }
+
+    /** Validated archive only. Any evidence conflict rolls back the whole batch. */
+    @androidx.room.Transaction
+    open fun restoreHistory(records: List<HistoryRestoreRecord>): HistoryRestoreResult {
+        var added = 0
+        var existingCount = 0
+        records.forEach { record ->
+            val incoming = record.snapshot
+            val existing = loadSnapshot(incoming.run.runId)
+            if (existing != null) {
+                // Compare domain values: DAO reference ordering differs from archive ordering.
+                if (TestRunPersistenceMapper.fromPersistence(existing) !=
+                    TestRunPersistenceMapper.fromPersistence(incoming)) {
+                    throw SnapshotConflictException("Archive conflicts with an existing run")
+                }
+                existingCount++
+            } else {
+                val scenario = findScenario(incoming.scenario.scenarioId, incoming.scenario.version)
+                if (scenario == null) {
+                    insertScenario(incoming.scenario)
+                    insertScenarioSteps(incoming.scenarioSteps)
+                } else if (scenario != incoming.scenario ||
+                    findScenarioSteps(scenario.scenarioId, scenario.version) != incoming.scenarioSteps) {
+                    throw SnapshotConflictException("Archive conflicts with an existing scenario")
+                }
+                // Preserve revision and status; historical data never starts execution.
+                insertRun(incoming.run)
+                insertEvents(incoming.events)
+                insertReferences(incoming.references)
+                insertTimeline(incoming.timeline)
+                added++
+            }
+        }
+        val annotations = importLegacyAnnotations(LegacyAnnotationBatch(
+            records.mapNotNull { it.annotations.note }, records.flatMap { it.annotations.reviews },
+            records.mapNotNull { it.annotations.interruption },
+        ))
+        return HistoryRestoreResult(added, existingCount, annotations)
+    }
+
+    @androidx.room.Transaction
+    open fun restoreHistoryWithCache(records: List<HistoryRestoreRecord>): RestoredHistoryCache =
+        RestoredHistoryCache(restoreHistory(records), allRunNotes(), allBillingReviews(), allRunInterruptions())
 
     @androidx.room.Transaction
     open fun storeSnapshot(snapshot: PersistenceSnapshot, expectedRevision: Long?): Long {
@@ -168,12 +286,13 @@ abstract class TestRunDao {
             throw SnapshotConflictException("Snapshot revision is stale")
         }
 
-        deleteTimeline(nextRun.runId)
-        deleteReferences(nextRun.runId)
-        deleteEvents(nextRun.runId)
-        insertEvents(snapshot.events)
-        insertReferences(snapshot.references)
-        insertTimeline(snapshot.timeline)
+        // Existing evidence is immutable. Deleting and reinserting it would cascade-delete
+        // billing reviews; append only after validating the complete extension above.
+        val existingEventIds = existing?.events?.map { it.eventId }?.toSet().orEmpty()
+        val existingReferences = existing?.references?.toSet().orEmpty()
+        insertEvents(snapshot.events.filter { it.eventId !in existingEventIds })
+        insertReferences(snapshot.references.filter { it !in existingReferences })
+        insertTimeline(snapshot.timeline.drop(existing?.timeline?.size ?: 0))
         return nextRevision
     }
 
@@ -223,8 +342,11 @@ abstract class TestRunDao {
         TestEventEntity::class,
         CorrelationReferenceEntity::class,
         TimelineEntryEntity::class,
+        RunNoteEntity::class,
+        BillingReviewEntity::class,
+        RunInterruptionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class TestDialerDatabase : RoomDatabase() {
@@ -233,8 +355,20 @@ abstract class TestDialerDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "test-dialer-history.db"
 
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `run_notes` (`runId` TEXT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`runId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_notes_runId` ON `run_notes` (`runId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `billing_reviews` (`eventId` TEXT NOT NULL, `expected` TEXT NOT NULL, `actual` TEXT NOT NULL, `verdict` TEXT NOT NULL, `reviewedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`eventId`), FOREIGN KEY(`eventId`) REFERENCES `test_events`(`eventId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_billing_reviews_eventId` ON `billing_reviews` (`eventId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `run_interruptions` (`runId` TEXT NOT NULL, `interruptedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`runId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_interruptions_runId` ON `run_interruptions` (`runId`)")
+            }
+        }
+
         fun create(context: Context): TestDialerDatabase =
             Room.databaseBuilder(context, TestDialerDatabase::class.java, DATABASE_NAME)
+                .addMigrations(MIGRATION_1_2)
                 .build()
     }
 }

@@ -19,7 +19,7 @@ class TestTemplateStore(context: Context) {
             val item = entries.getJSONObject(i)
             val action = when (item.getString("type")) {
                 "VOICE" -> TestAction.Voice(item.getString("target"))
-                "SMS" -> TestAction.Sms(item.getString("target"), item.optString("message"))
+                "SMS" -> TestAction.Sms(item.getString("target"), if (item.has("message")) item.getString("message") else null)
                 "DATA" -> TestAction.Data(item.getString("target"))
                 else -> error("Unknown template type")
             }
@@ -38,6 +38,36 @@ class TestTemplateStore(context: Context) {
 
     fun delete(id: String): Boolean = synchronized(preferences) { write(list().filterNot { it.id == id }) }
 
+    /** Validate and merge the entire archive before one durable write; never replace existing items. */
+    fun importItems(incoming: List<TestTemplate>): TemplateImportResult = synchronized(preferences) {
+        require(incoming.size <= MAX_ITEMS) { "Plik zawiera za dużo szablonów." }
+        incoming.forEach(::validate)
+        val before = list()
+        val additions = mutableListOf<TestTemplate>()
+        incoming.forEach { candidate ->
+            if ((before + additions).none { sameParameters(it, candidate) }) {
+                additions += candidate.copy(id = UUID.randomUUID().toString())
+            }
+        }
+        require(before.size + additions.size <= MAX_ITEMS) { "Brak miejsca. Maksymalnie $MAX_ITEMS szablonów; usuń zbędne i ponów import." }
+        if (additions.isNotEmpty()) check(write(before + additions)) { "Nie udało się zapisać importu." }
+        TemplateImportResult(additions.size, incoming.size - additions.size)
+    }
+
+    fun previewImport(incoming: List<TestTemplate>): TemplateImportResult {
+        incoming.forEach(::validate)
+        val known = list().toMutableList()
+        var added = 0
+        incoming.forEach { candidate ->
+            if (known.none { sameParameters(it, candidate) }) { known += candidate; added++ }
+        }
+        require(known.size <= MAX_ITEMS) { "Brak miejsca. Maksymalnie $MAX_ITEMS szablonów; usuń zbędne i ponów import." }
+        return TemplateImportResult(added, incoming.size - added)
+    }
+
+    private fun sameParameters(a: TestTemplate, b: TestTemplate): Boolean =
+        a.name == b.name && a.action == b.action && a.requestedBytes == b.requestedBytes
+
     private fun write(items: List<TestTemplate>): Boolean {
         val array = JSONArray()
         items.forEach { item ->
@@ -55,7 +85,7 @@ class TestTemplateStore(context: Context) {
         return preferences.edit().putString("items", array.toString()).commit()
     }
 
-    private fun validate(template: TestTemplate) {
+    internal fun validate(template: TestTemplate) {
         require(template.id.isNotBlank() && template.name.isNotBlank() && template.name.length <= 80) { "Nazwa szablonu: od 1 do 80 znaków." }
         require(template.requestedBytes == null || (template.action is TestAction.Data && template.requestedBytes in 1..DataVolume.MAX_BYTES))
         when (val action = template.action) {
@@ -66,3 +96,5 @@ class TestTemplateStore(context: Context) {
     }
     companion object { const val MAX_ITEMS = 50 }
 }
+
+data class TemplateImportResult(val added: Int, val skipped: Int)

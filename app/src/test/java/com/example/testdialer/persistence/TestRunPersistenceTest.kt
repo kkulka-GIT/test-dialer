@@ -24,6 +24,10 @@ import com.example.testdialer.domain.TimelineEntryId
 import com.example.testdialer.domain.execution.CapturedTime
 import com.example.testdialer.domain.execution.TimelineEntry
 import com.example.testdialer.domain.execution.TimelineEntryKind
+import com.example.testdialer.notes.RunNotesStore
+import com.example.testdialer.review.BillingReview
+import com.example.testdialer.review.BillingReviewStore
+import com.example.testdialer.review.BillingVerdict
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -67,6 +71,237 @@ class TestRunPersistenceTest {
         assertEquals(StoredTestRun(scenario, run, 0L), loaded)
         assertEquals(listOf(run.id), repository.listSummaries().map { it.runId })
         assertEquals(run.events.size, repository.listSummaries().single().eventCount)
+    }
+
+    @Test
+    fun annotationsShareOneTransactionAndKeepTechnicalHistorySeparate() {
+        val scenario = scenario()
+        val run = completedRun()
+        repository.saveSnapshot(scenario, run)
+        val eventId = run.events.first().id.value
+        val annotations = AnnotationSnapshot(
+            RunNoteEntity(run.id.value, "Notatka testera"),
+            listOf(BillingReviewEntity(eventId, "0,79 PLN", "1,58 PLN", "FAIL", 2_000)),
+            RunInterruptionEntity(run.id.value, 2_100),
+        )
+        database.testRunDao().storeAnnotations(annotations)
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+        assertEquals(true, repository.get(run.id)?.run?.events?.first()?.observation != null)
+
+        val replacement = annotations.copy(
+            note = RunNoteEntity(run.id.value, "Nie może zostać częściowo zapisane"),
+            reviews = listOf(BillingReviewEntity("missing-event", "x", "y", "FAIL", 2_200)),
+        )
+        assertThrows(Exception::class.java) { database.testRunDao().storeAnnotations(replacement) }
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+    }
+
+    private fun <T> onWorker(action: () -> T): T {
+        val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+        return try { worker.submit<T> { action() }.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+        finally { worker.shutdownNow() }
+    }
+
+    private fun archiveEntry(run: TestRun = completedRun(), revision: Long = 7L) =
+        com.example.testdialer.report.HistoryArchiveEntry(
+            StoredTestRun(scenario(), run, revision), "archive note",
+            mapOf(run.events.first().id to BillingReview("1 PLN", "2 PLN", BillingVerdict.FAIL, 3000)), 4000,
+        )
+
+    private fun renamedRun(suffix: String): TestRun = completedRun().let { run ->
+        val id = RunId("run-$suffix")
+        run.copy(id = id,
+            events = run.events.map { it.copy(id = EventId(it.id.value + suffix), runId = id) },
+            timeline = run.timeline.map { it.copy(id = TimelineEntryId(it.id.value + suffix), runId = id,
+                relatedEventId = it.relatedEventId?.let { event -> EventId(event.value + suffix) }) })
+    }
+
+    @Test
+    fun restoreIsRepeatablePreservesRevisionAndRefreshesCacheAfterCommit() {
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        val entry = archiveEntry(runningRun())
+        onWorker {
+            assertEquals(1, room.restoreHistory(listOf(entry)).addedRuns)
+            assertEquals(HistoryRestoreResult(0, 1, LegacyMigrationResult(0, 0, 0)),
+                room.restoreHistory(listOf(entry)))
+        }
+        assertEquals(entry.stored, repository.get(entry.stored.run.id))
+        assertEquals("archive note", room.note(entry.stored.run.id.value)?.text)
+        assertEquals("FAIL", room.review(entry.stored.run.events.first().id.value)?.verdict)
+        assertEquals(4000L, room.interruption(entry.stored.run.id.value)?.interruptedAtMillis)
+        val encoded = com.example.testdialer.report.HistoryArchive.encode(listOf(entry))
+        assertEquals(listOf(entry), com.example.testdialer.report.HistoryArchive.decode(encoded))
+        assertThrows(IllegalStateException::class.java) { room.restoreHistory(listOf(entry)) }
+    }
+
+    @Test
+    fun restoreKeepsExistingAnnotationsEvenWhenArchiveDiffers() {
+        val run = completedRun()
+        val stored = repository.saveSnapshot(scenario(), run)
+        val annotations = AnnotationSnapshot(RunNoteEntity(run.id.value, "local note"),
+            listOf(BillingReviewEntity(run.events.first().id.value, "3", "3", "PASS", 9000)),
+            RunInterruptionEntity(run.id.value, 9500))
+        database.testRunDao().storeAnnotations(annotations)
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker { assertEquals(0, room.restoreHistory(listOf(archiveEntry().copy(stored = stored))).addedRuns) }
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+        assertEquals("local note", room.note(run.id.value)?.text)
+        assertEquals("PASS", room.review(run.events.first().id.value)?.verdict)
+    }
+
+    @Test
+    fun lateSnapshotConflictRollsBackEarlierRunAndDoesNotPublishCache() {
+        val original = repository.saveSnapshot(scenario(), completedRun())
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker {
+            room.initialize()
+            val newEntry = archiveEntry(renamedRun("new"))
+            // A different revision is also a conflicting snapshot, never silently overwritten.
+            try {
+                room.restoreHistory(listOf(newEntry, archiveEntry()))
+                org.junit.Assert.fail("Expected snapshot conflict")
+            } catch (_: SnapshotConflictException) { }
+            assertNull(repository.get(newEntry.stored.run.id))
+            assertNull(room.note(newEntry.stored.run.id.value))
+        }
+        assertEquals(original, repository.get(original.run.id))
+        assertEquals(1, repository.listSummaries().size)
+    }
+
+    @Test
+    fun invalidAnnotationReferenceRejectsWholeArchiveBeforeWrite() {
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        val invalid = archiveEntry().copy(reviews = mapOf(EventId("missing") to
+            BillingReview("1", "2", BillingVerdict.FAIL, 3000)))
+        onWorker {
+            try {
+                room.restoreHistory(listOf(archiveEntry(renamedRun("valid")), invalid))
+                org.junit.Assert.fail("Expected invalid reference")
+            } catch (_: IllegalArgumentException) { }
+        }
+        assertEquals(emptyList<TestRunSummary>(), repository.listSummaries())
+        assertEquals(emptyList<RunNoteEntity>(), database.testRunDao().allRunNotes())
+    }
+
+    @Test
+    fun eventIdentityCollisionRollsBackAllInsertedRunsAndScenarios() {
+        val original = repository.saveSnapshot(scenario(), completedRun())
+        val other = renamedRun("collision").let { run ->
+            val duplicateId = original.run.events.first().id
+            run.copy(events = run.events.map { it.copy(id = duplicateId) },
+                timeline = run.timeline.map { it.copy(relatedEventId = it.relatedEventId?.let { duplicateId }) })
+        }
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker {
+            try {
+                room.restoreHistory(listOf(archiveEntry(renamedRun("first")), archiveEntry(other)))
+                org.junit.Assert.fail("Expected event primary key collision")
+            } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        }
+        assertEquals(listOf(original.run.id), repository.listSummaries().map { it.runId })
+        assertEquals(original, repository.get(original.run.id))
+        assertEquals(emptyList<RunNoteEntity>(), database.testRunDao().allRunNotes())
+    }
+
+    @Test
+    fun roomStoresMigrateOnWorkerAndPersistEditsAcrossColdStart() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences(RunNotesStore.PREFERENCES_NAME, 0).edit().clear().commit()
+        context.getSharedPreferences(BillingReviewStore.PREFERENCES_NAME, 0).edit().clear().commit()
+        val run = completedRun()
+        repository.saveSnapshot(scenario(), run)
+        RunNotesStore(context).save(run.id, "legacy backup")
+        val room = RoomAnnotationStore(context, database.testRunDao())
+        val notes = RunNotesStore(context, room)
+        val reviews = BillingReviewStore(context, room)
+        assertEquals("legacy backup", notes.get(run.id))
+        onWorker {
+            org.junit.Assert.assertTrue(room.initialize())
+            org.junit.Assert.assertTrue(notes.save(run.id, "Room edit"))
+            org.junit.Assert.assertTrue(reviews.save(run.events.first().id, BillingReview("1", "2", BillingVerdict.FAIL, 3000)))
+            org.junit.Assert.assertTrue(reviews.markInterrupted(run.id, 4000))
+            org.junit.Assert.assertFalse(notes.save(RunId("missing-run"), "rejected"))
+        }
+        assertEquals("Room edit", notes.get(run.id))
+        assertEquals("legacy backup", RunNotesStore(context).get(run.id))
+        assertThrows(IllegalStateException::class.java) { notes.save(run.id, "main thread rejected") }
+        val restarted = RoomAnnotationStore(context, database.testRunDao())
+        onWorker { org.junit.Assert.assertTrue(restarted.initialize()) }
+        assertEquals("Room edit", RunNotesStore(context, restarted).get(run.id))
+        assertEquals(BillingVerdict.FAIL, BillingReviewStore(context, restarted).get(run.events.first().id).verdict)
+        assertEquals(4000L, BillingReviewStore(context, restarted).interruptedAt(run.id))
+        assertEquals("Room edit", notes.get(run.id))
+    }
+
+    @Test
+    fun failedMigrationKeepsLegacyReadableAndRejectsUncommittedWrites() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val id = RunId("fallback-run")
+        RunNotesStore(context).save(id, "safe backup")
+        val room = RoomAnnotationStore(context, database.testRunDao()) {
+            throw IllegalStateException("Simulated migration failure")
+        }
+        val notes = RunNotesStore(context, room)
+        onWorker {
+            org.junit.Assert.assertFalse(room.initialize())
+            org.junit.Assert.assertFalse(notes.save(id, "must not be reported saved"))
+        }
+        assertEquals("safe backup", notes.get(id))
+        assertEquals("safe backup", RunNotesStore(context).get(id))
+    }
+
+    @Test
+    fun legacyMigrationIsIdempotentPreservesBackupAndNeverOverwritesRoom() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        repository.saveSnapshot(scenario(), completedRun())
+        RunNotesStore(context).save(RunId("run-1"), "legacy note")
+        RunNotesStore(context).save(RunId("missing-run"), "orphan note")
+        BillingReviewStore(context).save(
+            EventId("event-1"),
+            BillingReview("0,79 PLN", "1,58 PLN", BillingVerdict.FAIL, 2_000),
+        )
+        BillingReviewStore(context).markInterrupted(RunId("run-1"), 2_100)
+        database.testRunDao().storeAnnotations(
+            AnnotationSnapshot(RunNoteEntity("run-1", "newer Room note"), emptyList(), null),
+        )
+
+        val migrator = LegacyAnnotationMigrator(context, database.testRunDao())
+        assertEquals(LegacyMigrationResult(0, 1, 1), migrator.migrate())
+        assertEquals(LegacyMigrationResult(0, 0, 0), migrator.migrate())
+        val stored = database.testRunDao().loadAnnotations("run-1")
+        assertEquals("newer Room note", stored.note?.text)
+        assertEquals("FAIL", stored.reviews.single().verdict)
+        assertEquals(2_100L, stored.interruption?.interruptedAtMillis)
+        assertEquals("legacy note", RunNotesStore(context).get(RunId("run-1")))
+        assertEquals("orphan note", RunNotesStore(context).get(RunId("missing-run")))
+    }
+
+    @Test
+    fun extensionAndRejectedAppendPreserveAllAnnotations() {
+        val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+        val dao = database.testRunDao()
+        dao.storeSnapshot(original, null)
+        val annotations = AnnotationSnapshot(
+            RunNoteEntity(original.run.runId, "Keep note"),
+            listOf(BillingReviewEntity(original.events.first().eventId, "0", "1", "FAIL", 2_000)),
+            RunInterruptionEntity(original.run.runId, 2_100),
+        )
+        dao.storeAnnotations(annotations)
+        val invalidEntry = original.timeline.last().copy(
+            timelineEntryId = "invalid-append",
+            sequenceNumber = original.timeline.size.toLong(),
+            relatedEventId = "missing-event",
+        )
+        assertThrows(RuntimeException::class.java) {
+            dao.storeSnapshot(original.copy(timeline = original.timeline + invalidEntry), 0L)
+        }
+        assertEquals(original, dao.loadSnapshot(original.run.runId))
+        assertEquals(annotations, dao.loadAnnotations(original.run.runId))
+
+        repository.saveSnapshot(scenario(), completedRun(), 0L)
+        assertEquals(completedRun(), repository.get(RunId(original.run.runId))?.run)
+        assertEquals(annotations, dao.loadAnnotations(original.run.runId))
+        assertEquals(original.references, dao.findReferences(original.run.runId))
     }
 
     @Test
@@ -166,7 +401,7 @@ class TestRunPersistenceTest {
     }
 
     @Test
-    fun legalExtensionReplacesChildrenWithoutDuplicates() {
+    fun legalExtensionAppendsHistoryWithoutDuplicates() {
         val initial = repository.saveSnapshot(scenario(), runningRun())
         val completed = completedRun()
 
@@ -178,7 +413,7 @@ class TestRunPersistenceTest {
     }
 
     @Test
-    fun failureAfterChildDeletionRollsBackCasAndChildren() {
+    fun failureDuringAppendRollsBackCasAndChildren() {
         val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
         database.testRunDao().storeSnapshot(original, null)
         val invalidEntry = original.timeline.last().copy(
