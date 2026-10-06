@@ -375,7 +375,7 @@ class MainActivitySmokeTest {
         findButton(activity, activity.getString(R.string.register_copy_correlation)).performClick()
         val copied = activity.getSystemService(android.content.ClipboardManager::class.java)
             .primaryClip!!.getItemAt(0).text.toString()
-        assertTrue(copied.contains("Epoch ms: 2"))
+        assertTrue(copied.contains("Epoch ms: 1"))
         assertTrue(copied.contains("Event ID: event-1"))
         assertTrue(copied.contains("Cel: +48123"))
         assertTrue(copied.contains("Ocena billingu: poza tym zestawem"))
