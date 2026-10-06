@@ -409,7 +409,7 @@ class MainActivity : ComponentActivity() {
             } else if (currentSection == AppSection.REGISTER && registerState.selectedRun != null) {
                 registerViewModel.clearRun()
             } else if (currentSection == AppSection.TEST && executionFocused) {
-                setExecutionFocus(false)
+                requestExecutionFocusExit()
             } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
             } else if (activeRunState.active != null || manualSessionState.active != null) {
@@ -666,7 +666,7 @@ class MainActivity : ComponentActivity() {
         runHomeView.statusHost.addView(systemStatusStrip)
         runHomeView.executionNavigationHost.addView(Button(this).apply {
             text = "Wróć do sesji i listy testów"
-            setOnClickListener { setExecutionFocus(false) }
+            setOnClickListener { requestExecutionFocusExit() }
         })
         runHomeView.selectorHost.addView(createTestTypeSelectorCard())
         testScenarioHost = runHomeView.scenarioHost
@@ -919,6 +919,18 @@ class MainActivity : ComponentActivity() {
             runHomeView.runHost.isFocusableInTouchMode = true
             runHomeView.runHost.requestFocus()
         }
+    }
+
+    private fun requestExecutionFocusExit() {
+        if (isTestTypeSwitchLocked() || activeRunViewModel.executionInProgress()) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.execution_leave_blocked_title)
+                .setMessage(R.string.execution_leave_blocked_message)
+                .setPositiveButton(R.string.execution_leave_blocked_return, null)
+                .show()
+            return
+        }
+        setExecutionFocus(false)
     }
 
     private fun showAddTest() {

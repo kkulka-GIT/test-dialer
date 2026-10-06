@@ -27,6 +27,39 @@ import java.util.concurrent.Executors
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class RunCompletionUiTest {
+    @Test fun `back cannot hide a test while an observation is still required`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val model = model(activity)
+        button(activity, activity.getString(R.string.run_start_empty)).performClick()
+        await { model.state.value?.active != null && model.state.value?.busy == false }
+        MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+            setBoolean(activity, true)
+        }
+        MainActivity::class.java.getDeclaredMethod("setExecutionFocus", Boolean::class.javaPrimitiveType).apply {
+            isAccessible = true
+            invoke(activity, true)
+        }
+
+        activity.onBackPressedDispatcher.onBackPressed()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(executionFocused(activity))
+        assertTrue(dialog.findViewById<TextView>(android.R.id.message).text.toString().contains("obserwacji"))
+        capture(dialog, "active-test-leave-blocked.png")
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertTrue(executionFocused(activity))
+        assertNotNull(model.state.value!!.active)
+        button(activity, "Wróć do sesji i listy testów").performClick()
+        val buttonDialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertNotSame(dialog, buttonDialog)
+        assertTrue(buttonDialog.isShowing)
+        assertTrue(executionFocused(activity))
+        buttonDialog.dismiss()
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `back from an active session requires confirmation and cancellation keeps it usable`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
@@ -155,6 +188,9 @@ class RunCompletionUiTest {
 
     private fun model(activity: MainActivity) = MainActivity::class.java.getDeclaredField("activeRunViewModel")
         .apply { isAccessible = true }.get(activity) as ActiveRunViewModel
+
+    private fun executionFocused(activity: MainActivity) = MainActivity::class.java
+        .getDeclaredField("executionFocused").apply { isAccessible = true }.getBoolean(activity)
 
     private fun await(condition: () -> Boolean) {
         repeat(300) {

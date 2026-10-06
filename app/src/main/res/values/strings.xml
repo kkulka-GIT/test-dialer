@@ -35,6 +35,9 @@
     <string name="run_exit_active_message">%1$s\n\nWyjście zamknie ten ekran. Sesja pozostanie zapisana w Rejestrze jako „w toku”, ale nie będzie można jej kontynuować.</string>
     <string name="run_exit_active_stay">Zostań w sesji</string>
     <string name="run_exit_active_confirm">Wyjdź mimo to</string>
+    <string name="execution_leave_blocked_title">Test nadal trwa</string>
+    <string name="execution_leave_blocked_message">Dokończ bieżący etap na tym ekranie. Jeśli trwa test danych, możesz go tutaj anulować. Dzięki temu nie utracisz dostępu do zapisania obserwacji ani kontroli transferu.</string>
+    <string name="execution_leave_blocked_return">Wróć do testu</string>
     <string name="run_no_planned_tasks">Brak zaplanowanych testów. Dodaj ręczny test Voice, SMS lub Data.</string>
     <string name="task_pending">Niewykonany</string>
     <string name="task_done">Wykonany</string>
