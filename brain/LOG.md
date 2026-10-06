@@ -52,4 +52,4 @@
 
 - Final verification: #106 app compiled, network test fixtures failed compilation; corrected using Robolectric shadows. #107 PASS: 140 tests, APKs and identity check. Real task navigation screenshots reviewed. Handset retest still pending.
 
-- 2026-10-06: faza 12 przełącza adnotacje na Room przez wspólny cache i inicjalizację w tle; CI pending. Użytkownik potwierdził godzinne checkpointy i późniejszy całościowy odbiór.
+- 2026-10-06: faza 12 przełącza adnotacje na Room przez wspólny cache i inicjalizację w tle; CI #159 PASS: 200 testów i oba APK. Użytkownik potwierdził godzinne checkpointy i późniejszy całościowy odbiór.

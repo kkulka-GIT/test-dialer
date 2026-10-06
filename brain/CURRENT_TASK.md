@@ -5,4 +5,4 @@ Zakres: wspólny magazyn z cache procesu, migracja przed pierwszym zapisem/ekspo
 Poza zakresem: przywracanie kopii, usługi operatora, merge, podpisywanie APK.
 Kryteria: stare dane pozostają, Room ma pierwszeństwo; zapis potwierdzany dopiero po transakcji; błąd migracji zachowuje odczyt starej kopii i jawnie wstrzymuje zapis; brak Room na wątku UI.
 Tryb incremental. Testy: start, ponowny start, zapis ocen/przerwań, nieznana sesja, błąd migracji, główny wątek, regresje eksportu i pełne CI.
-Raport: brain/reports/2026-10-06-phase12.md. Stan: implementacja gotowa do CI.
+Raport: brain/reports/2026-10-06-phase12.md. Stan: zakończona faza 12. Źródła cd30186ea0bbb5d33656c3c9caaeb58925f20dd5; CI #159 PASS, 200 testów bez błędów/pominięć, oba APK i kontrola tożsamości preview PASS.
