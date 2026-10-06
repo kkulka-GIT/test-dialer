@@ -7,8 +7,13 @@ import com.example.testdialer.review.BillingVerdict
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class HistoryArchiveTest {
     private fun entry(runId: String = "run-1"): HistoryArchiveEntry {
         val step = ScenarioStepDefinition(StepId("step-1"), 0, "SMS kontrolny", "Wyślij i sprawdź", TestAction.Sms("123", "Treść"))
