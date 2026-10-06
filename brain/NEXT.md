@@ -1,2 +1,2 @@
-# Domknąć potwierdzenie pominięcia testu
-Branch feature/stable-signing-20261006 / PR #21. Sprawdzić CI, regresję anulowania/potwierdzenia i podgląd dialogu. Po PASS potwierdzić stable APK: pin, applicationId i versionCode >117301. Potem ocenić inny konkretny błąd pracy testera; nie dodawać automatycznej kolejności ani wznawiania historycznych sesji bez dowodu potrzeby. Telefon/TalkBack/aktualizacja zachowująca dane NOT TESTED.
+# Ocenić kolejny konkretny błąd pracy testera
+Branch feature/stable-signing-20261006 / PR #21. Potwierdzenie pominięcia domknięte przez CI #175: 209 testów, podgląd dialogu i stable APK 117501 (stały pin/ID, kod >117301). Przed zmianą sprawdzić zdalny stan. Preferować małe zabezpieczenie istniejącego przepływu albo uproszczenie; nie dodawać automatycznej kolejności ani wznawiania historycznych sesji bez dowodu potrzeby. Telefon/TalkBack/aktualizacja zachowująca dane NOT TESTED.
