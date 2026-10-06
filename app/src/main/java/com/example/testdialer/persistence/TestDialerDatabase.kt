@@ -35,6 +35,11 @@ data class LegacyAnnotationBatch(
 
 data class LegacyMigrationResult(val notes: Int, val reviews: Int, val interruptions: Int)
 
+data class HistoryRestoreRecord(val snapshot: PersistenceSnapshot, val annotations: AnnotationSnapshot)
+data class HistoryRestoreResult(val addedRuns: Int, val existingRuns: Int, val annotations: LegacyMigrationResult)
+data class RestoredHistoryCache(val result: HistoryRestoreResult, val notes: List<RunNoteEntity>,
+    val reviews: List<BillingReviewEntity>, val interruptions: List<RunInterruptionEntity>)
+
 class SnapshotConflictException(message: String) : IllegalStateException(message)
 
 @Dao
@@ -189,6 +194,49 @@ abstract class TestRunDao {
         }
         return LegacyMigrationResult(notes, reviews, interruptions)
     }
+
+    /** Validated archive only. Any evidence conflict rolls back the whole batch. */
+    @androidx.room.Transaction
+    open fun restoreHistory(records: List<HistoryRestoreRecord>): HistoryRestoreResult {
+        var added = 0
+        var existingCount = 0
+        records.forEach { record ->
+            val incoming = record.snapshot
+            val existing = loadSnapshot(incoming.run.runId)
+            if (existing != null) {
+                // Compare domain values: DAO reference ordering differs from archive ordering.
+                if (TestRunPersistenceMapper.fromPersistence(existing) !=
+                    TestRunPersistenceMapper.fromPersistence(incoming)) {
+                    throw SnapshotConflictException("Archive conflicts with an existing run")
+                }
+                existingCount++
+            } else {
+                val scenario = findScenario(incoming.scenario.scenarioId, incoming.scenario.version)
+                if (scenario == null) {
+                    insertScenario(incoming.scenario)
+                    insertScenarioSteps(incoming.scenarioSteps)
+                } else if (scenario != incoming.scenario ||
+                    findScenarioSteps(scenario.scenarioId, scenario.version) != incoming.scenarioSteps) {
+                    throw SnapshotConflictException("Archive conflicts with an existing scenario")
+                }
+                // Preserve revision and status; historical data never starts execution.
+                insertRun(incoming.run)
+                insertEvents(incoming.events)
+                insertReferences(incoming.references)
+                insertTimeline(incoming.timeline)
+                added++
+            }
+        }
+        val annotations = importLegacyAnnotations(LegacyAnnotationBatch(
+            records.mapNotNull { it.annotations.note }, records.flatMap { it.annotations.reviews },
+            records.mapNotNull { it.annotations.interruption },
+        ))
+        return HistoryRestoreResult(added, existingCount, annotations)
+    }
+
+    @androidx.room.Transaction
+    open fun restoreHistoryWithCache(records: List<HistoryRestoreRecord>): RestoredHistoryCache =
+        RestoredHistoryCache(restoreHistory(records), allRunNotes(), allBillingReviews(), allRunInterruptions())
 
     @androidx.room.Transaction
     open fun storeSnapshot(snapshot: PersistenceSnapshot, expectedRevision: Long?): Long {

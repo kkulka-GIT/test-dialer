@@ -1,10 +1,5 @@
-# Następny checkpoint
-
-Kompas: `PRODUCT_COMPASS.md`. Poniższy krok jest kandydatem do ponownej oceny według korzyści dla testera; najpierw sprawdź poprzednią pracę i CI. Nie realizuj go tylko z powodu godzinnego wywołania.
-Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 12 zakończona: notatki, oceny billingu i znaczniki przerwania zapisują się w Room; migracja i cache uruchamiane poza głównym wątkiem. Stara kopia zachowana, przy błędzie inicjalizacji tylko odczyt legacy i jawne odrzucenie zapisu. Źródła cd30186ea0bbb5d33656c3c9caaeb58925f20dd5; CI #159 PASS: 200 testów, zero failures/errors/skips, debug/preview APK i tożsamość PASS. Raport brain/reports/2026-10-06-phase12.md.
-
-Następnie przygotować addytywne atomowe przywracanie pełnej historii z deduplikacją i rollbackiem na bazie istniejącego podglądu kopii. Walidować całość przed zapisem i wymagać jawnego potwierdzenia podglądu. Istniejące rekordy i nowsze adnotacje mają pierwszeństwo; sprzeczne snapshoty nie są nadpisywane. Aktualizować wspólny cache adnotacji dopiero po zatwierdzonej transakcji. CREATED/RUNNING pozostają historyczne, nie stają się aktywnymi sesjami. Pierwszy checkpoint może ograniczyć się do warstwy transakcyjnej i testów, a dopiero kolejny do włączenia przycisku zapisu w podglądzie.
-
-Testy: ponowienie bez duplikatów, konflikt ze snapshotem/oceną/notatką, rollback całego pakietu, niepoprawne referencje, eksport po odtworzeniu i brak usług operatora. Bez force push, merge main, kasowania historii i sekretów. Telefon/aktualizacja/TalkBack/TTS/SIM/VPN/dostawcy dokumentów: NOT TESTED.
-
-Użytkownik 2026-10-06 potwierdził godzinne tury; chce oceniać efekt całościowo po kolejnych etapach. Nie wymagać odbioru telefonu po każdym checkpointcie. Automatyzacja Rozwijaj Test Dialer wznowiona. Terminal nie ma danych logowania do push; dostępny uwierzytelniony GitHub connector jest powiązany z właścicielem kkulka-GIT i ma uprawnienia admin/push. Do publikacji używać normalnego fast-forward z kontrolą oczekiwanego zdalnego SHA; nigdy nie wypisywać sekretów.
+# Bieżący checkpoint
+Kompas PRODUCT_COMPASS.md. Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 12 zakończona (200 testów i oba APK); dokumentacja kompasu CI #161 PASS.
+Faza 13: transakcyjna warstwa przywracania pełnej historii i cache, pięć nowych regresji. Aktualnie oczekiwanie na CI. Najpierw sprawdzić zdalny SHA, wynik i raport brain/reports/2026-10-06-phase13.md; naprawić błędy przed nową pracą. Metoda nie jest jeszcze podłączona do UI.
+Po PASS kandydat: jawne potwierdzenie istniejącego podglądu, worker-only zapis, komunikat liczby nowych/pominiętych sesji i konfliktu. Nie wykonywać usług. Importowane RUNNING/CREATED pozostają historią. Konflikt snapshotu/rewizji odrzuca całość; lokalne adnotacje mają pierwszeństwo.
+Kontynuować w istniejącym PR z fast-forward i expected SHA, bez force/main/merge. Telefon/aktualizacja/dostawcy dokumentów/TalkBack/TTS/SIM/operator/VPN NOT TESTED. Użytkownik odbierze całość po kolejnych etapach, nie wymaga odbioru każdej tury. Terminal nie ma autoryzacji push; używać połączenia GitHub.

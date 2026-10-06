@@ -102,6 +102,107 @@ class TestRunPersistenceTest {
         finally { worker.shutdownNow() }
     }
 
+    private fun archiveEntry(run: TestRun = completedRun(), revision: Long = 7L) =
+        com.example.testdialer.report.HistoryArchiveEntry(
+            StoredTestRun(scenario(), run, revision), "archive note",
+            mapOf(run.events.first().id to BillingReview("1 PLN", "2 PLN", BillingVerdict.FAIL, 3000)), 4000,
+        )
+
+    private fun renamedRun(suffix: String): TestRun = completedRun().let { run ->
+        val id = RunId("run-$suffix")
+        run.copy(id = id,
+            events = run.events.map { it.copy(id = EventId(it.id.value + suffix), runId = id) },
+            timeline = run.timeline.map { it.copy(id = TimelineEntryId(it.id.value + suffix), runId = id,
+                relatedEventId = it.relatedEventId?.let { event -> EventId(event.value + suffix) }) })
+    }
+
+    @Test
+    fun restoreIsRepeatablePreservesRevisionAndRefreshesCacheAfterCommit() {
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        val entry = archiveEntry(runningRun())
+        onWorker {
+            assertEquals(1, room.restoreHistory(listOf(entry)).addedRuns)
+            assertEquals(HistoryRestoreResult(0, 1, LegacyMigrationResult(0, 0, 0)),
+                room.restoreHistory(listOf(entry)))
+        }
+        assertEquals(entry.stored, repository.get(entry.stored.run.id))
+        assertEquals("archive note", room.note(entry.stored.run.id.value)?.text)
+        assertEquals("FAIL", room.review(entry.stored.run.events.first().id.value)?.verdict)
+        assertEquals(4000L, room.interruption(entry.stored.run.id.value)?.interruptedAtMillis)
+        val encoded = com.example.testdialer.report.HistoryArchive.encode(listOf(entry))
+        assertEquals(listOf(entry), com.example.testdialer.report.HistoryArchive.decode(encoded))
+        assertThrows(IllegalStateException::class.java) { room.restoreHistory(listOf(entry)) }
+    }
+
+    @Test
+    fun restoreKeepsExistingAnnotationsEvenWhenArchiveDiffers() {
+        val run = completedRun()
+        val stored = repository.saveSnapshot(scenario(), run)
+        val annotations = AnnotationSnapshot(RunNoteEntity(run.id.value, "local note"),
+            listOf(BillingReviewEntity(run.events.first().id.value, "3", "3", "PASS", 9000)),
+            RunInterruptionEntity(run.id.value, 9500))
+        database.testRunDao().storeAnnotations(annotations)
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker { assertEquals(0, room.restoreHistory(listOf(archiveEntry().copy(stored = stored))).addedRuns) }
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+        assertEquals("local note", room.note(run.id.value)?.text)
+        assertEquals("PASS", room.review(run.events.first().id.value)?.verdict)
+    }
+
+    @Test
+    fun lateSnapshotConflictRollsBackEarlierRunAndDoesNotPublishCache() {
+        val original = repository.saveSnapshot(scenario(), completedRun())
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker {
+            room.initialize()
+            val newEntry = archiveEntry(renamedRun("new"))
+            // A different revision is also a conflicting snapshot, never silently overwritten.
+            try {
+                room.restoreHistory(listOf(newEntry, archiveEntry()))
+                org.junit.Assert.fail("Expected snapshot conflict")
+            } catch (_: SnapshotConflictException) { }
+            assertNull(repository.get(newEntry.stored.run.id))
+            assertNull(room.note(newEntry.stored.run.id.value))
+        }
+        assertEquals(original, repository.get(original.run.id))
+        assertEquals(1, repository.listSummaries().size)
+    }
+
+    @Test
+    fun invalidAnnotationReferenceRejectsWholeArchiveBeforeWrite() {
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        val invalid = archiveEntry().copy(reviews = mapOf(EventId("missing") to
+            BillingReview("1", "2", BillingVerdict.FAIL, 3000)))
+        onWorker {
+            try {
+                room.restoreHistory(listOf(archiveEntry(renamedRun("valid")), invalid))
+                org.junit.Assert.fail("Expected invalid reference")
+            } catch (_: IllegalArgumentException) { }
+        }
+        assertEquals(emptyList<TestRunSummary>(), repository.listSummaries())
+        assertEquals(emptyList<RunNoteEntity>(), database.testRunDao().allRunNotes())
+    }
+
+    @Test
+    fun eventIdentityCollisionRollsBackAllInsertedRunsAndScenarios() {
+        val original = repository.saveSnapshot(scenario(), completedRun())
+        val other = renamedRun("collision").let { run ->
+            val duplicateId = original.run.events.first().id
+            run.copy(events = run.events.map { it.copy(id = duplicateId) },
+                timeline = run.timeline.map { it.copy(relatedEventId = it.relatedEventId?.let { duplicateId }) })
+        }
+        val room = RoomAnnotationStore(ApplicationProvider.getApplicationContext(), database.testRunDao()) {}
+        onWorker {
+            try {
+                room.restoreHistory(listOf(archiveEntry(renamedRun("first")), archiveEntry(other)))
+                org.junit.Assert.fail("Expected event primary key collision")
+            } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        }
+        assertEquals(listOf(original.run.id), repository.listSummaries().map { it.runId })
+        assertEquals(original, repository.get(original.run.id))
+        assertEquals(emptyList<RunNoteEntity>(), database.testRunDao().allRunNotes())
+    }
+
     @Test
     fun roomStoresMigrateOnWorkerAndPersistEditsAcrossColdStart() {
         val context = ApplicationProvider.getApplicationContext<Context>()
