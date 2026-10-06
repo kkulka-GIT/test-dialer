@@ -23,7 +23,7 @@ Przed wyborem kroku zapisz w zadaniu: jaki konkretny problem testera rozwiązuje
 5. Zaktualizuj raport i NEXT faktycznym wynikiem, powodami decyzji, otwartymi sprawami i warunkiem wznowienia, jeżeli oczekujesz na wynik. Rozróżniaj implementację, test symulowany i odbiór fizyczny. Zgłoś rzeczywistą blokadę, jeśli środowisko nie daje możliwości pracy.
 
 ## Możliwe kierunki do ponownej oceny
-- Stabilny podpis APK do aktualizacji z zachowaniem danych: chroniony klucz poza repo; bez klucza nie deklarować poprawnej aktualizacji starszego APK.
+- Stabilne APK obowiązują zgodnie z SIGNING.md: stały klucz z Secrets, release com.example.testdialer, rosnący versionCode; nie publikować dawnych debug/preview. Stan weryfikacji w raporcie podpisywania.
 - Wersjonowana kopia pełnej historii i ocen z podglądem przywracania, deduplikacją i testami atomowości.
 - Biblioteka wieloetapowych scenariuszy z jawnymi punktami kontrolnymi testera i wynikami oczekiwanymi; rozwijać istniejący model, nie dodawać automatycznych usług operatora.
 - Porównanie powtórzeń tego samego scenariusza: parametry, obserwacje, oceny i czasy, bez fałszywego wnioskowania o rachunku.

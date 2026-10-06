@@ -55,3 +55,5 @@
 - 2026-10-06: faza 12 przełącza adnotacje na Room przez wspólny cache i inicjalizację w tle; CI #159 PASS: 200 testów i oba APK. Użytkownik potwierdził godzinne checkpointy i późniejszy całościowy odbiór.
 
 - 2026-10-06: zapisano kompas użytkownika i dostosowano zasady autonomii oraz instrukcję godzinnych tur. Bieżący PR #20 nadal na fazie 12; sprawdzone końcowe CI #160 PASS. Ten checkpoint zmienia wyłącznie instrukcje, nie kod aplikacji.
+
+- 2026-10-06: wdrożenie stałego podpisu na osobnym branchu, bez naruszania rozpoczętej pracy UI przywracania. Testy Python numeracji PASS; CI podpisu pending.

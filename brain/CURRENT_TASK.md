@@ -1,8 +1,6 @@
-# Faza 13 — atomowy zapis przywracanej historii
-Problem testera: kopia historii ma dziś tylko podgląd; potrzebna jest bezpieczna podstawa odzyskiwania dowodów bez nadpisania istniejących obserwacji i ocen.
-Korzyść: powtarzalne przywracanie bez duplikatów i częściowego zapisu. Koszt: jedna transakcja DAO i metoda w istniejącym magazynie, bez nowego schematu/frameworka.
-Branch feature/template-portability-20261005; PR #20 zależny od #19. Punkt wyjścia 98f17c5fdb92c371e29f79bae240cb6063ad1df9, CI #161 PASS.
-Zakres: walidacja pełnego archiwum przed zapisem; addytywny zapis snapshotów z zachowaniem rewizji/statusu; identyczne rekordy pomijane, konflikt dowodów lub rewizji odrzuca całość; istniejące adnotacje mają pierwszeństwo; cache publikowany dopiero po commit.
-Poza zakresem: przycisk przywracania i potwierdzenie podglądu (kolejny checkpoint), usługi operatora, merge, podpisywanie APK. Nowa metoda nie jest wywoływana z UI.
-Kryteria/testy: ponowienie, lokalne adnotacje, rollback po późnym konflikcie, globalna kolizja EventId, błędna referencja, zachowanie RUNNING jako historii, rewizja, eksport i cache. GitHub Actions i oba APK. Tryb incremental.
-Raport brain/reports/2026-10-06-phase13.md. Stan: zakończona warstwa transakcyjna. Źródła 495ae44a41cb4c9a27c20e64311bbde08f53e375; CI #162 PASS, 205 testów, zero failures/errors/skips, oba APK i tożsamość preview PASS. UI przywracania nadal niewłączone.
+# Stabilne podpisywanie APK
+Cel/korzyść: jeden APK do telefonu aktualizowany bez reinstalacji i utraty danych po czystej instalacji.
+Branch feature/stable-signing-20261006 oparty na fazie 13 z PR #20 (d9ebfd80fcf7ffb59936cd836b0c5e82c984ba66). W oryginalnym checkoutcie są niezapisane zmiany UI przywracania; pozostawiono je nietknięte, użyto osobnego worktree.
+Zakres: release z istniejącym kluczem Secrets, stabilna tożsamość, monotoniczne wersje, apksigner i kontrola certyfikatu/tożsamości, jeden artefakt, usunięcie preview. Debug tylko do testów. Szczegóły SIGNING.md.
+Poza zakresem: nowy klucz, usługi operatora, kompatybilność ze starymi wariantami, kasowanie danych na telefonie, merge.
+Kryteria/testy: testy numeracji i pełne testy JVM, release build, apksigner, odcisk zgodny z keystore i pinem, aapt ID/wersja/nazwa/nie-debuggable, cleanup. Stan: przygotowane do CI, podpis niepotwierdzony do PASS. Raport reports/2026-10-06-stable-signing.md.
