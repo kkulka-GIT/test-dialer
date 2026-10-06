@@ -82,7 +82,7 @@ class TestRunPersistenceTest {
         )
         database.testRunDao().storeAnnotations(annotations)
         assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
-        assertNotNull(repository.get(run.id)?.run?.events?.first()?.observation)
+        assertTrue(repository.get(run.id)?.run?.events?.first()?.observation != null)
 
         val replacement = annotations.copy(
             note = RunNoteEntity(run.id.value, "Nie może zostać częściowo zapisane"),
