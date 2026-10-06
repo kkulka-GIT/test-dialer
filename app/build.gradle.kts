@@ -33,6 +33,7 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+    sourceSets.getByName("test").assets.srcDir("$projectDir/schemas")
 }
 
 kapt {
