@@ -96,6 +96,58 @@ class TestRunPersistenceTest {
         assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
     }
 
+    private fun <T> onWorker(action: () -> T): T {
+        val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+        return try { worker.submit<T> { action() }.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+        finally { worker.shutdownNow() }
+    }
+
+    @Test
+    fun roomStoresMigrateOnWorkerAndPersistEditsAcrossColdStart() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences(RunNotesStore.PREFERENCES_NAME, 0).edit().clear().commit()
+        context.getSharedPreferences(BillingReviewStore.PREFERENCES_NAME, 0).edit().clear().commit()
+        val run = completedRun()
+        repository.saveSnapshot(scenario(), run)
+        RunNotesStore(context).save(run.id, "legacy backup")
+        val room = RoomAnnotationStore(context, database.testRunDao())
+        val notes = RunNotesStore(context, room)
+        val reviews = BillingReviewStore(context, room)
+        assertEquals("legacy backup", notes.get(run.id))
+        onWorker {
+            org.junit.Assert.assertTrue(room.initialize())
+            org.junit.Assert.assertTrue(notes.save(run.id, "Room edit"))
+            org.junit.Assert.assertTrue(reviews.save(run.events.first().id, BillingReview("1", "2", BillingVerdict.FAIL, 3000)))
+            org.junit.Assert.assertTrue(reviews.markInterrupted(run.id, 4000))
+            org.junit.Assert.assertFalse(notes.save(RunId("missing-run"), "rejected"))
+        }
+        assertEquals("Room edit", notes.get(run.id))
+        assertEquals("legacy backup", RunNotesStore(context).get(run.id))
+        assertThrows(IllegalStateException::class.java) { notes.save(run.id, "main thread rejected") }
+        val restarted = RoomAnnotationStore(context, database.testRunDao())
+        onWorker { org.junit.Assert.assertTrue(restarted.initialize()) }
+        assertEquals("Room edit", RunNotesStore(context, restarted).get(run.id))
+        assertEquals(BillingVerdict.FAIL, BillingReviewStore(context, restarted).get(run.events.first().id).verdict)
+        assertEquals(4000L, BillingReviewStore(context, restarted).interruptedAt(run.id))
+        assertEquals("Room edit", notes.get(run.id))
+    }
+
+    @Test
+    fun failedMigrationKeepsLegacyReadableAndRejectsUncommittedWrites() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val id = RunId("fallback-run")
+        RunNotesStore(context).save(id, "safe backup")
+        database.close()
+        val room = RoomAnnotationStore(context, database.testRunDao())
+        val notes = RunNotesStore(context, room)
+        onWorker {
+            org.junit.Assert.assertFalse(room.initialize())
+            org.junit.Assert.assertFalse(notes.save(id, "must not be reported saved"))
+        }
+        assertEquals("safe backup", notes.get(id))
+        assertEquals("safe backup", RunNotesStore(context).get(id))
+    }
+
     @Test
     fun legacyMigrationIsIdempotentPreservesBackupAndNeverOverwritesRoom() {
         val context = ApplicationProvider.getApplicationContext<Context>()

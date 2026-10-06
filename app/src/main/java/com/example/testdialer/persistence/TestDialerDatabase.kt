@@ -69,6 +69,15 @@ abstract class TestRunDao {
     @Query("SELECT COUNT(*) FROM timeline_entries WHERE runId = :runId")
     abstract fun timelineCount(runId: String): Int
 
+    @Query("SELECT * FROM run_notes")
+    abstract fun allRunNotes(): List<RunNoteEntity>
+
+    @Query("SELECT * FROM billing_reviews")
+    abstract fun allBillingReviews(): List<BillingReviewEntity>
+
+    @Query("SELECT * FROM run_interruptions")
+    abstract fun allRunInterruptions(): List<RunInterruptionEntity>
+
     @Query("SELECT * FROM run_notes WHERE runId = :runId")
     abstract fun findRunNote(runId: String): RunNoteEntity?
 

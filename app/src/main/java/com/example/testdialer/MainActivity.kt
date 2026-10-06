@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext) }
+    private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext, (application as TestDialerApplication).annotationStore) }
     private var pendingTemplateId: String? = null
     private var pendingAdditionalType: TestType? = null
     private lateinit var registerFilterLabel: Button
@@ -163,7 +163,7 @@ class MainActivity : ComponentActivity() {
     private val registerPageSize = 20
     private var registerFilter = com.example.testdialer.register.RegisterFilter()
     private var reportBusy = false
-    private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext) }
+    private val runNotes by lazy { com.example.testdialer.notes.RunNotesStore(applicationContext, (application as TestDialerApplication).annotationStore) }
     private var dataAmountDraft = "1"
     private var dataUnitDraft = "MB"
     private var runNameDraft = ""
@@ -415,6 +415,15 @@ class MainActivity : ComponentActivity() {
             } else {
                 isEnabled = false
                 onBackPressedDispatcher.onBackPressed()
+            }
+        }
+        reportExecutor.execute {
+            val ready = (application as TestDialerApplication).annotationStore.initialize()
+            runOnUiThread {
+                if (!isDestroyed && !isFinishing) {
+                    renderRegister()
+                    if (!ready) Toast.makeText(this, "Nie udało się przygotować notatek. Stara kopia pozostaje dostępna; zapis jest wstrzymany.", Toast.LENGTH_LONG).show()
+                }
             }
         }
         manualSessionViewModel.loadHistory()
@@ -1656,7 +1665,23 @@ class MainActivity : ComponentActivity() {
         .sumOf { event -> event.correlation.references.firstOrNull { it.namespace == "bytes" }?.value?.toLongOrNull()?.coerceAtLeast(0) ?: 0L }
         .let { String.format(Locale.getDefault(), "%,d B (%.3f MB)", it, it / 1_000_000.0) }
 
-    private fun editRunNote(runId: RunId) {
+    private fun withAnnotationsReady(action: () -> Unit) {
+        val store = (application as TestDialerApplication).annotationStore
+        if (store.ready()) { action(); return }
+        reportExecutor.execute {
+            val ready = store.initialize()
+            runOnUiThread {
+                if (!isDestroyed && !isFinishing) {
+                    if (ready) action()
+                    else Toast.makeText(this, "Nie można teraz zapisać adnotacji. Stara kopia pozostaje zachowana.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun editRunNote(runId: RunId) = withAnnotationsReady { showRunNoteEditor(runId) }
+
+    private fun showRunNoteEditor(runId: RunId) {
         val input = EditText(this).apply {
             setText(runNotes.get(runId))
             hint = getString(R.string.run_note_hint)
@@ -1784,7 +1809,9 @@ class MainActivity : ComponentActivity() {
         com.example.testdialer.review.BillingVerdict.FAIL -> "niezgodne (FAIL)"
     }
 
-    private fun editBillingReview(eventId: EventId) {
+    private fun editBillingReview(eventId: EventId) = withAnnotationsReady { showBillingReviewEditor(eventId) }
+
+    private fun showBillingReviewEditor(eventId: EventId) {
         val before = billingReviews.get(eventId)
         val expected = createOptionalInput("Oczekiwane naliczenie, np. 0,79 PLN").apply { setText(before.expected); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
         val actual = createOptionalInput("Rzeczywiste naliczenie / dowód, np. CDR").apply { setText(before.actual); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
@@ -1854,10 +1881,10 @@ class MainActivity : ComponentActivity() {
         reportBusy = true
         Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
         val appContext = applicationContext
-        val note = runNotes.get(stored.run.id)
-        val reviews = stored.run.events.associate { it.id.value to billingReviews.get(it.id) }.filterValues { it.reviewedAtMillis > 0 }
-        val interruptedAt = billingReviews.interruptedAt(stored.run.id)
         reportExecutor.execute {
+            val note = runNotes.get(stored.run.id)
+            val reviews = stored.run.events.associate { it.id.value to billingReviews.get(it.id) }.filterValues { it.reviewedAtMillis > 0 }
+            val interruptedAt = billingReviews.interruptedAt(stored.run.id)
             val result = runCatching {
                 val content = when (option) {
                     2 -> RunReportFormatter.json(stored, note, reviews, interruptedAt)

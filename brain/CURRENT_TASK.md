@@ -1,9 +1,8 @@
-# Faza 11 — bezpieczna warstwa migracji adnotacji
-Cel: przygotować idempotentne kopiowanie dotychczasowych notatek, ocen billingu i znaczników przerwania ze SharedPreferences do Room bez utraty kopii źródłowej.
-Kontekst: faza 10 potwierdziła wykonawczą migrację bazy Room 1→2. Branch feature/template-portability-20261005, PR #20 zależny od #19.
-Zakres: walidacja starych wpisów, sprawdzenie referencji do sesji/zdarzeń, zapis tylko brakujących rekordów w jednej transakcji, pierwszeństwo danych już obecnych w Room, brak kasowania preferencji, test ponownego uruchomienia i osieroconych danych.
-Poza zakresem: przełączenie UI na Room, automatyczne uruchomienie migracji, przywracanie historii, zmiany UI, usługi operatora i merge main.
-Kryteria: poprawne wpisy trafiają do Room; istniejące rekordy nie są nadpisywane; ponowienie niczego nie duplikuje; osierocone wpisy nie blokują pozostałych; stara kopia pozostaje czytelna.
-Tryb incremental. Testy: GitHub Actions testDebugUnitTest, oba APK i tożsamość preview.
-Raport: brain/reports/2026-10-06-phase11.md.
-Stan: checkpoint zakończony. Źródła 47bbcc4100f31210d62d562b8fa9b2e6404a7d1f; CI #156 PASS: 198 testów, zero failures/errors/skipped, oba APK i tożsamość preview PASS.
+# Faza 12 — uruchomienie migracji i adnotacje Room
+Cel: migracja adnotacji w tle, trwały zapis i szybkie odczyty UI bez zapytań Room na głównym wątku.
+Kontekst: faza 11 opublikowana, lokalne pliki identyczne z checkpointem zdalnym; PR #20, branch feature/template-portability-20261005.
+Zakres: wspólny magazyn z cache procesu, migracja przed pierwszym zapisem/eksportem, notatki/oceny/przerwania przez DAO, odświeżenie UI po inicjalizacji.
+Poza zakresem: przywracanie kopii, usługi operatora, merge, podpisywanie APK.
+Kryteria: stare dane pozostają, Room ma pierwszeństwo; zapis potwierdzany dopiero po transakcji; błąd migracji zachowuje odczyt starej kopii i jawnie wstrzymuje zapis; brak Room na wątku UI.
+Tryb incremental. Testy: start, ponowny start, zapis ocen/przerwań, nieznana sesja, błąd migracji, główny wątek, regresje eksportu i pełne CI.
+Raport: brain/reports/2026-10-06-phase12.md. Stan: implementacja gotowa do CI.

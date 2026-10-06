@@ -51,3 +51,5 @@
 - Branch fix/data-only-network-20260928, draft PR #18. CI pending; no merge.
 
 - Final verification: #106 app compiled, network test fixtures failed compilation; corrected using Robolectric shadows. #107 PASS: 140 tests, APKs and identity check. Real task navigation screenshots reviewed. Handset retest still pending.
+
+- 2026-10-06: faza 12 przełącza adnotacje na Room przez wspólny cache i inicjalizację w tle; CI pending. Użytkownik potwierdził godzinne checkpointy i późniejszy całościowy odbiór.

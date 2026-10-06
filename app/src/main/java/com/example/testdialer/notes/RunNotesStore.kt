@@ -4,11 +4,14 @@ import android.content.Context
 import com.example.testdialer.domain.RunId
 
 /** Editable annotations are separate from immutable Room event history. */
-class RunNotesStore(context: Context) {
+class RunNotesStore(context: Context, private val room: com.example.testdialer.persistence.RoomAnnotationStore? = null) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-    fun get(runId: RunId): String = preferences.getString(runId.value, "").orEmpty()
+    fun get(runId: RunId): String = if (room?.ready() == true) room.note(runId.value)?.text.orEmpty()
+        else preferences.getString(runId.value, "").orEmpty()
     fun save(runId: RunId, text: String): Boolean {
         require(text.length <= MAX_LENGTH)
+        if (room != null) return room.save(com.example.testdialer.persistence.AnnotationSnapshot(
+            com.example.testdialer.persistence.RunNoteEntity(runId.value, text), emptyList(), null))
         return preferences.edit().putString(runId.value, text).commit()
     }
     companion object {
