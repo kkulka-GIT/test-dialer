@@ -26,7 +26,11 @@
     <string name="run_start_empty">Rozpocznij pustą sesję</string>
     <string name="run_start_scenario">Scenariusz: połączenie, SMS i dane</string>
     <string name="run_active_status">Stan: aktywny</string>
-    <string name="run_complete">Zakończ sesja</string>
+    <string name="run_complete">Zakończ sesję</string>
+    <string name="run_complete_pending_title">Pozostały niewykonane testy</string>
+    <string name="run_complete_pending_message">Niewykonane testy: %1$d\n\n%2$s\n\nZamknięcie sesji zachowa zapisane wyniki, ale nie pozwoli kontynuować tej sesji. Niewykonane testy nie zostaną oznaczone jako wykonane ani pominięte.</string>
+    <string name="run_complete_keep_testing">Wróć do testów</string>
+    <string name="run_complete_confirm">Zakończ mimo to</string>
     <string name="run_no_planned_tasks">Brak zaplanowanych testów. Dodaj ręczny test Voice, SMS lub Data.</string>
     <string name="task_pending">Niewykonany</string>
     <string name="task_done">Wykonany</string>

@@ -756,7 +756,7 @@ class MainActivity : ComponentActivity() {
                 isEnabled = !state.busy && !state.executionInProgress
                 background = pillBackground(ColorPalette.ok)
                 setTextColor(ColorPalette.onAccent)
-                setOnClickListener { activeRunViewModel.complete() }
+                setOnClickListener { requestRunCompletion() }
             })
         })
         if (active.tasks.isEmpty()) {
@@ -798,6 +798,33 @@ class MainActivity : ComponentActivity() {
         runHomeView.manualSessionHost.visibility = View.GONE
         renderExecutionContext(currentTestType)
         runHomeView.showExecutionOnly(executionFocused)
+    }
+
+    private fun requestRunCompletion() {
+        val state = activeRunViewModel.state.value ?: return
+        val active = state.active ?: return
+        if (state.busy || state.executionInProgress || activeRunViewModel.executionInProgress()) return
+        val pending = active.tasks.filter { it.status == ActiveTaskStatus.PENDING }
+        if (pending.isEmpty()) {
+            activeRunViewModel.complete()
+            return
+        }
+        val runId = active.stored.run.id
+        AlertDialog.Builder(this)
+            .setTitle(R.string.run_complete_pending_title)
+            .setMessage(getString(
+                R.string.run_complete_pending_message,
+                pending.size,
+                pending.joinToString("\n") { "• ${it.step.title}" },
+            ))
+            .setNegativeButton(R.string.run_complete_keep_testing, null)
+            .setPositiveButton(R.string.run_complete_confirm) { _, _ ->
+                val current = activeRunViewModel.state.value
+                if (current?.active?.stored?.run?.id == runId && !current.busy &&
+                    !current.executionInProgress && !activeRunViewModel.executionInProgress()
+                ) activeRunViewModel.complete()
+            }
+            .show()
     }
 
     private fun openActiveTask(stepId: StepId?, action: TestAction) {
