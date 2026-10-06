@@ -285,7 +285,7 @@ class EvolutionWorkflowUiTest {
         val activity = controller.get()
         await { !getRegisterState(activity).busy }
         setRegisterState(activity, com.example.testdialer.register.RegisterUiState())
-        MainActivity::class.java.declaredMethods.first { it.name.startsWith("chooseComparison") }.apply {
+        MainActivity::class.java.declaredMethods.first { it.name.startsWith("chooseComparison-") && it.parameterTypes.contentEquals(arrayOf(String::class.java)) }.apply {
             isAccessible = true
             invoke(activity, "only")
         }

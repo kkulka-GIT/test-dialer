@@ -4,8 +4,11 @@ import android.content.Context
 import android.os.Looper
 
 /** Shared process cache keeps Views free of Room queries. Writes publish only after commit. */
-class RoomAnnotationStore(context: Context, private val dao: TestRunDao) {
-    private val migrator = LegacyAnnotationMigrator(context, dao)
+class RoomAnnotationStore(
+    context: Context,
+    private val dao: TestRunDao,
+    private val migrateLegacy: () -> Unit = { LegacyAnnotationMigrator(context, dao).migrate(); Unit },
+) {
     private val lock = Any()
     private data class Cache(
         val notes: Map<String, RunNoteEntity>,
@@ -22,7 +25,7 @@ class RoomAnnotationStore(context: Context, private val dao: TestRunDao) {
             if (!attempted) {
                 attempted = true
                 runCatching {
-                    migrator.migrate()
+                    migrateLegacy()
                     cache = Cache(dao.allRunNotes().associateBy { it.runId },
                         dao.allBillingReviews().associateBy { it.eventId },
                         dao.allRunInterruptions().associateBy { it.runId })

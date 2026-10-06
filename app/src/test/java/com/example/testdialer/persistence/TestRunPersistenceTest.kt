@@ -137,8 +137,9 @@ class TestRunPersistenceTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val id = RunId("fallback-run")
         RunNotesStore(context).save(id, "safe backup")
-        database.close()
-        val room = RoomAnnotationStore(context, database.testRunDao())
+        val room = RoomAnnotationStore(context, database.testRunDao()) {
+            throw IllegalStateException("Simulated migration failure")
+        }
         val notes = RunNotesStore(context, room)
         onWorker {
             org.junit.Assert.assertFalse(room.initialize())
