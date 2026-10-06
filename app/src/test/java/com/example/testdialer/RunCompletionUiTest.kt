@@ -27,6 +27,49 @@ import java.util.concurrent.Executors
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class RunCompletionUiTest {
+    @Test fun `skipping a planned test requires confirmation and cancellation preserves pending status`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val model = model(activity)
+        button(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        await { model.state.value?.active != null && model.state.value?.busy == false }
+        val task = model.state.value!!.active!!.tasks[1]
+        val skip = buttonWithDescription(
+            activity,
+            activity.getString(R.string.task_skip_accessibility, task.step.title),
+        )
+
+        skip.performClick()
+        var dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(views(dialog.window!!.decorView).filterIsInstance<TextView>().any {
+            it.text.toString() == activity.getString(R.string.task_skip_confirm_title)
+        })
+        assertTrue(dialog.findViewById<TextView>(android.R.id.message).text.toString().contains(task.step.title))
+        capture(dialog, "task-skip-confirmation.png")
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertEquals(
+            com.example.testdialer.active.ActiveTaskStatus.PENDING,
+            model.state.value!!.active!!.tasks[1].status,
+        )
+
+        buttonWithDescription(
+            activity,
+            activity.getString(R.string.task_skip_accessibility, task.step.title),
+        ).performClick()
+        dialog = ShadowAlertDialog.getLatestAlertDialog()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        await {
+            model.state.value?.busy == false &&
+                model.state.value?.active?.tasks?.get(1)?.status ==
+                com.example.testdialer.active.ActiveTaskStatus.SKIPPED
+        }
+        assertNotNull(model.state.value!!.active)
+        assertTrue(model.state.value!!.active!!.stored.run.events.isEmpty())
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `unfinished tests require confirmation and cancellation preserves the session`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
@@ -46,7 +89,7 @@ class RunCompletionUiTest {
         assertTrue(message.contains("Voice krajowy"))
         assertTrue(message.contains("Data HTTPS"))
         assertFalse(message.contains("SMS standard"))
-        capture(dialog)
+        capture(dialog, "run-completion-pending.png")
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
         assertEquals(before, model.state.value!!.active)
         assertFalse(model.state.value!!.busy)
@@ -103,14 +146,18 @@ class RunCompletionUiTest {
     private fun button(activity: MainActivity, text: String) = views(activity.findViewById(android.R.id.content))
         .filterIsInstance<Button>().first { it.text.toString() == text }
 
-    private fun capture(dialog: AlertDialog) {
+    private fun buttonWithDescription(activity: MainActivity, description: String) =
+        views(activity.findViewById(android.R.id.content)).filterIsInstance<Button>()
+            .first { it.contentDescription?.toString() == description }
+
+    private fun capture(dialog: AlertDialog, name: String) {
         val root = dialog.window!!.decorView
         root.measure(View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.AT_MOST))
         root.layout(0, 0, 360, root.measuredHeight)
         val bitmap = Bitmap.createBitmap(360, root.height, Bitmap.Config.ARGB_8888)
         root.draw(Canvas(bitmap))
-        val file = File("build/reports/screenshots/run-completion-pending.png").apply { parentFile!!.mkdirs() }
+        val file = File("build/reports/screenshots/$name").apply { parentFile!!.mkdirs() }
         file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()
     }
