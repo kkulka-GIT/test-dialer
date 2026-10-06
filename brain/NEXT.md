@@ -1,2 +1,2 @@
-# Domknąć kontrolę podpisu
-Aktualny branch feature/stable-signing-20261006 / PR #21. Sprawdzić CI commitu zapisującego pin: PASS, ten sam certificateSha256 i versionCode >116902. Udostępnić najnowszy APK. Blokada hasła z wcześniejszych raportów jest rozwiązana. Po domknięciu wybrać mały krok upraszczający pracę testera według PRODUCT_COMPASS.md; nie dodawać funkcji przed zakończeniem kontroli podpisu. Fizyczne usługi i instalacja niepotwierdzone.
+# Kolejny krok według kompasu produktu
+Aktualny branch feature/stable-signing-20261006 / PR #21. Stały podpis zakończony: CI #170 PASS, APK117001, pin sprawdzony względem wcześniejszego116902. Najpierw odświeżyć remote/PR/CI. Następnie ocenić małą poprawkę obsługi wykonania lub informacji do korelacji; przejrzeć istniejący ekran i wybrać konkretny problem testera przed implementacją. Zachować klucz/ID/numerację. Instalacja, SIM, operator, TalkBack/TTS NOT TESTED.

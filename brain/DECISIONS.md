@@ -116,3 +116,5 @@
 
 - 2026-10-06: na wyraźne polecenie użytkownika przechodzimy na istniejący stały klucz z GitHub Secrets; bez zachowania kompatybilności ze starymi debug/preview. Jeden release APK com.example.testdialer/Test Dialer do telefonu; debug .dev do rozwoju. Preview usunięty. Numeracja i bezpieczna obsługa klucza w SIGNING.md. Nie zmieniać tożsamości/podpisu po pierwszym stabilnym APK.
 - 2026-10-06 faza 14: przywracanie jest dostępne wyłącznie po prawidłowym odczycie całego pliku, podglądzie liczników i kliknięciu „Przywróć historię”. Puste archiwum nie oferuje zapisu. Operacja działa w tle i przeładowuje Rejestr po commit; sesje niezakończone są niewznawianą historią. Konflikty nie są automatycznie scalane.
+
+- 2026-10-06: publiczny pin certyfikatu zapisany po CI169 attempt2 i potwierdzony przez CI170. Kolejne APK muszą zachować certyfikat/ID i rosnący kod. CI nie potwierdza fizycznego zachowania danych przy aktualizacji.

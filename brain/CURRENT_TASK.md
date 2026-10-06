@@ -1,2 +1,2 @@
-# Stały podpis — weryfikacja kolejnego builda
-Branch feature/stable-signing-20261006, PR #21 zależny od #20. CI #169 attempt 2 PASS: testy, release, apksigner, tożsamość i cleanup. APK versionCode 116902; SHA256 zgodny z pobranym plikiem. Blokada hasła usunięta. Publiczny pin zapisany w scripts/android-signing-certificate.sha256. Następny build ma potwierdzić ten sam certyfikat i wyższy versionCode. Fizyczna instalacja/aktualizacja z historią NOT TESTED. Bez merge do main.
+# Stały podpis — checkpoint zakończony
+Branch feature/stable-signing-20261006 / PR #21 zależny od #20. CI #169 attempt 2 i CI #170 PASS. APK 117001 ma ten sam certyfikat co 116902; pin aktywny, apksigner/tożsamość/cleanup PASS. Pobrany APK SHA256 zgodny z metadanymi. Fizyczna instalacja i aktualizacja z historią NOT TESTED. Bez merge do main.
