@@ -1,5 +1,8 @@
 # Bieżący checkpoint
-Kompas PRODUCT_COMPASS.md. Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 12 zakończona (200 testów i oba APK); dokumentacja kompasu CI #161 PASS.
-Faza 13: transakcyjna warstwa przywracania pełnej historii i cache, pięć nowych regresji. Zakończona: źródła 495ae44a41cb4c9a27c20e64311bbde08f53e375; CI #162 PASS, 205 testów bez błędów/pominięć, oba APK i tożsamość preview PASS. Najpierw sprawdzić zdalny SHA, ewentualne CI dokumentacji i raport brain/reports/2026-10-06-phase13.md; naprawić błędy przed nową pracą. Metoda nie jest jeszcze podłączona do UI.
-Po PASS kandydat: jawne potwierdzenie istniejącego podglądu, worker-only zapis, komunikat liczby nowych/pominiętych sesji i konfliktu. Nie wykonywać usług. Importowane RUNNING/CREATED pozostają historią. Konflikt snapshotu/rewizji odrzuca całość; lokalne adnotacje mają pierwszeństwo.
-Kontynuować w istniejącym PR z fast-forward i expected SHA, bez force/main/merge. Telefon/aktualizacja/dostawcy dokumentów/TalkBack/TTS/SIM/operator/VPN NOT TESTED. Użytkownik odbierze całość po kolejnych etapach, nie wymaga odbioru każdej tury. Terminal nie ma autoryzacji push; używać połączenia GitHub.
+Kompas PRODUCT_COMPASS.md. Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 13 zakończona: d9ebfd80, CI #163 PASS; atomowy zapis przywracania potwierdzony.
+
+Faza 14 podłącza przywracanie do istniejącego podglądu kopii. Zapis wymaga jawnego potwierdzenia, odbywa się w tle, odświeża Rejestr i raportuje wynik. Puste archiwum pozostaje tylko podglądem. Sesje CREATED/RUNNING nigdy nie są wznawiane. Test obejmuje anulowanie, potwierdzenie, zachowanie rewizji i brak Intentu telekomunikacyjnego. Stan: oczekiwanie na CI; najpierw sprawdzić zdalny SHA, CI i raport brain/reports/2026-10-06-phase14.md.
+
+Po PASS ponownie ocenić kierunek. Kandydat: informacja o warunkach urządzenia zapisana przy wykonaniu (źródło i czas, bez nadmiernych uprawnień) albo usprawnienie punktów kontrolnych scenariusza. Nie dodawać obu naraz. Konflikty importu pozostają bez automatycznego scalania.
+
+Bez force/main/merge, usług operatora i usuwania historii. Telefon/aktualizacja/dostawcy dokumentów/TalkBack/TTS/SIM/operator/VPN NOT TESTED. Użytkownik odbierze całość później. Terminal bez push auth; używać połączenia GitHub z expected SHA.
