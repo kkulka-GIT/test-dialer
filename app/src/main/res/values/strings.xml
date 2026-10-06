@@ -201,6 +201,10 @@
     <string name="register_correlation_subscriber">Alias abonenta: %1$s</string>
     <string name="register_correlation_references_none">Referencje korelacyjne: brak</string>
     <string name="register_correlation_reference">Referencja: %1$s = %2$s</string>
+    <string name="register_copy_correlation">Kopiuj dane do korelacji</string>
+    <string name="register_copy_correlation_accessibility">Kopiuj czas, identyfikatory, parametry i obserwację zdarzenia do korelacji w innym systemie</string>
+    <string name="register_correlation_copied">Dane zdarzenia skopiowane</string>
+    <string name="register_correlation_copy_failed">Nie udało się skopiować danych zdarzenia</string>
     <string name="register_value_missing">brak</string>
     <string name="register_event_missing">Nie znaleziono wskazanego zdarzenia w tym sesji.</string>
     <string name="manual_history_item">Status: %1$s\nStart: %2$s</string>

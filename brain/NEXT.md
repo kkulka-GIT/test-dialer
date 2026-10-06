@@ -1,2 +1,2 @@
-# Kolejny krok według kompasu produktu
-Aktualny branch feature/stable-signing-20261006 / PR #21. Stały podpis zakończony: CI #170 PASS, APK117001, pin sprawdzony względem wcześniejszego116902. Najpierw odświeżyć remote/PR/CI. Następnie ocenić małą poprawkę obsługi wykonania lub informacji do korelacji; przejrzeć istniejący ekran i wybrać konkretny problem testera przed implementacją. Zachować klucz/ID/numerację. Instalacja, SIM, operator, TalkBack/TTS NOT TESTED.
+# Domknąć kopiowanie danych do korelacji
+Aktualny branch feature/stable-signing-20261006 / PR #21. Sprawdzić CI zmiany kopiowania zdarzenia i artefakt stable APK. Po PASS potwierdzić, że pin certyfikatu, applicationId i rosnący versionCode nadal przechodzą. Następnie ocenić małą poprawkę kontroli wykonania. Schowek i TalkBack wymagają odbioru na telefonie; CI potwierdza strukturę treści i brak pól oceny billingu.

@@ -1471,8 +1471,53 @@ class MainActivity : ComponentActivity() {
                     addView(spaceVertical(dimen(5)))
                     addView(createBodyText(getString(R.string.register_correlation_reference, reference.namespace, reference.value)))
                 }
+                addView(spaceVertical(dimen(10)))
+                addView(Button(this@MainActivity).apply {
+                    setText(R.string.register_copy_correlation)
+                    isAllCaps = false
+                    minHeight = dimen(48)
+                    contentDescription = getString(R.string.register_copy_correlation_accessibility)
+                    setOnClickListener { copyEventCorrelation(event) }
+                })
             })
         }
+    }
+
+    private fun copyEventCorrelation(event: TestEvent) {
+        val correlation = event.correlation
+        val observation = event.observation
+        val content = buildString {
+            appendLine("Test Dialer — dane zdarzenia do korelacji")
+            appendLine("Czas: ${formatDateWithMillis(event.occurredAtMillis)}")
+            appendLine("Epoch ms: ${event.occurredAtMillis}")
+            appendLine("Typ: ${event.action.serviceType.name}")
+            appendLine("Event ID: ${event.id.value}")
+            appendLine("Run ID: ${event.runId.value}")
+            appendLine("Step ID: ${event.stepId.value}")
+            eventParameters(event).forEach { appendLine(it) }
+            appendLine("Źródło: ${correlation.sourceAddress.orEmpty()}")
+            appendLine("Cel korelacji: ${correlation.destinationAddress.orEmpty()}")
+            appendLine("Alias abonenta: ${correlation.subscriberAlias.orEmpty()}")
+            correlation.references.forEach { appendLine("${it.namespace}: ${it.value}") }
+            if (observation == null) appendLine("Obserwacja: brak") else {
+                appendLine("Obserwacja: ${observation.status.name}")
+                appendLine("Źródło obserwacji: ${observation.source.name}")
+                appendLine("Kod obserwacji: ${observation.code}")
+            }
+            append("Ocena billingu: poza tym zestawem; wymaga osobnej weryfikacji")
+        }
+        runCatching {
+            val clip = ClipData.newPlainText("Test Dialer — korelacja", content)
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                clip.description.extras = android.os.PersistableBundle().apply {
+                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            }
+            getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+        }.fold(
+            onSuccess = { Toast.makeText(this, R.string.register_correlation_copied, Toast.LENGTH_SHORT).show() },
+            onFailure = { Toast.makeText(this, R.string.register_correlation_copy_failed, Toast.LENGTH_LONG).show() },
+        )
     }
 
     private fun repeatPreparationBlocked(): Boolean = activeRunState.active != null || activeRunState.busy ||

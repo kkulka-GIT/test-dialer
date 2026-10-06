@@ -118,3 +118,4 @@
 - 2026-10-06 faza 14: przywracanie jest dostępne wyłącznie po prawidłowym odczycie całego pliku, podglądzie liczników i kliknięciu „Przywróć historię”. Puste archiwum nie oferuje zapisu. Operacja działa w tle i przeładowuje Rejestr po commit; sesje niezakończone są niewznawianą historią. Konflikty nie są automatycznie scalane.
 
 - 2026-10-06: publiczny pin certyfikatu zapisany po CI169 attempt2 i potwierdzony przez CI170. Kolejne APK muszą zachować certyfikat/ID i rosnący kod. CI nie potwierdza fizycznego zachowania danych przy aktualizacji.
+- 2026-10-06: szczegóły zdarzenia oferują jedną kopię danych do korelacji w CDR/backendzie. Zawiera czas, identyfikatory, parametry, korelację i obserwację, ale nie ręczną ocenę billingu; zapobiega to przenoszeniu oceny testera jako faktu wykonania.

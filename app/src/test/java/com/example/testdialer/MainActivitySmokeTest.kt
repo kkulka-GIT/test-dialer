@@ -372,6 +372,15 @@ class MainActivitySmokeTest {
         assertTrue(detailText.contains("+48123"))
         assertTrue(detailText.contains("event-1"))
 
+        findButton(activity, activity.getString(R.string.register_copy_correlation)).performClick()
+        val copied = activity.getSystemService(android.content.ClipboardManager::class.java)
+            .primaryClip!!.getItemAt(0).text.toString()
+        assertTrue(copied.contains("Epoch ms: 2"))
+        assertTrue(copied.contains("Event ID: event-1"))
+        assertTrue(copied.contains("Cel: +48123"))
+        assertTrue(copied.contains("Ocena billingu: poza tym zestawem"))
+        assertFalse(copied.contains("Oczekiwano:"))
+
         findButton(activity, activity.getString(R.string.register_back_to_run)).performClick()
         setRegisterState(activity, RegisterUiState(selectedRun = stored))
         assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
