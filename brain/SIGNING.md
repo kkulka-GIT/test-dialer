@@ -6,3 +6,5 @@ versionCode = 100000 + github.run_number * 100 + github.run_attempt; run_attempt
 Keystore odtwarzany w RUNNER_TEMP z ograniczonymi prawami dopiero po testach. Hasła tylko w środowisku kroku release; Gradle --no-daemon. Nie korzystać z pull_request_target; forki uruchamiają testy bez podpisywania/secrets. always cleanup usuwa pliki tymczasowe także po błędzie. Artefakt podpisany jest publikowany dopiero po PASS apksigner i tożsamości aapt.
 Weryfikacja sprawdza podpis, pojedynczego sygnatariusza zgodnego z publicznym certyfikatem wyeksportowanym z keystore, applicationId, label, versionCode/versionName oraz brak debuggable. Publiczny odcisk scripts/android-signing-certificate.sha256 po pierwszym udanym CI blokuje przypadkową podmianę klucza. Nie jest sekretem.
 Fizyczna instalacja i zachowanie historii przy aktualizacji na telefonie wymagają odbioru; CI nie potwierdza ich samo. Podpis i tożsamość można potwierdzić automatycznie. Bez merge do main.
+
+Pierwsze potwierdzenie: CI #169 attempt 2, versionCode 116902, publiczny SHA256 certyfikatu 64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11. Pin obowiązuje kolejne buildy.

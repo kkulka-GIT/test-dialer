@@ -11,3 +11,5 @@ CI #165/#166 zatrzymano przed podpisywaniem na regresjach testów UI fazy 14: uk
 CI #168: wszystkie testy aplikacji i skryptów PASS, ale keytool odrzucił otwarcie keystore przed zbudowaniem release. Dodano klasyfikację błędu bez wypisywania surowej diagnostyki ani Secrets. Cleanup PASS. Podpis nadal niepotwierdzony.
 
 CI #169 (https://github.com/kkulka-GIT/test-dialer/actions/runs/37443735529): testy i numeracja PASS, diagnostyka potwierdza odrzucenie hasła ANDROID_KEYSTORE_PASSWORD do przesłanego keystore. Nie odczytano ani nie zalogowano wartości Secrets. Cleanup PASS; release APK i apksigner nie wykonane. Czeka na poprawkę Secrets przez użytkownika; pin nadal niezapisany. Scheduler sprawdzony około18:00: enabled, HOURLY, last_run17:02 Warsaw; brak pełnej historii i next_run w API. Nie zmieniono harmonogramu ani main.
+
+2026-10-06: po korekcie Secrets CI #169 attempt 2 PASS, versionCode 116902. Pobrany APK ma SHA256 zgodny z metadanymi. Zapisano publiczny pin certyfikatu; następny build sprawdzi ciągłość podpisu i rosnącą wersję. Dawna blokada nieaktualna. Telefon/data retention NOT TESTED.
