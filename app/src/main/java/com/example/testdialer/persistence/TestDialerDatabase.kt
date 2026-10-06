@@ -9,6 +9,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import android.database.sqlite.SQLiteConstraintException
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 data class PersistenceSnapshot(
     val scenario: ScenarioEntity,
@@ -17,6 +19,12 @@ data class PersistenceSnapshot(
     val events: List<TestEventEntity>,
     val references: List<CorrelationReferenceEntity>,
     val timeline: List<TimelineEntryEntity>,
+)
+
+data class AnnotationSnapshot(
+    val note: RunNoteEntity?,
+    val reviews: List<BillingReviewEntity>,
+    val interruption: RunInterruptionEntity?,
 )
 
 class SnapshotConflictException(message: String) : IllegalStateException(message)
@@ -52,6 +60,24 @@ abstract class TestRunDao {
 
     @Query("SELECT COUNT(*) FROM timeline_entries WHERE runId = :runId")
     abstract fun timelineCount(runId: String): Int
+
+    @Query("SELECT * FROM run_notes WHERE runId = :runId")
+    abstract fun findRunNote(runId: String): RunNoteEntity?
+
+    @Query("SELECT r.* FROM billing_reviews r INNER JOIN test_events e ON e.eventId = r.eventId WHERE e.runId = :runId ORDER BY r.eventId")
+    abstract fun findBillingReviews(runId: String): List<BillingReviewEntity>
+
+    @Query("SELECT * FROM run_interruptions WHERE runId = :runId")
+    abstract fun findRunInterruption(runId: String): RunInterruptionEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertRunNote(entity: RunNoteEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertBillingReviews(entities: List<BillingReviewEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    protected abstract fun upsertRunInterruption(entity: RunInterruptionEntity)
 
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertScenario(entity: ScenarioEntity)
@@ -118,6 +144,19 @@ abstract class TestRunDao {
             references = findReferences(runId),
             timeline = findTimeline(runId),
         )
+    }
+
+    @androidx.room.Transaction
+    open fun loadAnnotations(runId: String): AnnotationSnapshot = AnnotationSnapshot(
+        findRunNote(runId), findBillingReviews(runId), findRunInterruption(runId),
+    )
+
+    /** One transaction boundary for future history restore; callers validate values before entry. */
+    @androidx.room.Transaction
+    open fun storeAnnotations(snapshot: AnnotationSnapshot) {
+        snapshot.note?.let(::upsertRunNote)
+        upsertBillingReviews(snapshot.reviews)
+        snapshot.interruption?.let(::upsertRunInterruption)
     }
 
     @androidx.room.Transaction
@@ -223,8 +262,11 @@ abstract class TestRunDao {
         TestEventEntity::class,
         CorrelationReferenceEntity::class,
         TimelineEntryEntity::class,
+        RunNoteEntity::class,
+        BillingReviewEntity::class,
+        RunInterruptionEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class TestDialerDatabase : RoomDatabase() {
@@ -233,8 +275,20 @@ abstract class TestDialerDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME = "test-dialer-history.db"
 
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `run_notes` (`runId` TEXT NOT NULL, `text` TEXT NOT NULL, PRIMARY KEY(`runId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_notes_runId` ON `run_notes` (`runId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `billing_reviews` (`eventId` TEXT NOT NULL, `expected` TEXT NOT NULL, `actual` TEXT NOT NULL, `verdict` TEXT NOT NULL, `reviewedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`eventId`), FOREIGN KEY(`eventId`) REFERENCES `test_events`(`eventId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_billing_reviews_eventId` ON `billing_reviews` (`eventId`)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS `run_interruptions` (`runId` TEXT NOT NULL, `interruptedAtMillis` INTEGER NOT NULL, PRIMARY KEY(`runId`), FOREIGN KEY(`runId`) REFERENCES `test_runs`(`runId`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_run_interruptions_runId` ON `run_interruptions` (`runId`)")
+            }
+        }
+
         fun create(context: Context): TestDialerDatabase =
             Room.databaseBuilder(context, TestDialerDatabase::class.java, DATABASE_NAME)
+                .addMigrations(MIGRATION_1_2)
                 .build()
     }
 }

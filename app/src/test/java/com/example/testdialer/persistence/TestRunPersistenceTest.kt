@@ -70,6 +70,29 @@ class TestRunPersistenceTest {
     }
 
     @Test
+    fun annotationsShareOneTransactionAndKeepTechnicalHistorySeparate() {
+        val scenario = scenario()
+        val run = completedRun()
+        repository.saveSnapshot(scenario, run)
+        val eventId = run.events.first().id.value
+        val annotations = AnnotationSnapshot(
+            RunNoteEntity(run.id.value, "Notatka testera"),
+            listOf(BillingReviewEntity(eventId, "0,79 PLN", "1,58 PLN", "FAIL", 2_000)),
+            RunInterruptionEntity(run.id.value, 2_100),
+        )
+        database.testRunDao().storeAnnotations(annotations)
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+        assertNotNull(repository.get(run.id)?.run?.events?.first()?.observation)
+
+        val replacement = annotations.copy(
+            note = RunNoteEntity(run.id.value, "Nie może zostać częściowo zapisane"),
+            reviews = listOf(BillingReviewEntity("missing-event", "x", "y", "FAIL", 2_200)),
+        )
+        assertThrows(Exception::class.java) { database.testRunDao().storeAnnotations(replacement) }
+        assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+    }
+
+    @Test
     fun revisionConflictDoesNotReplaceExistingSnapshot() {
         val scenario = scenario()
         val first = runningRun()

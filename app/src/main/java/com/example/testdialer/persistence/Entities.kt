@@ -155,3 +155,30 @@ data class TimelineEntryEntity(
     val attemptId: String?,
     val relatedEventId: String?,
 )
+
+@Entity(
+    tableName = "run_notes",
+    foreignKeys = [ForeignKey(entity = TestRunEntity::class, parentColumns = ["runId"], childColumns = ["runId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("runId")],
+)
+data class RunNoteEntity(@androidx.room.PrimaryKey val runId: String, val text: String)
+
+@Entity(
+    tableName = "billing_reviews",
+    foreignKeys = [ForeignKey(entity = TestEventEntity::class, parentColumns = ["eventId"], childColumns = ["eventId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("eventId")],
+)
+data class BillingReviewEntity(
+    @androidx.room.PrimaryKey val eventId: String,
+    val expected: String,
+    val actual: String,
+    val verdict: String,
+    val reviewedAtMillis: Long,
+)
+
+@Entity(
+    tableName = "run_interruptions",
+    foreignKeys = [ForeignKey(entity = TestRunEntity::class, parentColumns = ["runId"], childColumns = ["runId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("runId")],
+)
+data class RunInterruptionEntity(@androidx.room.PrimaryKey val runId: String, val interruptedAtMillis: Long)
