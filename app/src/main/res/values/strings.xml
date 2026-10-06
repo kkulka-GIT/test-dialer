@@ -31,6 +31,10 @@
     <string name="run_complete_pending_message">Niewykonane testy: %1$d\n\n%2$s\n\nZamknięcie sesji zachowa zapisane wyniki, ale nie pozwoli kontynuować tej sesji. Niewykonane testy nie zostaną oznaczone jako wykonane ani pominięte.</string>
     <string name="run_complete_keep_testing">Wróć do testów</string>
     <string name="run_complete_confirm">Zakończ mimo to</string>
+    <string name="run_exit_active_title">Sesja nadal trwa</string>
+    <string name="run_exit_active_message">%1$s\n\nWyjście zamknie ten ekran. Sesja pozostanie zapisana w Rejestrze jako „w toku”, ale nie będzie można jej kontynuować.</string>
+    <string name="run_exit_active_stay">Zostań w sesji</string>
+    <string name="run_exit_active_confirm">Wyjdź mimo to</string>
     <string name="run_no_planned_tasks">Brak zaplanowanych testów. Dodaj ręczny test Voice, SMS lub Data.</string>
     <string name="task_pending">Niewykonany</string>
     <string name="task_done">Wykonany</string>

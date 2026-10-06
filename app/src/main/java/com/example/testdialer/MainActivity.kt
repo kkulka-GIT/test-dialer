@@ -412,6 +412,19 @@ class MainActivity : ComponentActivity() {
                 setExecutionFocus(false)
             } else if (manualSessionState.selected != null) {
                 manualSessionViewModel.clearSelection()
+            } else if (activeRunState.active != null || manualSessionState.active != null) {
+                val sessionName = activeRunState.active?.stored?.scenario?.name
+                    ?: manualSessionState.active?.stored?.scenario?.name
+                    ?: getString(R.string.run_active_status)
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle(R.string.run_exit_active_title)
+                    .setMessage(getString(R.string.run_exit_active_message, sessionName))
+                    .setNegativeButton(R.string.run_exit_active_stay, null)
+                    .setPositiveButton(R.string.run_exit_active_confirm) { _, _ ->
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                    .show()
             } else {
                 isEnabled = false
                 onBackPressedDispatcher.onBackPressed()

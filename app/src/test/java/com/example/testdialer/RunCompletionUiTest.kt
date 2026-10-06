@@ -27,6 +27,32 @@ import java.util.concurrent.Executors
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class RunCompletionUiTest {
+    @Test fun `back from an active session requires confirmation and cancellation keeps it usable`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val model = model(activity)
+        button(activity, activity.getString(R.string.run_start_scenario)).performClick()
+        await { model.state.value?.active != null && model.state.value?.busy == false }
+        val before = model.state.value!!.active!!
+
+        activity.onBackPressedDispatcher.onBackPressed()
+        var dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(dialog.findViewById<TextView>(android.R.id.message).text.toString().contains(before.stored.scenario.name))
+        assertTrue(dialog.findViewById<TextView>(android.R.id.message).text.toString().contains("nie będzie można jej kontynuować"))
+        capture(dialog, "active-session-exit-confirmation.png")
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertFalse(activity.isFinishing)
+        assertEquals(before, model.state.value!!.active)
+
+        activity.onBackPressedDispatcher.onBackPressed()
+        dialog = ShadowAlertDialog.getLatestAlertDialog()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick()
+        assertTrue(activity.isFinishing)
+        assertEquals(before.stored.run.id, model.state.value!!.active!!.stored.run.id)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `skipping a planned test requires confirmation and cancellation preserves pending status`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
