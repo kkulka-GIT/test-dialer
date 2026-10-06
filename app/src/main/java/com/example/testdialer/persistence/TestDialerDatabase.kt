@@ -118,15 +118,6 @@ abstract class TestRunDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     protected abstract fun insertTimeline(entities: List<TimelineEntryEntity>)
 
-    @Query("DELETE FROM timeline_entries WHERE runId = :runId")
-    protected abstract fun deleteTimeline(runId: String)
-
-    @Query("DELETE FROM correlation_references WHERE eventId IN (SELECT eventId FROM test_events WHERE runId = :runId)")
-    protected abstract fun deleteReferences(runId: String)
-
-    @Query("DELETE FROM test_events WHERE runId = :runId")
-    protected abstract fun deleteEvents(runId: String)
-
     @Query("DELETE FROM test_runs WHERE runId = :runId")
     abstract fun deleteRun(runId: String): Int
 
@@ -207,12 +198,13 @@ abstract class TestRunDao {
             throw SnapshotConflictException("Snapshot revision is stale")
         }
 
-        deleteTimeline(nextRun.runId)
-        deleteReferences(nextRun.runId)
-        deleteEvents(nextRun.runId)
-        insertEvents(snapshot.events)
-        insertReferences(snapshot.references)
-        insertTimeline(snapshot.timeline)
+        // Existing evidence is immutable. Deleting and reinserting it would cascade-delete
+        // billing reviews; append only after validating the complete extension above.
+        val existingEventIds = existing?.events?.map { it.eventId }?.toSet().orEmpty()
+        val existingReferences = existing?.references?.toSet().orEmpty()
+        insertEvents(snapshot.events.filter { it.eventId !in existingEventIds })
+        insertReferences(snapshot.references.filter { it !in existingReferences })
+        insertTimeline(snapshot.timeline.drop(existing?.timeline?.size ?: 0))
         return nextRevision
     }
 

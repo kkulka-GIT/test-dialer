@@ -93,6 +93,34 @@ class TestRunPersistenceTest {
     }
 
     @Test
+    fun extensionAndRejectedAppendPreserveAllAnnotations() {
+        val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
+        val dao = database.testRunDao()
+        dao.storeSnapshot(original, null)
+        val annotations = AnnotationSnapshot(
+            RunNoteEntity(original.run.runId, "Keep note"),
+            listOf(BillingReviewEntity(original.events.first().eventId, "0", "1", "FAIL", 2_000)),
+            RunInterruptionEntity(original.run.runId, 2_100),
+        )
+        dao.storeAnnotations(annotations)
+        val invalidEntry = original.timeline.last().copy(
+            timelineEntryId = "invalid-append",
+            sequenceNumber = original.timeline.size.toLong(),
+            relatedEventId = "missing-event",
+        )
+        assertThrows(RuntimeException::class.java) {
+            dao.storeSnapshot(original.copy(timeline = original.timeline + invalidEntry), 0L)
+        }
+        assertEquals(original, dao.loadSnapshot(original.run.runId))
+        assertEquals(annotations, dao.loadAnnotations(original.run.runId))
+
+        repository.saveSnapshot(scenario(), completedRun(), 0L)
+        assertEquals(completedRun(), repository.get(RunId(original.run.runId))?.run)
+        assertEquals(annotations, dao.loadAnnotations(original.run.runId))
+        assertEquals(original.references, dao.findReferences(original.run.runId))
+    }
+
+    @Test
     fun revisionConflictDoesNotReplaceExistingSnapshot() {
         val scenario = scenario()
         val first = runningRun()
@@ -189,7 +217,7 @@ class TestRunPersistenceTest {
     }
 
     @Test
-    fun legalExtensionReplacesChildrenWithoutDuplicates() {
+    fun legalExtensionAppendsHistoryWithoutDuplicates() {
         val initial = repository.saveSnapshot(scenario(), runningRun())
         val completed = completedRun()
 
@@ -201,7 +229,7 @@ class TestRunPersistenceTest {
     }
 
     @Test
-    fun failureAfterChildDeletionRollsBackCasAndChildren() {
+    fun failureDuringAppendRollsBackCasAndChildren() {
         val original = TestRunPersistenceMapper.toPersistence(scenario(), runningRun())
         database.testRunDao().storeSnapshot(original, null)
         val invalidEntry = original.timeline.last().copy(
