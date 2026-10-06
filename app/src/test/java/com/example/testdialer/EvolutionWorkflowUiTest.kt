@@ -285,13 +285,23 @@ class EvolutionWorkflowUiTest {
         var dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        assertNull((activity.application as TestDialerApplication).testRunRepository.get(runId))
+        val repository = (activity.application as TestDialerApplication).testRunRepository
+        fun stored() = java.util.concurrent.Executors.newSingleThreadExecutor().let { worker ->
+            try { worker.submit<com.example.testdialer.persistence.StoredTestRun?> { repository.get(runId) }.get() }
+            finally { worker.shutdownNow() }
+        }
+        assertNull(stored())
 
         preview.invoke(activity, listOf(entry))
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        await { (activity.application as TestDialerApplication).testRunRepository.get(runId) != null }
-        assertEquals(4, (activity.application as TestDialerApplication).testRunRepository.get(runId)?.revision)
+        var restored: com.example.testdialer.persistence.StoredTestRun? = null
+        var attempts = 0
+        while (restored == null && attempts++ < 200) {
+            restored = stored()
+            if (restored == null) Thread.sleep(5)
+        }
+        assertEquals(4, restored?.revision)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
