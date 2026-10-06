@@ -212,6 +212,40 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `full history backup uses document pickers and import remains preview only`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 5, 5)
+        val backup = ShadowAlertDialog.getLatestAlertDialog()
+        captureRoot(backup.window!!.decorView, "phase7-history-backup")
+        backup.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val create = Shadows.shadowOf(activity).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CREATE_DOCUMENT, create.action)
+        assertEquals("application/json", create.type)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+
+        button(activity, "Ustawienia").performClick()
+        ShadowAlertDialog.getLatestAlertDialog().listView.performItemClick(null, 5, 5)
+        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEUTRAL).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(android.content.Intent.ACTION_OPEN_DOCUMENT, Shadows.shadowOf(activity).nextStartedActivity.action)
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+
+        MainActivity::class.java.getDeclaredMethod("showHistoryImportPreview", List::class.java).apply {
+            isAccessible = true
+            invoke(activity, emptyList<com.example.testdialer.report.HistoryArchiveEntry>())
+        }
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(preview.isShowing)
+        val text = views(preview.window!!.decorView).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text.toString() }
+        assertTrue(text.contains("podgląd bez zapisu", ignoreCase = true))
+        assertTrue(text.contains("Sesje: 0"))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `comparison filters differences and shares a read-only text snapshot`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()

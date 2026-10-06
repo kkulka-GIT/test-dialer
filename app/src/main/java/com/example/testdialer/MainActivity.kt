@@ -100,6 +100,37 @@ class MainActivity : ComponentActivity() {
             } }
         }
     }
+    private val exportHistoryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                val repository = (application as TestDialerApplication).testRunRepository
+                val entries = repository.listSummaries().map { summary ->
+                    val stored = repository.get(summary.runId) ?: error("Sesja ${summary.runId.value} jest niedostępna.")
+                    val reviews = stored.run.events.associate { it.id to billingReviews.get(it.id) }
+                        .filterValues { it.reviewedAtMillis > 0 }
+                    com.example.testdialer.report.HistoryArchiveEntry(
+                        stored, runNotes.get(stored.run.id), reviews, billingReviews.interruptedAt(stored.run.id),
+                    )
+                }
+                val archive = com.example.testdialer.report.HistoryArchive.encode(entries)
+                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
+                    ?: error("Nie można otworzyć pliku do zapisu.")
+                entries.size
+            }
+            templateTransferMessage(result.fold({ "Kopia historii zapisana. Sesje: $it." }, { "Nie udało się zapisać historii: ${it.message}" }))
+        }
+    }
+    private val previewHistoryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) reportExecutor.execute {
+            val result = runCatching {
+                contentResolver.openInputStream(uri)?.use(com.example.testdialer.report.HistoryArchive::read)
+                    ?: error("Nie można otworzyć pliku.")
+            }
+            runOnUiThread { if (!isDestroyed && !isFinishing) result.fold(::showHistoryImportPreview) {
+                templateTransferMessage("Nie udało się odczytać kopii historii: ${it.message}")
+            } }
+        }
+    }
     private val exportTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) reportExecutor.execute {
             val result = runCatching {
@@ -517,10 +548,11 @@ class MainActivity : ComponentActivity() {
         val preferences = getSharedPreferences("ui-settings", MODE_PRIVATE)
         val enabled = preferences.getBoolean("speech", false)
         AlertDialog.Builder(this).setTitle("Ustawienia")
-            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie", "Szablony i kopia zapasowa", "Zapisane plany sesji")) { _, index ->
+            .setItems(arrayOf("Motyw ekranu", if (enabled) "Wyłącz komunikaty głosowe" else "Włącz komunikaty głosowe", "Odczytaj krótkie podsumowanie", "Szablony i kopia zapasowa", "Zapisane plany sesji", "Historia i kopia zapasowa")) { _, index ->
                 when (index) {
                     3 -> showTemplateBackup()
                     4 -> showScenarioPlans()
+                    5 -> showHistoryBackup()
                     0 -> showThemeSettings()
                     1 -> {
                         preferences.edit().putBoolean("speech", !enabled).apply()
@@ -1519,6 +1551,29 @@ class MainActivity : ComponentActivity() {
             .setPositiveButton("Zapisz kopię") { _, _ -> exportPlansLauncher.launch("test-dialer-plany.json") }
             .setNeutralButton("Importuj") { _, _ -> importPlansLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
             .setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showHistoryBackup() {
+        AlertDialog.Builder(this).setTitle("Historia i kopia zapasowa")
+            .setMessage("Kopia zawiera pełne sesje, parametry, obserwacje, notatki i osobno oznaczone ręczne oceny billingu. Może zawierać numery, treści SMS oraz identyfikatory korelacji. Odczyt pliku pokazuje tylko podgląd i niczego jeszcze nie przywraca.")
+            .setPositiveButton("Zapisz kopię") { _, _ -> exportHistoryLauncher.launch("test-dialer-historia.json") }
+            .setNeutralButton("Sprawdź plik") { _, _ -> previewHistoryLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+            .setNegativeButton("Zamknij", null).show()
+    }
+
+    private fun showHistoryImportPreview(entries: List<com.example.testdialer.report.HistoryArchiveEntry>) {
+        val events = entries.sumOf { it.stored.run.events.size }
+        val observations = entries.sumOf { entry -> entry.stored.run.events.count { it.observation != null } }
+        val reviews = entries.sumOf { it.reviews.size }
+        val notes = entries.count { it.testerNote.isNotBlank() }
+        val running = entries.count { it.stored.run.status == TestRunStatus.RUNNING || it.stored.run.status == TestRunStatus.CREATED }
+        val examples = entries.take(6).joinToString("\n") { "${it.stored.scenario.name} · ${it.stored.run.events.size} zdarzeń" }
+        AlertDialog.Builder(this).setTitle("Podgląd kopii historii")
+            .setMessage("Sesje: ${entries.size}. Zdarzenia: $events. Obserwacje techniczne: $observations. Ręczne oceny billingu: $reviews. Notatki: $notes." +
+                (if (running > 0) "\nSesje niezakończone w pliku: $running." else "") +
+                (if (examples.isBlank()) "\n\nPlik nie zawiera sesji." else "\n\n$examples" + if (entries.size > 6) "\n… i pozostałe ${entries.size - 6}" else "") +
+                "\n\nTo jest podgląd bez zapisu. Przywracanie zostanie dodane dopiero z jedną, bezpieczną transakcją; żadna sesja nie została uruchomiona.")
+            .setPositiveButton("Zamknij", null).show()
     }
 
     private fun confirmPlanImport(items: List<com.example.testdialer.active.SavedScenarioPlan>) {
