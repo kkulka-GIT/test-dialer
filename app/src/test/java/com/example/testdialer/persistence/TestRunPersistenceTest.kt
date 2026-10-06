@@ -24,6 +24,10 @@ import com.example.testdialer.domain.TimelineEntryId
 import com.example.testdialer.domain.execution.CapturedTime
 import com.example.testdialer.domain.execution.TimelineEntry
 import com.example.testdialer.domain.execution.TimelineEntryKind
+import com.example.testdialer.notes.RunNotesStore
+import com.example.testdialer.review.BillingReview
+import com.example.testdialer.review.BillingReviewStore
+import com.example.testdialer.review.BillingVerdict
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -90,6 +94,32 @@ class TestRunPersistenceTest {
         )
         assertThrows(Exception::class.java) { database.testRunDao().storeAnnotations(replacement) }
         assertEquals(annotations, database.testRunDao().loadAnnotations(run.id.value))
+    }
+
+    @Test
+    fun legacyMigrationIsIdempotentPreservesBackupAndNeverOverwritesRoom() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        repository.saveSnapshot(scenario(), completedRun())
+        RunNotesStore(context).save(RunId("run-1"), "legacy note")
+        RunNotesStore(context).save(RunId("missing-run"), "orphan note")
+        BillingReviewStore(context).save(
+            EventId("event-1"),
+            BillingReview("0,79 PLN", "1,58 PLN", BillingVerdict.FAIL, 2_000),
+        )
+        BillingReviewStore(context).markInterrupted(RunId("run-1"), 2_100)
+        database.testRunDao().storeAnnotations(
+            AnnotationSnapshot(RunNoteEntity("run-1", "newer Room note"), emptyList(), null),
+        )
+
+        val migrator = LegacyAnnotationMigrator(context, database.testRunDao())
+        assertEquals(LegacyMigrationResult(0, 1, 1), migrator.migrate())
+        assertEquals(LegacyMigrationResult(0, 0, 0), migrator.migrate())
+        val stored = database.testRunDao().loadAnnotations("run-1")
+        assertEquals("newer Room note", stored.note?.text)
+        assertEquals("FAIL", stored.reviews.single().verdict)
+        assertEquals(2_100L, stored.interruption?.interruptedAtMillis)
+        assertEquals("legacy note", RunNotesStore(context).get(RunId("run-1")))
+        assertEquals("orphan note", RunNotesStore(context).get(RunId("missing-run")))
     }
 
     @Test

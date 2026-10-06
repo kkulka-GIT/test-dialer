@@ -27,6 +27,14 @@ data class AnnotationSnapshot(
     val interruption: RunInterruptionEntity?,
 )
 
+data class LegacyAnnotationBatch(
+    val notes: List<RunNoteEntity>,
+    val reviews: List<BillingReviewEntity>,
+    val interruptions: List<RunInterruptionEntity>,
+)
+
+data class LegacyMigrationResult(val notes: Int, val reviews: Int, val interruptions: Int)
+
 class SnapshotConflictException(message: String) : IllegalStateException(message)
 
 @Dao
@@ -69,6 +77,18 @@ abstract class TestRunDao {
 
     @Query("SELECT * FROM run_interruptions WHERE runId = :runId")
     abstract fun findRunInterruption(runId: String): RunInterruptionEntity?
+
+    @Query("SELECT COUNT(*) > 0 FROM test_events WHERE eventId = :eventId")
+    protected abstract fun eventExists(eventId: String): Boolean
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyNote(entity: RunNoteEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyReview(entity: BillingReviewEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    protected abstract fun insertLegacyInterruption(entity: RunInterruptionEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     protected abstract fun upsertRunNote(entity: RunNoteEntity)
@@ -148,6 +168,17 @@ abstract class TestRunDao {
         snapshot.note?.let(::upsertRunNote)
         upsertBillingReviews(snapshot.reviews)
         snapshot.interruption?.let(::upsertRunInterruption)
+    }
+
+    /** Imports only valid, missing rows; existing Room data always wins. */
+    @androidx.room.Transaction
+    open fun importLegacyAnnotations(batch: LegacyAnnotationBatch): LegacyMigrationResult {
+        val notes = batch.notes.count { findRun(it.runId) != null && insertLegacyNote(it) != -1L }
+        val reviews = batch.reviews.count { eventExists(it.eventId) && insertLegacyReview(it) != -1L }
+        val interruptions = batch.interruptions.count {
+            findRun(it.runId) != null && insertLegacyInterruption(it) != -1L
+        }
+        return LegacyMigrationResult(notes, reviews, interruptions)
     }
 
     @androidx.room.Transaction

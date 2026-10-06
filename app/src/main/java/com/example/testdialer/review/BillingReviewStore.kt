@@ -10,7 +10,7 @@ data class BillingReview(val expected: String = "", val actual: String = "", val
 
 /** Tester annotations are independent of immutable technical observations. */
 class BillingReviewStore(context: Context) {
-    private val preferences = context.getSharedPreferences("billing-reviews-v1", Context.MODE_PRIVATE)
+    private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     fun get(id: EventId): BillingReview = runCatching {
         val data = JSONObject(preferences.getString("event:${id.value}", "{}"))
         BillingReview(data.optString("expected"), data.optString("actual"),
@@ -31,4 +31,5 @@ class BillingReviewStore(context: Context) {
         require(atMillis > 0)
         return preferences.edit().putLong("interrupted:${id.value}", atMillis).commit()
     }
+    companion object { const val PREFERENCES_NAME = "billing-reviews-v1" }
 }
