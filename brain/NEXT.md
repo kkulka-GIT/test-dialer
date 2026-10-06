@@ -1,6 +1,6 @@
 # Następny checkpoint
-Aktualny branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 8 zakończona: Room v2 ma wspólny transakcyjny schemat dla notatek, ocen billingu i znaczników przerwania; źródła 235139601aaf5beadb30ab67a1b8a0c49b11fef8, CI #149 PASS. Raport brain/reports/2026-10-06-phase8.md.
+Aktualny branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 9 zakończona: aktualizacja sesji dopisuje historię bez kasowania ocen przez FK CASCADE; schemat Room v2 zapisany w repo. Źródła 77ab0fe36a613302f2b6186d48488501cb00eb79, CI #151 PASS: 196 testów, oba APK i tożsamość preview. Raport brain/reports/2026-10-06-phase9.md.
 
-Następnie przełączyć RunNotesStore i BillingReviewStore na Room oraz wykonać idempotentną migrację dotychczasowych SharedPreferences bez ich kasowania. Dopiero po testach aktualizacji i zgodności eksportu dodać addytywne, atomowe przywracanie historii z deduplikacją i pełnym rollbackiem. Sesji CREATED/RUNNING nie przywracać jako aktywnie wykonywanych.
+Następnie runtime test migracji 1→2 z istniejącą historią, następnie przełączyć RunNotesStore/BillingReviewStore/znaczniki przerwania na Room z idempotentną migracją SharedPreferences bez ich kasowania. Po testach aktualizacji i zgodności eksportu dodać addytywne atomowe przywracanie historii, deduplikację i pełny rollback. Sesji CREATED/RUNNING nie przywracać jako aktywnie wykonywanych.
 
-Bez force push, automatycznego merge main i usług operatora. Fizyczna aktualizacja, telefon/dostawcy dokumentów/TalkBack/TTS/SIM nadal NOT TESTED.
+Bez force push, automatycznego merge main i usług operatora. Fizyczna aktualizacja, telefon/dostawcy dokumentów/TalkBack/TTS/SIM nadal NOT TESTED. CI checkpointu dokumentacji sprawdzić przed następną zmianą.
