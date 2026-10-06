@@ -212,7 +212,7 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `full history backup uses document pickers and import remains preview only`() {
+    @Test fun `full history backup uses document picker and empty import stays read only`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         button(activity, "Ustawienia").performClick()
@@ -240,8 +240,58 @@ class EvolutionWorkflowUiTest {
         val preview = ShadowAlertDialog.getLatestAlertDialog()
         assertTrue(preview.isShowing)
         val text = views(preview.window!!.decorView).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text.toString() }
-        assertTrue(text.contains("podgląd bez zapisu", ignoreCase = true))
+        assertTrue(text.contains("Plik nie zawiera sesji", ignoreCase = true))
+        assertTrue(text.contains("Import nie uruchamia połączeń, SMS ani transferu danych"))
         assertTrue(text.contains("Sesje: 0"))
+        assertEquals("Zamknij", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        assertNull(preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `history restore requires preview confirmation and never starts telecom`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val suffix = java.util.UUID.randomUUID().toString()
+        val step = com.example.testdialer.domain.ScenarioStepDefinition(
+            com.example.testdialer.domain.StepId("step-$suffix"), 0, "SMS kontrolny", "Wyślij osobno",
+            TestAction.Sms("123", "Treść"),
+        )
+        val scenario = com.example.testdialer.domain.ScenarioDefinition(
+            com.example.testdialer.domain.ScenarioId("scenario-$suffix"), 1, "Kontrola taryfy", null, listOf(step),
+        )
+        val runId = com.example.testdialer.domain.RunId("run-$suffix")
+        val event = com.example.testdialer.domain.TestEvent(
+            com.example.testdialer.domain.EventId("event-$suffix"), runId, step.id, step.action, 1_100,
+            com.example.testdialer.domain.Observation(
+                com.example.testdialer.domain.ObservationStatus.CONFIRMED,
+                com.example.testdialer.domain.ObservationSource.TESTER, "MANUAL_OK", null,
+            ),
+        )
+        val entry = com.example.testdialer.report.HistoryArchiveEntry(
+            com.example.testdialer.persistence.StoredTestRun(
+                scenario,
+                com.example.testdialer.domain.TestRun(
+                    runId, scenario.id, 1, com.example.testdialer.domain.TestRunStatus.COMPLETED,
+                    1_000, 1_200, listOf(event),
+                ),
+                4,
+            ),
+            "Notatka", emptyMap(), 0,
+        )
+        val preview = MainActivity::class.java.getDeclaredMethod("showHistoryImportPreview", List::class.java)
+            .apply { isAccessible = true }
+        preview.invoke(activity, listOf(entry))
+        var dialog = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        assertNull((activity.application as TestDialerApplication).testRunRepository.get(runId))
+
+        preview.invoke(activity, listOf(entry))
+        dialog = ShadowAlertDialog.getLatestAlertDialog()
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { (activity.application as TestDialerApplication).testRunRepository.get(runId) != null }
+        assertEquals(4, (activity.application as TestDialerApplication).testRunRepository.get(runId)?.revision)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }

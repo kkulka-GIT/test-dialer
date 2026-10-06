@@ -1564,9 +1564,9 @@ class MainActivity : ComponentActivity() {
 
     private fun showHistoryBackup() {
         AlertDialog.Builder(this).setTitle("Historia i kopia zapasowa")
-            .setMessage("Kopia zawiera pełne sesje, parametry, obserwacje, notatki i osobno oznaczone ręczne oceny billingu. Może zawierać numery, treści SMS oraz identyfikatory korelacji. Odczyt pliku pokazuje tylko podgląd i niczego jeszcze nie przywraca.")
+            .setMessage("Kopia zawiera pełne sesje, parametry, obserwacje, notatki i osobno oznaczone ręczne oceny billingu. Może zawierać numery, treści SMS oraz identyfikatory korelacji. Import najpierw pokazuje podgląd i wymaga osobnego potwierdzenia.")
             .setPositiveButton("Zapisz kopię") { _, _ -> exportHistoryLauncher.launch("test-dialer-historia.json") }
-            .setNeutralButton("Sprawdź plik") { _, _ -> previewHistoryLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
+            .setNeutralButton("Wczytaj kopię") { _, _ -> previewHistoryLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }
             .setNegativeButton("Zamknij", null).show()
     }
 
@@ -1577,12 +1577,45 @@ class MainActivity : ComponentActivity() {
         val notes = entries.count { it.testerNote.isNotBlank() }
         val running = entries.count { it.stored.run.status == TestRunStatus.RUNNING || it.stored.run.status == TestRunStatus.CREATED }
         val examples = entries.take(6).joinToString("\n") { "${it.stored.scenario.name} · ${it.stored.run.events.size} zdarzeń" }
-        AlertDialog.Builder(this).setTitle("Podgląd kopii historii")
-            .setMessage("Sesje: ${entries.size}. Zdarzenia: $events. Obserwacje techniczne: $observations. Ręczne oceny billingu: $reviews. Notatki: $notes." +
-                (if (running > 0) "\nSesje niezakończone w pliku: $running." else "") +
-                (if (examples.isBlank()) "\n\nPlik nie zawiera sesji." else "\n\n$examples" + if (entries.size > 6) "\n… i pozostałe ${entries.size - 6}" else "") +
-                "\n\nTo jest podgląd bez zapisu. Przywracanie zostanie dodane dopiero z jedną, bezpieczną transakcją; żadna sesja nie została uruchomiona.")
-            .setPositiveButton("Zamknij", null).show()
+        val message = "Sesje: ${entries.size}. Zdarzenia: $events. Obserwacje techniczne: $observations. Ręczne oceny billingu: $reviews. Notatki: $notes." +
+            (if (running > 0) "\nSesje niezakończone w pliku: $running. Pozostaną wyłącznie historią i nie zostaną wznowione." else "") +
+            (if (examples.isBlank()) "\n\nPlik nie zawiera sesji." else "\n\n$examples" + if (entries.size > 6) "\n… i pozostałe ${entries.size - 6}" else "") +
+            "\n\nIstniejące sesje, notatki i oceny nie zostaną nadpisane. Konflikt przerwie cały import. Import nie uruchamia połączeń, SMS ani transferu danych."
+        val builder = AlertDialog.Builder(this).setTitle("Podgląd kopii historii")
+            .setMessage(message)
+        if (entries.isEmpty()) {
+            builder.setPositiveButton("Zamknij", null).show()
+        } else {
+            builder.setPositiveButton("Przywróć historię") { _, _ -> restoreHistory(entries) }
+                .setNegativeButton("Anuluj", null).show()
+        }
+    }
+
+    private fun restoreHistory(entries: List<com.example.testdialer.report.HistoryArchiveEntry>) {
+        templateTransferMessage("Przywracam historię. Nie zamykaj aplikacji.")
+        reportExecutor.execute {
+            val result = runCatching {
+                (application as TestDialerApplication).annotationStore.restoreHistory(entries)
+            }
+            runOnUiThread {
+                if (!isDestroyed && !isFinishing) {
+                    result.fold({ restored ->
+                        registerViewModel.load()
+                        renderRegister()
+                        templateTransferMessage(
+                            "Historia przywrócona. Dodano sesje: ${restored.addedRuns}. " +
+                                "Już istniejące: ${restored.existingRuns}. " +
+                                "Uzupełniono notatki: ${restored.annotations.notes}, oceny: ${restored.annotations.reviews}.",
+                        )
+                    }, { error ->
+                        val detail = if (error is com.example.testdialer.persistence.SnapshotConflictException)
+                            "Kopia różni się od historii zapisanej w telefonie. Niczego nie zmieniono."
+                        else "Nie udało się przywrócić historii: ${error.message}. Niczego nie zmieniono."
+                        templateTransferMessage(detail)
+                    })
+                }
+            }
+        }
     }
 
     private fun confirmPlanImport(items: List<com.example.testdialer.active.SavedScenarioPlan>) {
