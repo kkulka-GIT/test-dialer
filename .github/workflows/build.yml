@@ -97,7 +97,8 @@ jobs:
       - name: Verify stable signature and application identity
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         env:
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/Test-Dialer-${TEST_DIALER_VERSION_CODE}.apk"

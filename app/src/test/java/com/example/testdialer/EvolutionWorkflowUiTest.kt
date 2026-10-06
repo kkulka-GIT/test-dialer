@@ -295,7 +295,7 @@ class EvolutionWorkflowUiTest {
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         await { storedRun() != null }
-        assertEquals(4, storedRun()?.revision)
+        assertEquals(4L, storedRun()?.revision)
         reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()

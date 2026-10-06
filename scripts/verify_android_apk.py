@@ -32,6 +32,6 @@ if 'application-debuggable' in badging:
     raise SystemExit('Stable APK must not be debuggable')
 metadata = dict(applicationId=package[1], versionCode=int(package[2]), versionName=package[3],
                 certificateSha256=expected, apkSha256=hashlib.sha256(apk.read_bytes()).hexdigest(),
-                debuggable=False, signatureVerified=True, sourceSha=os.environ.get('SOURCE_SHA', ''))
+                debuggable=False, signatureVerified=True, sourceSha=os.environ.get('SOURCE_SHA', ''), sourceHeadSha=os.environ.get('SOURCE_HEAD_SHA', ''))
 apk.with_suffix('.json').write_text(json.dumps(metadata, indent=2) + '\n')
 print(json.dumps(metadata, indent=2))
