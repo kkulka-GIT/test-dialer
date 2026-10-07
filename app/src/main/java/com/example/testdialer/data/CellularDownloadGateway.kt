@@ -71,7 +71,7 @@ fun interface DownloadConnectionFactory {
     fun open(networkToken: Any?, url: URL): DownloadConnection
 }
 
-class AndroidCellularDownloadGateway(
+class AndroidCellularDownloadGateway internal constructor(
     private val connectivityManager: ConnectivityManager,
     private val timeProvider: TimeProvider = SystemTimeProvider,
     private val resolver: HostResolver = HostResolver { token, host -> (token as Network).getAllByName(host).toList() },
