@@ -243,3 +243,10 @@ internal fun selectCellularNetwork(
             it.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     } == true
 }
+
+internal fun hasVpnTransport(
+    networks: List<Network>,
+    capabilities: (Network) -> NetworkCapabilities?,
+): Boolean = networks.any { network ->
+    capabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+}

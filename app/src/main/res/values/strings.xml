@@ -136,6 +136,7 @@
     <string name="data_start">Uruchom pobieranie</string>
     <string name="data_start_confirm_title">Rozpocząć transfer danych?</string>
     <string name="data_start_confirm_message">Limit: %1$s %2$s\nAdres: %3$s\n\nTransfer użyje bezpośredniego połączenia komórkowego i może zużyć pakiet danych.</string>
+    <string name="data_start_confirm_message_vpn">Limit: %1$s %2$s\nAdres: %3$s\n\nVPN jest aktywny. Test spróbuje użyć bezpośredniego połączenia komórkowego poza VPN. Ustawienia VPN mogą blokować takie połączenie.\n\nTransfer może zużyć pakiet danych.</string>
     <string name="data_start_confirm_cancel">Wróć do ustawień</string>
     <string name="data_start_confirm_action">Rozpocznij transfer</string>
     <string name="data_running">Pobieranie przez sieć komórkową…</string>

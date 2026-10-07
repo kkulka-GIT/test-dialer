@@ -22,6 +22,22 @@ import java.io.File
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ObservationConfirmationUiTest {
+    @Test fun `Data VPN notice is readable and does not claim VPN caused a failure`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val dialog = AlertDialog.Builder(activity)
+            .setTitle(R.string.data_start_confirm_title)
+            .setMessage(activity.getString(R.string.data_start_confirm_message_vpn, "100", "MB", "https://example.com/file"))
+            .setNegativeButton(R.string.data_start_confirm_cancel, null)
+            .setPositiveButton(R.string.data_start_confirm_action, null)
+            .show()
+        val message = dialog.findViewById<TextView>(android.R.id.message).text.toString()
+        assertTrue(message.contains("VPN jest aktywny"))
+        assertTrue(message.contains("spróbuje"))
+        assertTrue(message.contains("mogą blokować"))
+        assertTrue(!message.contains("VPN blokuje"))
+        capture(dialog, "data-start-vpn-notice.png")
+    }
+
     @Test fun `Data cancellation requires confirmation and keep leaves transfer running`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         button(activity, activity.getString(R.string.data_type)).performClick()

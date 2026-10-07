@@ -1,3 +1,8 @@
-# Diagnostyka szybkiej awarii Data przy VPN
-Branch feature/stable-signing-20261006 / PR #21. Zgłoszenie użytkownika: NETWORK_ERROR, 0 bajtów, 72 ms przy Tailscale; druga próba 1 000 000 bajtów COMPLETED. Nie ustalono przyczyny ani jednoznacznie warunków drugiej próby.
-Cel: zachować etap awarii i kategorię TLS/połączenia oraz obserwowany stan VPN, bez oskarżania konkretnego VPN. Zakres: gateway, addytywne correlation references i opis Observation. Bez zmiany trasy, retry, fallbacku, schematu Room lub usług operatora. Koszt: dwa kody wyniku i opcjonalne pola diagnostyczne. Kryteria: testy DNS/TLS/connection/response/body oraz częściowych bajtów, zapis korelacji; CI PASS i stable APK. CI #184 PASS: 219 testów, 0 failures/errors/skipped, podpis/tożsamość i stable APK118401. Pobrany SHA256 zgodny z metadanymi, pin i ID zachowane, kod >118301. Przyczyna zgłoszonego błędu nadal nieustalona; telefon/VPN NOT TESTED.
+# Pokazać aktywny VPN przed startem Data
+Branch `feature/stable-signing-20261006` / PR #21 zależny od #20.
+
+Problem: użytkownik potwierdził porównanie na telefonie: z aktywnym Tailscale test zakończył się po 72 ms jako `NETWORK_ERROR` z 0 bajtów, a po wyłączeniu VPN pobrał 1 000 000 bajtów. CI #184 poprawiło diagnostykę zdarzenia, ale tester przed uruchomieniem nadal nie widzi kontekstu VPN w ostatnim kroku decyzyjnym.
+
+Cel: gdy Android zgłasza transport VPN, potwierdzenie startu Data ma jasno podać, że test spróbuje użyć bezpośredniej sieci komórkowej poza VPN, a ustawienia VPN mogą to uniemożliwić. Sam VPN nie blokuje startu i nie jest nazywany przyczyną. Bez VPN pozostaje krótszy komunikat.
+
+Zakres: odczyt istniejących `NetworkCapabilities`, wariant tekstu potwierdzenia, test niezależności wykrycia VPN od wyboru sieci oraz podgląd 360 px. Bez nowych uprawnień, identyfikowania aplikacji VPN, zmiany trasy, fallbacku, retry, migracji lub usług operatora. Kryteria: CI PASS, czytelny podgląd i stabilnie podpisany APK. CI pending; telefon/TalkBack/TTS/VPN NOT TESTED dla tej wersji.

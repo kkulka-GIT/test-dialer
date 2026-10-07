@@ -36,6 +36,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.core.view.ViewCompat
 import com.example.testdialer.data.CellularDataInput
 import com.example.testdialer.data.CellularDataUiState
+import com.example.testdialer.data.hasVpnTransport
 import com.example.testdialer.data.CellularDataViewModel
 import com.example.testdialer.domain.RunId
 import com.example.testdialer.domain.EventId
@@ -2515,7 +2516,7 @@ class MainActivity : ComponentActivity() {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle(R.string.data_start_confirm_title)
                         .setMessage(getString(
-                            R.string.data_start_confirm_message,
+                            if (isVpnActive()) R.string.data_start_confirm_message_vpn else R.string.data_start_confirm_message,
                             amount.text.toString(),
                             unit.selectedItem.toString(),
                             input.url,
@@ -2941,6 +2942,10 @@ class MainActivity : ComponentActivity() {
             }
         }.getOrDefault(false)
     }
+
+    private fun isVpnActive(): Boolean = runCatching {
+        hasVpnTransport(connectivityManager.allNetworks.toList(), connectivityManager::getNetworkCapabilities)
+    }.getOrDefault(false)
 
     private fun isSimReady(): Boolean {
         return runCatching {
