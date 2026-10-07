@@ -1,7 +1,9 @@
-# Naprawić pozyskiwanie CELLULAR przy włączonym Wi-Fi
-Branch feature/stable-signing-20261006 / PR #21 zależny od #20. CI187 PASS227 i stable APK118701 pozostają najnowszą zweryfikowaną wersją.
+# Zweryfikować APK118901 na telefonie bez wyłączania Wi-Fi
 
-Priorytet: kontrolowany NetworkRequest po świadomym starcie Data zamiast polegania wyłącznie na activeNetwork/allNetworks. Zachować Wi-Fi dla ADB i pobieranie wyłącznie przez otrzymany fizyczny CELLULAR. Użytkownik wstrzymał próby ADB; nie wymagać kolejnej identycznej próby ani wyłączenia Wi-Fi.
+Branch `feature/stable-signing-20261006` / PR #21 zależny od #20. CI #189 PASS, stable APK118901 jest bieżącym jedynym APK do telefonu.
 
-Projekt: czasowo ograniczona, anulowalna dzierżawa sieci, weryfikacja callback capabilities (bez synchronicznego getNetworkCapabilities w callback), osobny wynik niedostępności/blokady/utraty sieci bez raw messages, Network.getAllByName/openConnection na tej samej sieci, unregister po sukcesie/błędzie/anulowaniu i przy wyjątku zapisu. Nie wystarczy request + natychmiast unregister, bo Android może wyłączyć nieutrzymywaną sieć. Nie bindProcessToNetwork, VPN/Wi-Fi fallback ani retry. Nie prosić o VALIDATED w request (mutable capability).
-Następna implementacja musi sprawdzić normalne CHANGE_NETWORK_STATE, kontrakt prepare/execute, powstanie RUNNING i cleanup także przy błędzie repository. Testy deterministyczne: Wi-Fi default + udostępniony cellular; VPN nie wybrany; onUnavailable/timeout/lost/blocked; cancel-before/during-wait; callback po cancel; jeden unregister; brak HTTP przed dostępnością; release po błędzie zapisu. CI/stable APK konieczne dopiero przy zmianie kodu. Tailscale bypass pozostaje osobnym nierozstrzygniętym zagadnieniem, requestNetwork nie znosi polityki VPN.
+Nie dodawać kolejnej funkcji Data ani zmieniać routingu przed dowodem urządzenia. Użytkownik wstrzymał ADB, więc nie inicjować kolejnej próby automatycznie. Gdy odbiór zostanie wznowiony, wykonać jeden konkretny test 1 MB z Wi-Fi i Tailscale włączonymi na APK118901. Zebrać: resultCode, bytes, duration, HTTP, failureStage, failureCause i failureErrno. Nie wykonywać identycznego testu na APK118501/118701.
+
+Kryterium: sukces to COMPLETED/1 000 000 bytes po bezpośredniej sieci komórkowej. `NETWORK_UNAVAILABLE/NETWORK_ACQUISITION` oznacza, że Android nie udostępnił wymaganej sieci w 10 s; inny błąd wymaga analizy zapisanej fazy/cause/errno. Żaden wynik nie potwierdza billingu. Nie wyłączać Wi-Fi, nie zmieniać Tailscale, nie dodawać Wi-Fi/VPN fallbacku i nie uruchamiać transferu bez świadomego działania użytkownika.
+
+Po dowodzie: zaktualizować CURRENT_TASK/NEXT/raport i zdecydować, czy problem jest rozwiązany, czy potrzebna jest dokładnie jedna dalsza hipoteza. Fizyczne zachowanie danych przy aktualizacji, TalkBack i TTS nadal pozostają osobnym odbiorem.
