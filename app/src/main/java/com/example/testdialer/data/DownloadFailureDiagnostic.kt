@@ -34,6 +34,9 @@ internal fun classifyDownloadFailure(error: Throwable): DownloadFailureDiagnosti
         when (it) {
             OsConstants.EACCES -> "EACCES"
             OsConstants.EPERM -> "EPERM"
+            OsConstants.ENONET -> "ENONET"
+            OsConstants.ENODEV -> "ENODEV"
+            OsConstants.EADDRNOTAVAIL -> "EADDRNOTAVAIL"
             OsConstants.ENETUNREACH -> "ENETUNREACH"
             OsConstants.EHOSTUNREACH -> "EHOSTUNREACH"
             OsConstants.ECONNREFUSED -> "ECONNREFUSED"

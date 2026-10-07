@@ -44,7 +44,7 @@ class DownloadFailureDiagnosticTest {
     }
 
     @Test fun `errno is allowlisted and does not imply VPN cause`() {
-        for ((number, name) in listOf(OsConstants.EPERM to "EPERM", OsConstants.ENETUNREACH to "ENETUNREACH", 99999 to "OTHER")) {
+        for ((number, name) in listOf(OsConstants.EPERM to "EPERM", OsConstants.ENETUNREACH to "ENETUNREACH", OsConstants.ENONET to "ENONET", OsConstants.ENODEV to "ENODEV", OsConstants.EADDRNOTAVAIL to "EADDRNOTAVAIL", 99999 to "OTHER")) {
             val result = classifyDownloadFailure(IOException("secret", ErrnoException("secret", number)))
             assertEquals(DownloadResultCode.CONNECTION_FAILURE, result.code)
             assertEquals(name, result.errno)
