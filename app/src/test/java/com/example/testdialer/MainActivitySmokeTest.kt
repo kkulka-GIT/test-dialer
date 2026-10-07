@@ -537,6 +537,7 @@ class MainActivitySmokeTest {
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
 
     private fun captureDialog(dialog: android.app.AlertDialog, name: String) {
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val root = dialog.window!!.decorView
         root.measure(
             View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY),
