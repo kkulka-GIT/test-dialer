@@ -1,8 +1,6 @@
 package com.example.testdialer
 
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Looper
 import android.view.View
@@ -37,7 +35,6 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.util.concurrent.Executors
-import java.io.File
 import com.example.testdialer.sms.GuidedSmsUiState
 
 @RunWith(RobolectricTestRunner::class)
@@ -285,7 +282,6 @@ class MainActivitySmokeTest {
         assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains(
             activity.getString(R.string.outcome_success),
         ))
-        captureDialog(dialog, "voice-observation-confirm.png")
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
 
         assertTrue(MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
@@ -535,21 +531,6 @@ class MainActivitySmokeTest {
 
     private fun collectText(root: android.view.View): String =
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
-
-    private fun captureDialog(dialog: android.app.AlertDialog, name: String) {
-        Shadows.shadowOf(Looper.getMainLooper()).idle()
-        val root = dialog.window!!.decorView
-        root.measure(
-            View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY),
-            View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.AT_MOST),
-        )
-        root.layout(0, 0, 360, root.measuredHeight)
-        val bitmap = Bitmap.createBitmap(360, root.height, Bitmap.Config.ARGB_8888)
-        root.draw(Canvas(bitmap))
-        val file = File("build/reports/screenshots/$name").apply { parentFile!!.mkdirs() }
-        file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-        bitmap.recycle()
-    }
 
     private fun renderScenario(activity: MainActivity, typeName: String) {
         val typeClass = Class.forName("com.example.testdialer.ui.TestType")
