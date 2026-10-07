@@ -2500,20 +2500,31 @@ class MainActivity : ComponentActivity() {
                 setOnClickListener {
                     val target = runCatching { com.example.testdialer.data.DataVolume.parse(amount.text.toString(), unit.selectedItem.toString()) }
                         .getOrElse { amount.error = it.message; return@setOnClickListener }
-                    activeRunState.active?.let {
-                        runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.DATA) }
-                            .getOrElse { error ->
-                                Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_LONG).show()
-                                return@setOnClickListener
-                            }
-                    }
-                    cellularDataViewModel.start(
-                        CellularDataInput(
-                            url = url.text.toString(),
-                            label = label.text.toString().trim().takeIf(String::isNotEmpty),
-                            targetBytes = target,
-                        ),
+                    val input = CellularDataInput(
+                        url = url.text.toString(),
+                        label = label.text.toString().trim().takeIf(String::isNotEmpty),
+                        targetBytes = target,
                     )
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle(R.string.data_start_confirm_title)
+                        .setMessage(getString(
+                            R.string.data_start_confirm_message,
+                            amount.text.toString(),
+                            unit.selectedItem.toString(),
+                            input.url,
+                        ))
+                        .setNegativeButton(R.string.data_start_confirm_cancel, null)
+                        .setPositiveButton(R.string.data_start_confirm_action) { _, _ ->
+                            activeRunState.active?.let {
+                                runCatching { activeRunViewModel.beginExecution(selectedActiveTaskId, ServiceType.DATA) }
+                                    .getOrElse { error ->
+                                        Toast.makeText(this@MainActivity, error.message, Toast.LENGTH_LONG).show()
+                                        return@setPositiveButton
+                                    }
+                            }
+                            cellularDataViewModel.start(input)
+                        }
+                        .show()
                 }
             })
 

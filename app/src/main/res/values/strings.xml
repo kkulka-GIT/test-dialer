@@ -134,6 +134,10 @@
     <string name="data_label_hint">Nazwa testu (opcjonalna)</string>
     <string name="data_url_hint">Publiczny adres HTTPS bez parametrów</string>
     <string name="data_start">Uruchom pobieranie</string>
+    <string name="data_start_confirm_title">Rozpocząć transfer danych?</string>
+    <string name="data_start_confirm_message">Limit: %1$s %2$s\nAdres: %3$s\n\nTransfer użyje bezpośredniego połączenia komórkowego i może zużyć pakiet danych.</string>
+    <string name="data_start_confirm_cancel">Wróć do ustawień</string>
+    <string name="data_start_confirm_action">Rozpocznij transfer</string>
     <string name="data_running">Pobieranie przez sieć komórkową…</string>
     <string name="data_cancel">Anuluj test</string>
     <string name="data_saved_title">Test Data zapisany</string>

@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,6 +22,27 @@ import java.io.File
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ObservationConfirmationUiTest {
+    @Test fun `Data transfer requires confirmation and cancel does not start it`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        button(activity, activity.getString(R.string.data_type)).performClick()
+        val amount = views(activity.findViewById(android.R.id.content)).filterIsInstance<EditText>()
+            .first { it.hint == activity.getString(R.string.data_amount_hint) }
+        amount.setText("100")
+
+        button(activity, activity.getString(R.string.data_start)).performClick()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val message = dialog.findViewById<TextView>(android.R.id.message).text.toString()
+        assertTrue(message.contains("100 MB"))
+        assertTrue(message.contains("HTTPS", ignoreCase = true))
+        capture(dialog, "data-start-confirm.png")
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        val state = MainActivity::class.java.getDeclaredField("cellularDataState").apply { isAccessible = true }
+            .get(activity) as com.example.testdialer.data.CellularDataUiState
+        assertTrue(!state.busy && !state.saved)
+        assertTrue(button(activity, activity.getString(R.string.data_start)).isEnabled)
+    }
+
     @Test fun `Voice confirmation is readable on a narrow phone`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         MainActivity::class.java.getDeclaredField("pendingPhoneNumber").apply {
