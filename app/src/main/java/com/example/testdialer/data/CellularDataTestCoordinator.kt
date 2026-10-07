@@ -32,7 +32,7 @@ class CellularDataTestCoordinator(
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): StoredTestRun {
         require(input.targetBytes in 1..DataVolume.MAX_BYTES) { "Nieprawidłowa ilość danych" }
-        val prepared = gateway.prepare(input.url) // preflight before RUNNING
+        val prepared = gateway.prepare(input.url) // URL and context only; cellular acquisition belongs to the recorded attempt
         val stepId = StepId("cellular-data-download")
         val scenario = ScenarioDefinition(
             id = ScenarioId("cellular-data-${UUID.randomUUID()}"),
@@ -65,6 +65,7 @@ class CellularDataTestCoordinator(
                 code = result.resultCode.name,
                 description = result.failureStage?.let { stage ->
                     val reason = when (result.resultCode) {
+                        DownloadResultCode.NETWORK_UNAVAILABLE -> "Android nie udostępnił bezpośredniej sieci komórkowej w wyznaczonym czasie."
                         DownloadResultCode.DNS_FAILURE -> "Nie udało się rozwiązać nazwy hosta."
                         DownloadResultCode.TLS_FAILURE -> "Nie udało się zestawić bezpiecznego połączenia TLS."
                         DownloadResultCode.CONNECTION_FAILURE -> "Nie udało się połączyć z serwerem."

@@ -11,7 +11,7 @@ import java.util.Collections
 import java.util.IdentityHashMap
 import javax.net.ssl.SSLException
 
-enum class DownloadFailureCause { TIMEOUT, DNS, TLS, CONNECT, SOCKET, SECURITY, INVALID_ARGUMENT, IO, OTHER }
+enum class DownloadFailureCause { NETWORK_ACQUISITION, TIMEOUT, DNS, TLS, CONNECT, SOCKET, SECURITY, INVALID_ARGUMENT, IO, OTHER }
 
 internal data class DownloadFailureDiagnostic(
     val code: DownloadResultCode,
@@ -48,6 +48,7 @@ internal fun classifyDownloadFailure(error: Throwable): DownloadFailureDiagnosti
     }
     // Preserve TLS context even when it wraps a socket error.
     val cause = when {
+        chain.any { it is CellularNetworkUnavailableException } -> DownloadFailureCause.NETWORK_ACQUISITION
         chain.any { it is SecurityException } -> DownloadFailureCause.SECURITY
         chain.any { it is SSLException } -> DownloadFailureCause.TLS
         chain.any { it is SocketTimeoutException } -> DownloadFailureCause.TIMEOUT
@@ -59,6 +60,7 @@ internal fun classifyDownloadFailure(error: Throwable): DownloadFailureDiagnosti
         else -> DownloadFailureCause.OTHER
     }
     val code = when (cause) {
+        DownloadFailureCause.NETWORK_ACQUISITION -> DownloadResultCode.NETWORK_UNAVAILABLE
         DownloadFailureCause.SECURITY, DownloadFailureCause.INVALID_ARGUMENT -> DownloadResultCode.SECURITY_REJECTED
         DownloadFailureCause.TLS -> DownloadResultCode.TLS_FAILURE
         DownloadFailureCause.TIMEOUT -> DownloadResultCode.TIMEOUT

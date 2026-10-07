@@ -215,10 +215,75 @@ class CellularDownloadGatewayTest {
         assertEquals(null, result.httpStatus)
     }
 
+
+    @Test fun `network is acquired before DNS and released after download`() {
+        val order = mutableListOf<String>()
+        val lease = object : CellularNetworkLease {
+            override val networkToken: Any = "requested-cellular"
+            override fun close() { order += "release" }
+        }
+        val result = gateway(
+            resolver = HostResolver { token, _ ->
+                assertEquals("requested-cellular", token)
+                order += "dns"
+                publicAddress()
+            },
+            factory = DownloadConnectionFactory { token, _ ->
+                assertEquals("requested-cellular", token)
+                order += "http"
+                FakeConnection(byteArrayOf(1))
+            },
+            acquirer = CellularNetworkAcquirer { _, _ -> order += "acquire"; lease },
+        ).execute(prepared(), DownloadCancellation())
+
+        assertEquals(DownloadResultCode.COMPLETED, result.resultCode)
+        assertEquals(listOf("acquire", "dns", "http", "release"), order)
+    }
+
+    @Test fun `unavailable cellular records controlled failure without DNS or HTTP`() {
+        var resolved = false
+        var opened = false
+        val result = gateway(
+            resolver = HostResolver { _, _ -> resolved = true; publicAddress() },
+            factory = DownloadConnectionFactory { _, _ -> opened = true; FakeConnection(byteArrayOf()) },
+            acquirer = CellularNetworkAcquirer { _, _ -> throw CellularNetworkUnavailableException() },
+        ).execute(prepared(), DownloadCancellation())
+
+        assertEquals(DownloadResultCode.NETWORK_UNAVAILABLE, result.resultCode)
+        assertEquals(DownloadFailureCause.NETWORK_ACQUISITION, result.failureCause)
+        assertEquals(DownloadFailureStage.CONNECTION, result.failureStage)
+        assertFalse(resolved)
+        assertFalse(opened)
+    }
+
+    @Test fun `cancel during acquisition does not continue to DNS or HTTP`() {
+        var resolved = false
+        var opened = false
+        val cancellation = DownloadCancellation()
+        val result = gateway(
+            resolver = HostResolver { _, _ -> resolved = true; publicAddress() },
+            factory = DownloadConnectionFactory { _, _ -> opened = true; FakeConnection(byteArrayOf()) },
+            acquirer = CellularNetworkAcquirer { _, token ->
+                token.cancel()
+                throw CellularNetworkUnavailableException()
+            },
+        ).execute(prepared(), cancellation)
+
+        assertEquals(DownloadResultCode.CANCELLED, result.resultCode)
+        assertFalse(resolved)
+        assertFalse(opened)
+    }
+
     private fun gateway(
         body: ByteArray = byteArrayOf(),
         resolver: HostResolver = HostResolver { _, _ -> publicAddress() },
         factory: DownloadConnectionFactory = DownloadConnectionFactory { _, _ -> FakeConnection(body) },
+        acquirer: CellularNetworkAcquirer = CellularNetworkAcquirer { token, _ ->
+            object : CellularNetworkLease {
+                override val networkToken: Any = token ?: Any()
+                override fun close() = Unit
+            }
+        },
     ): AndroidCellularDownloadGateway {
         val app = RuntimeEnvironment.getApplication()
         return AndroidCellularDownloadGateway(
@@ -226,6 +291,7 @@ class CellularDownloadGatewayTest {
             IncrementingTime(),
             resolver,
             factory,
+            acquirer,
         )
     }
 

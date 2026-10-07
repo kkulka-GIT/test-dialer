@@ -70,6 +70,37 @@ class CellularDataTestCoordinatorTest {
         assertEquals(0, repository.saveCount)
     }
 
+    @Test fun `unavailable cellular is persisted as factual execution result`() {
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) =
+                PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl), vpnActiveAtPreparation = true)
+
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) =
+                DownloadResult(
+                    DownloadStatus.FAILED,
+                    DownloadResultCode.NETWORK_UNAVAILABLE,
+                    CapturedTime(400, 400),
+                    CapturedTime(500, 500),
+                    0,
+                    failureStage = DownloadFailureStage.CONNECTION,
+                    failureCause = DownloadFailureCause.NETWORK_ACQUISITION,
+                )
+        }
+
+        val repository = FakeRepository()
+        val stored = CellularDataTestCoordinator(repository, gateway, IncrementingTime())
+            .run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val event = stored.run.events.single()
+        val refs = event.correlation.references.associate { it.namespace to it.value }
+
+        assertEquals(TestRunStatus.COMPLETED, stored.run.status)
+        assertEquals("NETWORK_UNAVAILABLE", event.observation?.code)
+        assertTrue(event.observation?.description.orEmpty().contains("nie udostępnił bezpośredniej sieci komórkowej"))
+        assertEquals("NETWORK_ACQUISITION", refs["failureCause"])
+        assertEquals("0", refs["bytes"])
+        assertEquals(2, repository.saveCount)
+    }
+
     @Test fun `failed transfer persists phase VPN context and cautious explanation`() {
         val gateway = object : CellularDownloadGateway {
             override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl), vpnActiveAtPreparation = true)

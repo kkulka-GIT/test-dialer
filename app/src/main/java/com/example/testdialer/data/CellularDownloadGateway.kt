@@ -35,7 +35,7 @@ enum class DownloadFailureStage { DNS, CONNECTION, RESPONSE, BODY }
 
 enum class DownloadStatus { COMPLETED, FAILED, CANCELLED }
 enum class DownloadResultCode {
-    COMPLETED, CANCELLED, TIMEOUT, DNS_FAILURE, TLS_FAILURE, CONNECTION_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED, INCOMPLETE,
+    COMPLETED, CANCELLED, NETWORK_UNAVAILABLE, TIMEOUT, DNS_FAILURE, TLS_FAILURE, CONNECTION_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED, INCOMPLETE,
 }
 data class DownloadResult(
     val status: DownloadStatus,
@@ -86,14 +86,15 @@ class AndroidCellularDownloadGateway(
         connection.setRequestProperty("Accept-Encoding", "identity")
         AndroidDownloadConnection(connection)
     },
+    private val networkAcquirer: CellularNetworkAcquirer = AndroidCellularNetworkAcquirer(connectivityManager),
 ) : CellularDownloadGateway {
     override fun prepare(rawUrl: String): PreparedCellularDownload {
         val url = SafeDownloadUrlValidator.requireValid(rawUrl)
-        val network = requireNotNull(selectCellularNetwork(
+        val network = selectCellularNetwork(
             connectivityManager.activeNetwork,
             connectivityManager.allNetworks.toList(),
             connectivityManager::getNetworkCapabilities,
-        )) { "Brak dostępnego bezpośredniego połączenia komórkowego. Włącz dane komórkowe. Jeśli nadal nie działa, sprawdź ograniczenia sieci w ustawieniach telefonu." }
+        )
         val vpnActive = runCatching {
             (listOfNotNull(connectivityManager.activeNetwork) + connectivityManager.allNetworks.toList())
                 .any { connectivityManager.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
@@ -116,14 +117,19 @@ class AndroidCellularDownloadGateway(
         var bytes = 0L
         var httpStatus: Int? = null
         var connection: DownloadConnection? = null
+        var networkLease: CellularNetworkLease? = null
         var failure = DownloadFailureDiagnostic(DownloadResultCode.NETWORK_ERROR, DownloadFailureCause.OTHER)
         var stage = DownloadFailureStage.DNS
         try {
-            val addresses = resolver.resolve(prepared.networkToken, prepared.url.host)
+            stage = DownloadFailureStage.CONNECTION
+            networkLease = networkAcquirer.acquire(prepared.networkToken, cancellation)
+            if (cancellation.isCancelled()) return cancelledResult(started)
+            stage = DownloadFailureStage.DNS
+            val addresses = resolver.resolve(networkLease.networkToken, prepared.url.host)
             require(addresses.isNotEmpty() && addresses.none(::isUnsafeAddress)) { "Niepubliczny wynik DNS" }
             if (cancellation.isCancelled()) return cancelledResult(started)
             stage = DownloadFailureStage.CONNECTION
-            connection = connectionFactory.open(prepared.networkToken, prepared.url.uri.toURL())
+            connection = connectionFactory.open(networkLease.networkToken, prepared.url.uri.toURL())
             val active = requireNotNull(connection)
             val disconnect = { active.disconnect() }
             cancellation.onCancel(disconnect)
@@ -174,6 +180,7 @@ class AndroidCellularDownloadGateway(
             failure = classifyDownloadFailure(error)
         } finally {
             connection?.disconnect()
+            networkLease?.close()
         }
         return if (cancellation.isCancelled()) {
             cancelledResult(started, bytes, httpStatus)
