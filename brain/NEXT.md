@@ -1,5 +1,7 @@
-# Najpierw domknąć Data/Tailscale
-Branch feature/stable-signing-20261006 / PR #21 zależny od #20.
-Checkpoint causes/errno domknięty: CI #187 PASS, 227 testów, stable APK118701 pobrany/udostępniony, pin i ID potwierdzone, wyższy versionCode. Nie uruchamiać duplikatu.
+# Naprawić pozyskiwanie CELLULAR przy włączonym Wi-Fi
+Branch feature/stable-signing-20261006 / PR #21 zależny od #20. CI187 PASS227 i stable APK118701 pozostają najnowszą zweryfikowaną wersją.
 
-Potrzebny jeden nowy dowód z telefonu: wartości failureCause/failureErrno z nieudanej próby z Tailscale. Nie powtarzać identycznych prób na APK118501 i nie deklarować naprawy transferu. Hipoteza: ograniczenie dostępu do bezpośredniej sieci lub błąd stosu/proxy/DNS/TLS ukryty w cause; VPN i RESPONSE nie dowodzą konkretnej przyczyny. Bez cichej zmiany trasy, ustawień, retry lub realnych usług. Priorytet Data przed nowymi funkcjami.
+Priorytet: kontrolowany NetworkRequest po świadomym starcie Data zamiast polegania wyłącznie na activeNetwork/allNetworks. Zachować Wi-Fi dla ADB i pobieranie wyłącznie przez otrzymany fizyczny CELLULAR. Użytkownik wstrzymał próby ADB; nie wymagać kolejnej identycznej próby ani wyłączenia Wi-Fi.
+
+Projekt: czasowo ograniczona, anulowalna dzierżawa sieci, weryfikacja callback capabilities (bez synchronicznego getNetworkCapabilities w callback), osobny wynik niedostępności/blokady/utraty sieci bez raw messages, Network.getAllByName/openConnection na tej samej sieci, unregister po sukcesie/błędzie/anulowaniu i przy wyjątku zapisu. Nie wystarczy request + natychmiast unregister, bo Android może wyłączyć nieutrzymywaną sieć. Nie bindProcessToNetwork, VPN/Wi-Fi fallback ani retry. Nie prosić o VALIDATED w request (mutable capability).
+Następna implementacja musi sprawdzić normalne CHANGE_NETWORK_STATE, kontrakt prepare/execute, powstanie RUNNING i cleanup także przy błędzie repository. Testy deterministyczne: Wi-Fi default + udostępniony cellular; VPN nie wybrany; onUnavailable/timeout/lost/blocked; cancel-before/during-wait; callback po cancel; jeden unregister; brak HTTP przed dostępnością; release po błędzie zapisu. CI/stable APK konieczne dopiero przy zmianie kodu. Tailscale bypass pozostaje osobnym nierozstrzygniętym zagadnieniem, requestNetwork nie znosi polityki VPN.
