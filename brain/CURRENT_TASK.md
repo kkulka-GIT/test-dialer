@@ -1,2 +1,3 @@
-# Potwierdzać anulowanie transferu Data
-Branch feature/stable-signing-20261006 / PR #21 zależny od #20. „Anuluj test” pokazuje pobrane/docelowe bajty i informuje o zapisaniu częściowego wyniku. „Kontynuuj test” pozostawia transfer aktywny, a dopiero jawne „Anuluj transfer” używa istniejącego anulowania. CI #183 PASS: 216 testów, czytelny podgląd 360 px i stable APK 118301 ze stałym pinem/ID. Telefon/TalkBack NOT TESTED.
+# Diagnostyka szybkiej awarii Data przy VPN
+Branch feature/stable-signing-20261006 / PR #21. Zgłoszenie użytkownika: NETWORK_ERROR, 0 bajtów, 72 ms przy Tailscale; druga próba 1 000 000 bajtów COMPLETED. Nie ustalono przyczyny ani jednoznacznie warunków drugiej próby.
+Cel: zachować etap awarii i kategorię TLS/połączenia oraz obserwowany stan VPN, bez oskarżania konkretnego VPN. Zakres: gateway, addytywne correlation references i opis Observation. Bez zmiany trasy, retry, fallbacku, schematu Room lub usług operatora. Koszt: dwa kody wyniku i opcjonalne pola diagnostyczne. Kryteria: testy DNS/TLS/connection/response/body oraz częściowych bajtów, zapis korelacji; CI PASS i stable APK. CI pending. Telefon/VPN NOT TESTED.

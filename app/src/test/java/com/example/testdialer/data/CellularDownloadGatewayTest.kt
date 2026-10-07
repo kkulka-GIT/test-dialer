@@ -148,6 +148,48 @@ class CellularDownloadGatewayTest {
         assertTrue(connection.disconnected)
     }
 
+    @Test fun `DNS TLS and connection failures keep precise category and stage`() {
+        val dns = gateway(resolver = HostResolver { _, _ -> throw java.net.UnknownHostException("private diagnostic") })
+            .execute(prepared(), DownloadCancellation())
+        assertEquals(DownloadResultCode.DNS_FAILURE, dns.resultCode)
+        assertEquals(DownloadFailureStage.DNS, dns.failureStage)
+        for ((exception, code) in listOf(
+            javax.net.ssl.SSLHandshakeException("private diagnostic") to DownloadResultCode.TLS_FAILURE,
+            java.net.ConnectException("private diagnostic") to DownloadResultCode.CONNECTION_FAILURE,
+            java.net.SocketTimeoutException("private diagnostic") to DownloadResultCode.TIMEOUT,
+        )) {
+            val result = gateway(factory = DownloadConnectionFactory { _, _ -> throw exception })
+                .execute(prepared(), DownloadCancellation())
+            assertEquals(code, result.resultCode)
+            assertEquals(DownloadFailureStage.CONNECTION, result.failureStage)
+            assertEquals(0L, result.bytes)
+        }
+    }
+
+    @Test fun `response failure and partial body failure record the failing phase`() {
+        for (bodyFailure in listOf(false, true)) {
+            val connection = object : DownloadConnection {
+                override val responseCode: Int get() = if (bodyFailure) 200 else throw java.io.IOException("private diagnostic")
+                override val contentLength = -1L
+                override val contentEncoding: String? = null
+                override val inputStream = object : InputStream() {
+                    var reads = 0
+                    override fun read(): Int = error("unused")
+                    override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                        if (reads++ == 0) return 7
+                        throw java.io.IOException("private diagnostic")
+                    }
+                }
+                override fun disconnect() = Unit
+            }
+            val result = gateway(factory = DownloadConnectionFactory { _, _ -> connection })
+                .executeVolume(prepared(), DownloadCancellation(), 100) { _, _ -> }
+            assertEquals(DownloadResultCode.NETWORK_ERROR, result.resultCode)
+            assertEquals(if (bodyFailure) DownloadFailureStage.BODY else DownloadFailureStage.RESPONSE, result.failureStage)
+            assertEquals(if (bodyFailure) 7L else 0L, result.bytes)
+        }
+    }
+
     private fun gateway(
         body: ByteArray = byteArrayOf(),
         resolver: HostResolver = HostResolver { _, _ -> publicAddress() },

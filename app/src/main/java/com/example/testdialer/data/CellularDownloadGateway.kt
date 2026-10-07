@@ -7,6 +7,8 @@ import com.example.testdialer.domain.execution.CapturedTime
 import com.example.testdialer.domain.execution.SystemTimeProvider
 import com.example.testdialer.domain.execution.TimeProvider
 import java.io.InputStream
+import java.net.ConnectException
+import javax.net.ssl.SSLException
 import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.Inet6Address
@@ -31,10 +33,12 @@ class DownloadCancellation {
     fun remove(callback: () -> Unit) { callbacks.remove(callback) }
 }
 
-data class PreparedCellularDownload(val url: SafeDownloadUrl, internal val networkToken: Any? = null)
+data class PreparedCellularDownload(val url: SafeDownloadUrl, internal val networkToken: Any? = null, val vpnActiveAtPreparation: Boolean? = null)
+enum class DownloadFailureStage { DNS, CONNECTION, RESPONSE, BODY }
+
 enum class DownloadStatus { COMPLETED, FAILED, CANCELLED }
 enum class DownloadResultCode {
-    COMPLETED, CANCELLED, TIMEOUT, DNS_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED, INCOMPLETE,
+    COMPLETED, CANCELLED, TIMEOUT, DNS_FAILURE, TLS_FAILURE, CONNECTION_FAILURE, HTTP_ERROR, LIMIT_EXCEEDED, NETWORK_ERROR, SECURITY_REJECTED, INCOMPLETE,
 }
 data class DownloadResult(
     val status: DownloadStatus,
@@ -43,6 +47,7 @@ data class DownloadResult(
     val endedAt: CapturedTime,
     val bytes: Long,
     val httpStatus: Int? = null,
+    val failureStage: DownloadFailureStage? = null,
 )
 
 interface CellularDownloadGateway {
@@ -90,7 +95,11 @@ class AndroidCellularDownloadGateway(
             connectivityManager.allNetworks.toList(),
             connectivityManager::getNetworkCapabilities,
         )) { "Brak dostępnego bezpośredniego połączenia komórkowego. Włącz dane komórkowe. Jeśli nadal nie działa, sprawdź ograniczenia sieci w ustawieniach telefonu." }
-        return PreparedCellularDownload(url, network)
+        val vpnActive = runCatching {
+            (listOfNotNull(connectivityManager.activeNetwork) + connectivityManager.allNetworks.toList())
+                .any { connectivityManager.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true }
+        }.getOrNull()
+        return PreparedCellularDownload(url, network, vpnActive)
     }
 
     override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation): DownloadResult =
@@ -109,10 +118,12 @@ class AndroidCellularDownloadGateway(
         var httpStatus: Int? = null
         var connection: DownloadConnection? = null
         var resultCode = DownloadResultCode.NETWORK_ERROR
+        var stage = DownloadFailureStage.DNS
         try {
             val addresses = resolver.resolve(prepared.networkToken, prepared.url.host)
             require(addresses.isNotEmpty() && addresses.none(::isUnsafeAddress)) { "Niepubliczny wynik DNS" }
             if (cancellation.isCancelled()) return cancelledResult(started)
+            stage = DownloadFailureStage.CONNECTION
             connection = connectionFactory.open(prepared.networkToken, prepared.url.uri.toURL())
             val active = requireNotNull(connection)
             val disconnect = { active.disconnect() }
@@ -120,6 +131,7 @@ class AndroidCellularDownloadGateway(
             try {
                 if (cancellation.isCancelled()) return cancelledResult(started)
                 if (targetBytes != null) active.requestRange(targetBytes - 1)
+                stage = DownloadFailureStage.RESPONSE
                 httpStatus = active.responseCode
                 if (httpStatus !in 200..299) return failedResult(DownloadResultCode.HTTP_ERROR, started, bytes, httpStatus)
                 val encoding = active.contentEncoding
@@ -135,6 +147,7 @@ class AndroidCellularDownloadGateway(
                     val end = match?.groupValues?.get(1)?.toLongOrNull()
                     if (end == null || end != targetBytes - 1) return failedResult(DownloadResultCode.HTTP_ERROR, started, bytes, httpStatus)
                 }
+                stage = DownloadFailureStage.BODY
                 active.inputStream.use { input ->
                     val buffer = ByteArray(BUFFER_SIZE)
                     while (bytes < limit) {
@@ -162,6 +175,10 @@ class AndroidCellularDownloadGateway(
             resultCode = DownloadResultCode.TIMEOUT
         } catch (_: UnknownHostException) {
             resultCode = DownloadResultCode.DNS_FAILURE
+        } catch (_: SSLException) {
+            resultCode = DownloadResultCode.TLS_FAILURE
+        } catch (_: ConnectException) {
+            resultCode = DownloadResultCode.CONNECTION_FAILURE
         } catch (_: SecurityException) {
             resultCode = DownloadResultCode.SECURITY_REJECTED
         } catch (_: IllegalArgumentException) {
@@ -173,11 +190,11 @@ class AndroidCellularDownloadGateway(
         }
         return if (cancellation.isCancelled() || resultCode == DownloadResultCode.CANCELLED) {
             cancelledResult(started, bytes, httpStatus)
-        } else failedResult(resultCode, started, bytes, httpStatus)
+        } else failedResult(resultCode, started, bytes, httpStatus, stage)
     }
 
-    private fun failedResult(code: DownloadResultCode, started: CapturedTime, bytes: Long, status: Int?) =
-        DownloadResult(DownloadStatus.FAILED, code, started, timeProvider.capture(), bytes, status)
+    private fun failedResult(code: DownloadResultCode, started: CapturedTime, bytes: Long, status: Int?, stage: DownloadFailureStage? = null) =
+        DownloadResult(DownloadStatus.FAILED, code, started, timeProvider.capture(), bytes, status, stage)
     private fun cancelledResult(started: CapturedTime? = null, bytes: Long = 0L, status: Int? = null) =
         DownloadResult(DownloadStatus.CANCELLED, DownloadResultCode.CANCELLED, started, timeProvider.capture(), bytes, status)
 

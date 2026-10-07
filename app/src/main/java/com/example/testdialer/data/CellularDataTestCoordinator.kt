@@ -63,6 +63,22 @@ class CellularDataTestCoordinator(
                 },
                 source = ObservationSource.APPLICATION,
                 code = result.resultCode.name,
+                description = result.failureStage?.let { stage ->
+                    val reason = when (result.resultCode) {
+                        DownloadResultCode.DNS_FAILURE -> "Nie udało się rozwiązać nazwy hosta."
+                        DownloadResultCode.TLS_FAILURE -> "Nie udało się zestawić bezpiecznego połączenia TLS."
+                        DownloadResultCode.CONNECTION_FAILURE -> "Nie udało się połączyć z serwerem."
+                        DownloadResultCode.TIMEOUT -> "Upłynął limit czasu sieci."
+                        DownloadResultCode.SECURITY_REJECTED -> "Odrzucono operację ze względów bezpieczeństwa."
+                        else -> "Wystąpił błąd operacji sieciowej."
+                    }
+                    val vpn = when (prepared.vpnActiveAtPreparation) {
+                        true -> "Android wskazywał aktywny VPN. Nie potwierdza to przyczyny błędu; sprawdź możliwość połączeń poza VPN w ustawieniach telefonu/VPN."
+                        false -> "Android nie wskazywał aktywnego VPN."
+                        null -> "Stan VPN nie został ustalony."
+                    }
+                    "$reason Etap: ${stage.name}. $vpn Test używa bezpośredniej sieci komórkowej."
+                },
             )
             recorder.recordEventAt(
                 capturedAt = result.endedAt,
@@ -85,6 +101,8 @@ class CellularDataTestCoordinator(
                             CorrelationReference("networkStartedAtEpochMillis", it.epochMillis.toString())
                         },
                         result.httpStatus?.let { CorrelationReference("httpStatus", it.toString()) },
+                        result.failureStage?.let { CorrelationReference("failureStage", it.name) },
+                        prepared.vpnActiveAtPreparation?.let { CorrelationReference("vpnActiveAtPreparation", it.toString()) },
                     ),
                 ),
             )

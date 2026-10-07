@@ -70,6 +70,26 @@ class CellularDataTestCoordinatorTest {
         assertEquals(0, repository.saveCount)
     }
 
+    @Test fun `failed transfer persists phase VPN context and cautious explanation`() {
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl), vpnActiveAtPreparation = true)
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
+                DownloadStatus.FAILED, DownloadResultCode.TLS_FAILURE, CapturedTime(400, 400), CapturedTime(500, 500),
+                0, failureStage = DownloadFailureStage.RESPONSE,
+            )
+        }
+        val stored = CellularDataTestCoordinator(FakeRepository(), gateway, IncrementingTime())
+            .run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val event = stored.run.events.single()
+        val refs = event.correlation.references.associate { it.namespace to it.value }
+        assertEquals("TLS_FAILURE", event.observation?.code)
+        assertEquals("RESPONSE", refs["failureStage"])
+        assertEquals("true", refs["vpnActiveAtPreparation"])
+        assertEquals("0", refs["bytes"])
+        assertTrue(event.observation?.description.orEmpty().contains("Nie potwierdza to przyczyny"))
+        assertTrue(event.observation?.description.orEmpty().contains("TLS"))
+    }
+
     private class FakeGateway(private val status: DownloadStatus) : CellularDownloadGateway {
         override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl))
         override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
