@@ -190,6 +190,31 @@ class CellularDownloadGatewayTest {
         }
     }
 
+    @Test fun `wrapped socket response error preserves stage without retry or fallback`() {
+        var opens = 0
+        var disconnects = 0
+        val connection = object : DownloadConnection {
+            override val responseCode: Int get() = throw java.io.IOException("private URL",
+                java.net.SocketException("private address").apply {
+                    initCause(android.system.ErrnoException("private function", android.system.OsConstants.EACCES))
+                })
+            override val contentLength = -1L
+            override val contentEncoding: String? = null
+            override val inputStream: InputStream get() = error("must not read")
+            override fun disconnect() { disconnects++ }
+        }
+        val result = gateway(factory = DownloadConnectionFactory { _, _ -> opens++; connection })
+            .executeVolume(prepared(), DownloadCancellation(), 100) { _, _ -> }
+        assertEquals(DownloadResultCode.CONNECTION_FAILURE, result.resultCode)
+        assertEquals(DownloadFailureCause.SOCKET, result.failureCause)
+        assertEquals("EACCES", result.failureErrno)
+        assertEquals(DownloadFailureStage.RESPONSE, result.failureStage)
+        assertEquals(0L, result.bytes)
+        assertEquals(1, opens)
+        assertEquals(1, disconnects)
+        assertEquals(null, result.httpStatus)
+    }
+
     private fun gateway(
         body: ByteArray = byteArrayOf(),
         resolver: HostResolver = HostResolver { _, _ -> publicAddress() },

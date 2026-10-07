@@ -1,4 +1,5 @@
-# Poczekać na dowód z telefonu albo wybrać niezależny mały checkpoint
-Branch `feature/stable-signing-20261006` / PR #21 zależny od #20. CI #185 PASS: 221 testów i stable APK118501. Potwierdzenie startu Data pokazuje aktywny VPN, bez blokowania testu i bez nazywania VPN przyczyną. CI #184 wcześniej dodało dokładniejszą diagnostykę terminalną.
+# Najpierw domknąć Data/Tailscale
+Branch feature/stable-signing-20261006 / PR #21 zależny od #20.
+Weryfikować CI bieżącego checkpointu causes/errno, pobrać stable APK, potwierdzić pin i wyższy versionCode. Nie uruchamiać duplikatu.
 
-Rozpoznanie konkretnego przypadku Tailscale osiągnęło granicę wiarygodnej automatyzacji. Kolejna próba użytkownika na telefonie z APK118501 może potwierdzić kategorię i fazę błędu; wtedy najpierw przeanalizować nowe zdarzenie. Bez nowego dowodu nie zgadywać ani nie zmieniać trasy, retry czy fallbacku. Jeśli brak wyniku z telefonu, następna tura może wybrać niezależny mały błąd pracy testera po sprawdzeniu zdalnego stanu. Telefon/Tailscale/TalkBack/TTS/update retention NOT TESTED.
+Po PASS potrzebny jeden nowy dowód z telefonu: wartości failureCause/failureErrno z nieudanej próby z Tailscale. Nie powtarzać identycznych prób na APK118501 i nie deklarować naprawy transferu. Hipoteza: ograniczenie dostępu do bezpośredniej sieci lub błąd stosu/proxy/DNS/TLS ukryty w cause; VPN i RESPONSE nie dowodzą konkretnej przyczyny. Bez cichej zmiany trasy, ustawień, retry lub realnych usług. Priorytet Data przed nowymi funkcjami.

@@ -76,6 +76,7 @@ class CellularDataTestCoordinatorTest {
             override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
                 DownloadStatus.FAILED, DownloadResultCode.TLS_FAILURE, CapturedTime(400, 400), CapturedTime(500, 500),
                 0, failureStage = DownloadFailureStage.RESPONSE,
+                failureCause = DownloadFailureCause.TLS, failureErrno = "EACCES",
             )
         }
         val stored = CellularDataTestCoordinator(FakeRepository(), gateway, IncrementingTime())
@@ -84,6 +85,9 @@ class CellularDataTestCoordinatorTest {
         val refs = event.correlation.references.associate { it.namespace to it.value }
         assertEquals("TLS_FAILURE", event.observation?.code)
         assertEquals("RESPONSE", refs["failureStage"])
+        assertEquals("TLS", refs["failureCause"])
+        assertEquals("EACCES", refs["failureErrno"])
+        assertTrue(event.observation?.description.orEmpty().contains("może obejmować DNS"))
         assertEquals("true", refs["vpnActiveAtPreparation"])
         assertEquals("0", refs["bytes"])
         assertTrue(event.observation?.description.orEmpty().contains("Nie potwierdza to przyczyny"))

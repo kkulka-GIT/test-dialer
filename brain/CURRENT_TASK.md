@@ -1,8 +1,5 @@
-# Pokazać aktywny VPN przed startem Data
-Branch `feature/stable-signing-20261006` / PR #21 zależny od #20.
+# Rozpoznanie Data/Tailscale po nowym dowodzie
+Branch feature/stable-signing-20261006 / PR #21 zależny od #20.
+Dowód użytkownika 2026-10-07: APK118501 z Tailscale: requestedBytes1000000, bytes0, NETWORK_ERROR, RESPONSE, 35ms, vpnActiveAtPreparation=true, HTTPS fsn1-speed.hetzner.com/1GB.bin. Bez Tailscale: COMPLETED/HTTP206/1MB/~1.1s. Przeglądarka działa także z VPN.
 
-Problem: użytkownik potwierdził porównanie na telefonie: z aktywnym Tailscale test zakończył się po 72 ms jako `NETWORK_ERROR` z 0 bajtów, a po wyłączeniu VPN pobrał 1 000 000 bajtów. CI #184 poprawiło diagnostykę zdarzenia, ale tester przed uruchomieniem nadal nie widzi kontekstu VPN w ostatnim kroku decyzyjnym.
-
-Cel: gdy Android zgłasza transport VPN, potwierdzenie startu Data ma jasno podać, że test spróbuje użyć bezpośredniej sieci komórkowej poza VPN, a ustawienia VPN mogą to uniemożliwić. Sam VPN nie blokuje startu i nie jest nazywany przyczyną. Bez VPN pozostaje krótszy komunikat.
-
-Zakres: odczyt istniejących `NetworkCapabilities`, wariant tekstu potwierdzenia, test niezależności wykrycia VPN od wyboru sieci oraz podgląd 360 px. Bez nowych uprawnień, identyfikowania aplikacji VPN, zmiany trasy, fallbacku, retry, migracji lub usług operatora. CI #185 PASS: 221 testów, czytelny podgląd 360 px oraz stable APK118501 ze stałym pinem/ID i kodem >118401. Telefon/Tailscale/TalkBack/TTS/update retention NOT TESTED dla tej wersji.
+Potwierdzona luka kodu: klasyfikacja sprawdzała tylko zewnętrzny wyjątek i nie rozpoznawała SocketException. RESPONSE oznacza wywołanie responseCode, które może wykonywać DNS/connect/TLS. Dodano ograniczony, odporny na cykle przegląd causes, kategorię failureCause i allowlist failureErrno bez messages/adresów/stacków. Zachowano wybrany Network.getAllByName i Network.openConnection, proxy wybranej sieci, brak fallbacku/retry. Nie potwierdzono przyczyny telefonu ani naprawy transferu. CI pending; stały podpis bez zmian.

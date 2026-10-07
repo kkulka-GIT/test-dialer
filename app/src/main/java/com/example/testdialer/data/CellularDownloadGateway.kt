@@ -7,13 +7,10 @@ import com.example.testdialer.domain.execution.CapturedTime
 import com.example.testdialer.domain.execution.SystemTimeProvider
 import com.example.testdialer.domain.execution.TimeProvider
 import java.io.InputStream
-import java.net.ConnectException
-import javax.net.ssl.SSLException
 import java.net.HttpURLConnection
 import java.net.Inet4Address
 import java.net.Inet6Address
 import java.net.InetAddress
-import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
 import java.util.concurrent.CopyOnWriteArrayList
@@ -48,6 +45,8 @@ data class DownloadResult(
     val bytes: Long,
     val httpStatus: Int? = null,
     val failureStage: DownloadFailureStage? = null,
+    val failureCause: DownloadFailureCause? = null,
+    val failureErrno: String? = null,
 )
 
 interface CellularDownloadGateway {
@@ -117,7 +116,7 @@ class AndroidCellularDownloadGateway(
         var bytes = 0L
         var httpStatus: Int? = null
         var connection: DownloadConnection? = null
-        var resultCode = DownloadResultCode.NETWORK_ERROR
+        var failure = DownloadFailureDiagnostic(DownloadResultCode.NETWORK_ERROR, DownloadFailureCause.OTHER)
         var stage = DownloadFailureStage.DNS
         try {
             val addresses = resolver.resolve(prepared.networkToken, prepared.url.host)
@@ -171,26 +170,14 @@ class AndroidCellularDownloadGateway(
             } finally {
                 cancellation.remove(disconnect)
             }
-        } catch (_: SocketTimeoutException) {
-            resultCode = DownloadResultCode.TIMEOUT
-        } catch (_: UnknownHostException) {
-            resultCode = DownloadResultCode.DNS_FAILURE
-        } catch (_: SSLException) {
-            resultCode = DownloadResultCode.TLS_FAILURE
-        } catch (_: ConnectException) {
-            resultCode = DownloadResultCode.CONNECTION_FAILURE
-        } catch (_: SecurityException) {
-            resultCode = DownloadResultCode.SECURITY_REJECTED
-        } catch (_: IllegalArgumentException) {
-            resultCode = DownloadResultCode.SECURITY_REJECTED
-        } catch (_: Throwable) {
-            resultCode = if (cancellation.isCancelled()) DownloadResultCode.CANCELLED else DownloadResultCode.NETWORK_ERROR
+        } catch (error: Throwable) {
+            failure = classifyDownloadFailure(error)
         } finally {
             connection?.disconnect()
         }
-        return if (cancellation.isCancelled() || resultCode == DownloadResultCode.CANCELLED) {
+        return if (cancellation.isCancelled()) {
             cancelledResult(started, bytes, httpStatus)
-        } else failedResult(resultCode, started, bytes, httpStatus, stage)
+        } else DownloadResult(DownloadStatus.FAILED, failure.code, started, timeProvider.capture(), bytes, httpStatus, stage, failure.cause, failure.errno)
     }
 
     private fun failedResult(code: DownloadResultCode, started: CapturedTime, bytes: Long, status: Int?, stage: DownloadFailureStage? = null) =

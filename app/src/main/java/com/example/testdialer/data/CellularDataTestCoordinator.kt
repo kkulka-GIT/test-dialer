@@ -77,7 +77,9 @@ class CellularDataTestCoordinator(
                         false -> "Android nie wskazywał aktywnego VPN."
                         null -> "Stan VPN nie został ustalony."
                     }
-                    "$reason Etap: ${stage.name}. $vpn Test używa bezpośredniej sieci komórkowej."
+                    val diagnostic = listOfNotNull(result.failureCause?.name, result.failureErrno).joinToString("/")
+                    val phaseNote = if (stage == DownloadFailureStage.RESPONSE) " Pobieranie odpowiedzi może obejmować DNS, połączenie i TLS." else ""
+                    "$reason Etap: ${stage.name}.$phaseNote Diagnostyka: ${diagnostic.ifEmpty { "brak" }}. $vpn Test używa bezpośredniej sieci komórkowej."
                 },
             )
             recorder.recordEventAt(
@@ -102,6 +104,8 @@ class CellularDataTestCoordinator(
                         },
                         result.httpStatus?.let { CorrelationReference("httpStatus", it.toString()) },
                         result.failureStage?.let { CorrelationReference("failureStage", it.name) },
+                        result.failureCause?.let { CorrelationReference("failureCause", it.name) },
+                        result.failureErrno?.let { CorrelationReference("failureErrno", it) },
                         prepared.vpnActiveAtPreparation?.let { CorrelationReference("vpnActiveAtPreparation", it.toString()) },
                     ),
                 ),
