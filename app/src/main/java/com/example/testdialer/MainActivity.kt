@@ -2646,7 +2646,13 @@ class MainActivity : ComponentActivity() {
             background = pillBackground(color)
             setTextColor(ColorPalette.onAccent)
             contentDescription = getString(R.string.sms_outcome_accessibility, getString(label))
-            setOnClickListener { guidedSmsViewModel.record(outcome) }
+            setOnClickListener {
+                val destination = guidedSmsState.input?.destination.orEmpty().ifBlank { "—" }
+                confirmObservation(
+                    context = getString(R.string.sms_observation_context, destination),
+                    observation = getString(label),
+                ) { guidedSmsViewModel.record(outcome) }
+            }
         }
 
     private fun createSmsSavedPanel(): View = createCard {
@@ -2733,8 +2739,22 @@ class MainActivity : ComponentActivity() {
             background = pillBackground(color)
             setTextColor(ColorPalette.onAccent)
             contentDescription = getString(R.string.outcome_button_description, getString(labelRes))
-            setOnClickListener { saveVoiceOutcome(outcome) }
+            setOnClickListener {
+                confirmObservation(
+                    context = getString(R.string.voice_observation_context, pendingPhoneNumber.orEmpty()),
+                    observation = getString(labelRes),
+                ) { saveVoiceOutcome(outcome) }
+            }
         }
+    }
+
+    private fun confirmObservation(context: String, observation: String, onConfirm: () -> Unit) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.observation_confirm_title)
+            .setMessage(getString(R.string.observation_confirm_message, context, observation))
+            .setNegativeButton(R.string.observation_confirm_cancel, null)
+            .setPositiveButton(R.string.observation_confirm_save) { _, _ -> onConfirm() }
+            .show()
     }
 
     private fun saveVoiceOutcome(outcome: VoiceTestResult.Outcome) {

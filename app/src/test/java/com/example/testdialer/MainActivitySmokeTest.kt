@@ -1,6 +1,8 @@
 package com.example.testdialer
 
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Looper
 import android.view.View
@@ -35,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import java.util.concurrent.Executors
+import java.io.File
 import com.example.testdialer.sms.GuidedSmsUiState
 
 @RunWith(RobolectricTestRunner::class)
@@ -263,6 +266,63 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `Voice observation requires confirmation and cancel keeps it unsaved`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("pendingPhoneNumber").apply {
+            isAccessible = true
+            set(activity, "+48123123123")
+        }
+        MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+            setBoolean(activity, true)
+        }
+        renderScenario(activity, "VOICE")
+
+        findButton(activity, activity.getString(R.string.outcome_success)).performClick()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains("+48123123123"))
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains(
+            activity.getString(R.string.outcome_success),
+        ))
+        captureDialog(dialog, "voice-observation-confirm.png")
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        assertTrue(MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+        }.getBoolean(activity))
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.voice_outcome_title),
+        ))
+    }
+
+    @Test
+    fun `SMS observation requires confirmation and cancel keeps it pending`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("guidedSmsState").apply {
+            isAccessible = true
+            set(activity, GuidedSmsUiState(
+                awaitingObservation = true,
+                input = com.example.testdialer.sms.GuidedSmsInput("+48999888777", "Kontrola", null),
+            ))
+        }
+        renderScenario(activity, "SMS")
+
+        findButton(activity, activity.getString(R.string.sms_user_reported_sent)).performClick()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains("+48999888777"))
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains(
+            activity.getString(R.string.sms_user_reported_sent),
+        ))
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.sms_observation_title),
+        ))
+    }
+
+    @Test
     fun `running Data keeps its execution screen selected`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         findButton(activity, activity.getString(R.string.data_type)).performClick()
@@ -475,6 +535,20 @@ class MainActivitySmokeTest {
 
     private fun collectText(root: android.view.View): String =
         descendants(root).filterIsInstance<android.widget.TextView>().joinToString("\n") { it.text }
+
+    private fun captureDialog(dialog: android.app.AlertDialog, name: String) {
+        val root = dialog.window!!.decorView
+        root.measure(
+            View.MeasureSpec.makeMeasureSpec(360, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.AT_MOST),
+        )
+        root.layout(0, 0, 360, root.measuredHeight)
+        val bitmap = Bitmap.createBitmap(360, root.height, Bitmap.Config.ARGB_8888)
+        root.draw(Canvas(bitmap))
+        val file = File("build/reports/screenshots/$name").apply { parentFile!!.mkdirs() }
+        file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        bitmap.recycle()
+    }
 
     private fun renderScenario(activity: MainActivity, typeName: String) {
         val typeClass = Class.forName("com.example.testdialer.ui.TestType")

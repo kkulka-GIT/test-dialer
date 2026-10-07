@@ -38,6 +38,10 @@
     <string name="execution_leave_blocked_title">Test nadal trwa</string>
     <string name="execution_leave_blocked_message">Dokończ bieżący etap na tym ekranie. Jeśli trwa test danych, możesz go tutaj anulować. Dzięki temu nie utracisz dostępu do zapisania obserwacji ani kontroli transferu.</string>
     <string name="execution_leave_blocked_return">Wróć do testu</string>
+    <string name="observation_confirm_title">Zapisać tę obserwację?</string>
+    <string name="observation_confirm_message">%1$s\n\nWybrana obserwacja: %2$s\n\nTo jest deklaracja testera, a nie techniczne potwierdzenie operatora ani billingu.</string>
+    <string name="observation_confirm_cancel">Wróć do obserwacji</string>
+    <string name="observation_confirm_save">Zapisz obserwację</string>
     <string name="run_no_planned_tasks">Brak zaplanowanych testów. Dodaj ręczny test Voice, SMS lub Data.</string>
     <string name="task_pending">Niewykonany</string>
     <string name="task_done">Wykonany</string>
@@ -89,6 +93,7 @@
     <string name="opening_dialer">Otwieranie dialera...</string>
     <string name="dialer_unavailable">Nie znaleziono aplikacji dialera.</string>
     <string name="voice_outcome_title">Jaki był wynik testu?</string>
+    <string name="voice_observation_context">Test Voice numeru %1$s</string>
     <string name="voice_outcome_description">Wskaż ręcznie wynik testu numeru %1$s. Test Dialer nie sprawdza technicznie połączenia.</string>
     <string name="voice_outcome_accessibility_announcement">Wrócono z dialera. Wybierz ręcznie wynik testu Voice.</string>
     <string name="outcome_success">Udało się</string>
@@ -111,6 +116,7 @@
     <string name="sms_composer_unavailable_after_start">Aplikacja SMS stała się niedostępna. Wybierz „Nie zweryfikowano”, aby zamknąć sesję.</string>
     <string name="sms_starting">Tworzenie kontrolowanej sesji…</string>
     <string name="sms_observation_title">Co zrobiłeś w aplikacji SMS?</string>
+    <string name="sms_observation_context">Test SMS do numeru %1$s</string>
     <string name="sms_observation_description">Wybierz własną obserwację. Nie jest to techniczne potwierdzenie wysłania ani dostarczenia wiadomości.</string>
     <string name="sms_user_reported_sent">Wysłano według mnie</string>
     <string name="sms_user_reported_not_sent">Nie wysłano lub anulowano</string>
