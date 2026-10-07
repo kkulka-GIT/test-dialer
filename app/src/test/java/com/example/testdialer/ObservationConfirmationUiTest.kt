@@ -22,6 +22,34 @@ import java.io.File
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ObservationConfirmationUiTest {
+    @Test fun `Data cancellation requires confirmation and keep leaves transfer running`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        button(activity, activity.getString(R.string.data_type)).performClick()
+        MainActivity::class.java.getDeclaredField("cellularDataState").apply {
+            isAccessible = true
+            set(activity, com.example.testdialer.data.CellularDataUiState(
+                busy = true,
+                bytes = 25_000_000,
+                targetBytes = 100_000_000,
+            ))
+        }
+        renderScenario(activity, "DATA")
+
+        button(activity, activity.getString(R.string.data_cancel)).performClick()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val message = dialog.findViewById<TextView>(android.R.id.message).text.toString()
+        assertTrue(message.contains("25000000"))
+        assertTrue(message.contains("100000000"))
+        assertTrue(message.contains("częściowy wynik"))
+        capture(dialog, "data-cancel-confirm.png")
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        val state = MainActivity::class.java.getDeclaredField("cellularDataState").apply { isAccessible = true }
+            .get(activity) as com.example.testdialer.data.CellularDataUiState
+        assertTrue(state.busy && !state.saved)
+        assertTrue(button(activity, activity.getString(R.string.data_cancel)).isEnabled)
+    }
+
     @Test fun `Data transfer requires confirmation and cancel does not start it`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         button(activity, activity.getString(R.string.data_type)).performClick()
@@ -70,6 +98,15 @@ class ObservationConfirmationUiTest {
 
     private fun button(activity: MainActivity, text: String) = views(activity.findViewById(android.R.id.content))
         .filterIsInstance<Button>().first { it.text.toString() == text }
+
+    private fun renderScenario(activity: MainActivity, typeName: String) {
+        val typeClass = Class.forName("com.example.testdialer.ui.TestType")
+        val type = typeClass.enumConstants.first { (it as Enum<*>).name == typeName }
+        MainActivity::class.java.getDeclaredMethod("renderScenario", typeClass).apply {
+            isAccessible = true
+            invoke(activity, type)
+        }
+    }
 
     private fun views(view: View): Sequence<View> = sequence {
         yield(view)

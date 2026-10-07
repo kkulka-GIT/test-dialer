@@ -140,6 +140,10 @@
     <string name="data_start_confirm_action">Rozpocznij transfer</string>
     <string name="data_running">Pobieranie przez sieć komórkową…</string>
     <string name="data_cancel">Anuluj test</string>
+    <string name="data_cancel_confirm_title">Anulować trwający transfer?</string>
+    <string name="data_cancel_confirm_message">Pobrano %1$d z %2$d bajtów.\n\nAnulowanie zatrzyma transfer i zapisze częściowy wynik w Rejestrze.</string>
+    <string name="data_cancel_confirm_keep">Kontynuuj test</string>
+    <string name="data_cancel_confirm_action">Anuluj transfer</string>
     <string name="data_saved_title">Test Data zapisany</string>
     <string name="data_saved_description">Wynik, liczba bajtów i dokładne czasy zostały zapisane w Rejestrze.</string>
     <string name="data_cancelled">Test anulowano, a zdarzenie terminalne zapisano w Rejestrze.</string>

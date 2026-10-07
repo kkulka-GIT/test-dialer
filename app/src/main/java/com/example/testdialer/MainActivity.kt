@@ -2400,7 +2400,14 @@ class MainActivity : ComponentActivity() {
             val speed = if (state.elapsedMillis > 0) state.bytes / 1000.0 / state.elapsedMillis else 0.0
             addView(createBodyText(getString(R.string.data_speed, state.elapsedMillis / 1000, speed)))
             addView(spaceVertical(dimen(12)))
-            addView(reportButton(getString(R.string.data_cancel)) { cellularDataViewModel.cancel() })
+            addView(reportButton(getString(R.string.data_cancel)) {
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle(R.string.data_cancel_confirm_title)
+                    .setMessage(getString(R.string.data_cancel_confirm_message, state.bytes, state.targetBytes))
+                    .setNegativeButton(R.string.data_cancel_confirm_keep, null)
+                    .setPositiveButton(R.string.data_cancel_confirm_action) { _, _ -> cellularDataViewModel.cancel() }
+                    .show()
+            })
             addView(spaceVertical(dimen(8)))
             addView(createStatusText(getString(R.string.data_foreground)))
         }

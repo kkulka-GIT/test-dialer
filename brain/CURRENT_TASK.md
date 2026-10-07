@@ -1,2 +1,2 @@
-# Potwierdzać rozpoczęcie transferu Data
-Branch feature/stable-signing-20261006 / PR #21 zależny od #20. Po poprawnej walidacji Data aplikacja pokazuje limit i adres; dopiero jawne „Rozpocznij transfer” uruchamia istniejący przepływ. Anulowanie wraca do formularza bez transferu i bez zmiany sesji. CI #182 PASS: 215 testów, czytelny podgląd 360 px i stable APK 118201 ze stałym pinem/ID. Telefon/TalkBack NOT TESTED.
+# Potwierdzać anulowanie transferu Data
+Branch feature/stable-signing-20261006 / PR #21 zależny od #20. Problem: jedno przypadkowe dotknięcie „Anuluj test” przerywa trwający transfer i zapisuje częściowy wynik. Zakres: pokazać pobrane/docelowe bajty oraz skutek; „Kontynuuj test” nie zmienia wykonania, a dopiero jawne „Anuluj transfer” używa istniejącego anulowania. Poza zakresem: zmiana pobierania, ponawianie lub usuwanie częściowego wyniku. Kryterium: regresja kontynuacji, podgląd 360 px, CI i stabilny APK. Telefon/TalkBack NOT TESTED.
