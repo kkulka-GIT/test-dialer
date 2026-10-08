@@ -31,3 +31,7 @@ Przed wyborem kroku zapisz w zadaniu: jaki konkretny problem testera rozwiązuje
 - Sprawdzenie dostępności na telefonie i ulepszenia audio na podstawie rzeczywistego odbioru.
 
 Automatyzacja godzinowa inicjuje pojedyncze przebiegi, nie jest stale działającym workerem i nie gwarantuje przyszłej dostępności środowiska.
+
+
+## Ciągłość pracy przy pytaniach do użytkownika — 2026-10-08
+Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego problemu nie zatrzymuje całego rozwoju. Pytanie zapisz z powodem, brakującym dowodem i zakresem zależnym od odpowiedzi w brain/OPEN_QUESTIONS.md; użytkownik odpowie przy okazji, bez obowiązku obecności w każdej turze. Wstrzymaj tylko działania rzeczywiście zależne od tej odpowiedzi. Sam wybierz inną wartościową poprawkę, uproszczenie, weryfikację lub funkcję zgodną z kompasem. Data/Tailscale pozostaje ważnym otwartym problemem, ale wcześniejsze „przed kolejnymi funkcjami” nie oznacza już bezczynnego oczekiwania całego projektu. Każda tura ocenia niezależną pracę; nie wymaga sztucznego commitu ani nowej funkcji. Brak zmiany musi wynikać z oceny korzyści, nie tylko oczekiwania na użytkownika. Nie omijaj ograniczeń bezpieczeństwa, podpisywania, danych, operatora ani zakazu merge main.

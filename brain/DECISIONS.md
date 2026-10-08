@@ -146,3 +146,7 @@
 
 
 2026-10-08: przegląd źródeł Tailscale na SHA 264102cc702fbd844e900227ee02e5cbb4d7f801: IPNService.newBuilder tworzy Builder z allowFamily IPv4/IPv6, underlying network i listą aplikacji; brak allowBypass w tej metodzie. Przejrzana ścieżka updateTUN w libtailscale/net.go także go nie wywołuje. Android dokumentuje domyślny zakaz omijania VPN przez aplikacje objęte VPN. To silniejsze uzasadnienie hipotezy SOCKET/EPERM mimo wyłączonego lockdown, nie potwierdzenie wersji/polityki na telefonie. Raport: brain/reports/data-tailscale-bypass-source-20261008.md. Bez nowego APK, zmiany routingu i kolejnego transferu.
+
+
+## Ciągłość pracy przy pytaniach do użytkownika — 2026-10-08
+Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego problemu nie zatrzymuje całego rozwoju. Pytanie zapisz z powodem, brakującym dowodem i zakresem zależnym od odpowiedzi w brain/OPEN_QUESTIONS.md; użytkownik odpowie przy okazji, bez obowiązku obecności w każdej turze. Wstrzymaj tylko działania rzeczywiście zależne od tej odpowiedzi. Sam wybierz inną wartościową poprawkę, uproszczenie, weryfikację lub funkcję zgodną z kompasem. Data/Tailscale pozostaje ważnym otwartym problemem, ale wcześniejsze „przed kolejnymi funkcjami” nie oznacza już bezczynnego oczekiwania całego projektu. Każda tura ocenia niezależną pracę; nie wymaga sztucznego commitu ani nowej funkcji. Brak zmiany musi wynikać z oceny korzyści, nie tylko oczekiwania na użytkownika. Nie omijaj ograniczeń bezpieczeństwa, podpisywania, danych, operatora ani zakazu merge main.
