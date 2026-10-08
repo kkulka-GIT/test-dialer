@@ -1,17 +1,10 @@
 # Następne wartościowe kroki
+Najpierw odśwież PR/head/CI. Checkpoint Wi-Fi STATUS zakończony na CI198/APK119801; nie dubluj implementacji.
 
-Kierunek długoterminowy: aktualizacje zatwierdzonych APK z GitHub Releases i opcjonalne Codex Code Review. Analiza w `brain/UPDATES.md`. Najpierw stabilność Data i potwierdzenie upgrade z retencją historii; później proces promocji wydania i PoC klienta. Nie implementować teraz ani publikować każdego CI; nie dodawać płatnych zależności.
+Data/Tailscale pozostaje ważne. Brakujący dowód wersji i polityki VPN zapisany w OPEN_QUESTIONS; nie powtarzaj identycznych transferów. Nie zmieniaj znaczenia testu komórkowego, ustawień telefonu ani nie dodawaj fallbacku Wi-Fi/VPN. Poprawki uzasadniaj kodem i dowodami.
 
-Najpierw sprawdź aktualny PR/head/CI i nie dubluj zwartego STATUS. Przy najbliższym odbiorze na telefonie sprawdzić wygodę kafelków, rozwinięcie tylko jednego szczegółu, zachowanie wyboru podczas odświeżania oraz komunikat TalkBack: nazwa, stan, zwinięte/rozwinięte. Osobno potwierdzić aktualizację 119301 → 119401 z zachowaniem historii. Nie wymagać rutynowego odbioru przed dalszą pracą.
+Oceń niezależną, wartościową poprawkę niezawodności/czytelności/korelacji zgodną z kompasem, zamiast zatrzymywać projekt na odpowiedzi użytkownika. Brak zmiany dopuszczalny po ocenie korzyści; żadnych funkcji dla aktywności.
 
-Dalsza diagnoza `SOCKET/EPERM` wymaga nowego dowodu polityki VPN/Android, a nie powtarzania identycznych prób. Nie zmieniać tras, ustawień ani dodawać fallbacku Wi-Fi/VPN. Nie uruchamiać transferów operatora automatycznie.
+Przy okazji odbioru: wygoda kafelków i szczegółów, TalkBack/TTS oraz aktualizacja stabilnego APK z zachowaniem historii. Nie wymagaj rutynowego odbioru przed dalszą pracą.
 
-
-2026-10-08 11:45 Europe/Warsaw: użytkownik odczytał „Blokuj połączenia bez sieci VPN”: WYŁĄCZONE. Źródło: deklaracja użytkownika o bieżącym ustawieniu, bez modyfikacji; nie potwierdza retrospektywnie ustawienia podczas wcześniejszego transferu. Nie traktować lockdown jako potwierdzonej przyczyny EPERM. Osobna polityka allowBypass usługi VPN pozostaje hipotezą (Android VpnService.Builder); stan Tailscale nieustalony. Użytkownik oczekuje rozwiązania produktowego dla różnych konfiguracji, nie ręcznego strojenia telefonu. Następny krok: przegląd implementacji/polityki Tailscale i ścieżki gniazda w kodzie, określenie granic bezpośredniego CELLULAR i poprawa zachowania tylko na podstawie dowodów. Bez cichej zamiany na Wi-Fi/VPN. https://developer.android.com/reference/android/net/VpnService.Builder#allowBypass()
-
-
-2026-10-08: przegląd źródeł Tailscale na SHA 264102cc702fbd844e900227ee02e5cbb4d7f801: IPNService.newBuilder tworzy Builder z allowFamily IPv4/IPv6, underlying network i listą aplikacji; brak allowBypass w tej metodzie. Przejrzana ścieżka updateTUN w libtailscale/net.go także go nie wywołuje. Android dokumentuje domyślny zakaz omijania VPN przez aplikacje objęte VPN. To silniejsze uzasadnienie hipotezy SOCKET/EPERM mimo wyłączonego lockdown, nie potwierdzenie wersji/polityki na telefonie. Raport: brain/reports/data-tailscale-bypass-source-20261008.md. Bez nowego APK, zmiany routingu i kolejnego transferu.
-
-
-## Ciągłość pracy przy pytaniach do użytkownika — 2026-10-08
-Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego problemu nie zatrzymuje całego rozwoju. Pytanie zapisz z powodem, brakującym dowodem i zakresem zależnym od odpowiedzi w brain/OPEN_QUESTIONS.md; użytkownik odpowie przy okazji, bez obowiązku obecności w każdej turze. Wstrzymaj tylko działania rzeczywiście zależne od tej odpowiedzi. Sam wybierz inną wartościową poprawkę, uproszczenie, weryfikację lub funkcję zgodną z kompasem. Data/Tailscale pozostaje ważnym otwartym problemem, ale wcześniejsze „przed kolejnymi funkcjami” nie oznacza już bezczynnego oczekiwania całego projektu. Każda tura ocenia niezależną pracę; nie wymaga sztucznego commitu ani nowej funkcji. Brak zmiany musi wynikać z oceny korzyści, nie tylko oczekiwania na użytkownika. Nie omijaj ograniczeń bezpieczeństwa, podpisywania, danych, operatora ani zakazu merge main.
+Kierunek długoterminowy: zatwierdzone APK z GitHub Releases i opcjonalne Codex Code Review (UPDATES.md). Najpierw stabilność i retencja danych; później świadoma promocja dokładnego artefaktu PASS oraz klient aktualizacji z weryfikacją podpisu/tożsamości/hash i zgodami Androida. Bez wdrożenia teraz, publikowania każdej wersji CI, płatnych zależności i merge main.
