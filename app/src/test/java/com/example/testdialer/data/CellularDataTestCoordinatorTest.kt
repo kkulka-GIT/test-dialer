@@ -20,7 +20,13 @@ class CellularDataTestCoordinatorTest {
             private var value = 100L
             override fun capture() = CapturedTime(value, value).also { value += 10 }
         }
-        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), clock,
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl))
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
+                DownloadStatus.COMPLETED, DownloadResultCode.COMPLETED, clock.capture(), clock.capture(), 512, 200,
+            )
+        }
+        val stored = CellularDataTestCoordinator(FakeRepository(), gateway, clock,
             networkContext = { mapOf("vpn" to if (reads++ == 0) "aktywny" else "nieaktywny") },
         ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
         val refs = stored.run.events.single().correlation.references.associate { it.namespace to it.value }
