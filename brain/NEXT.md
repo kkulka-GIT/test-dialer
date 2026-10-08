@@ -1,9 +1,9 @@
-# Zweryfikować APK118901 na telefonie bez wyłączania Wi-Fi
+# Data: rozstrzygnąć odmowę SOCKET / EPERM
 
-Branch `feature/stable-signing-20261006` / PR #21 zależny od #20. CI #189 PASS, stable APK118901 jest bieżącym jedynym APK do telefonu.
+Branch `feature/stable-signing-20261006`, PR #21 zależny od #20. CI #189 ponownie potwierdzone PASS 2026-10-08; bieżące stable APK118901 pozostaje bez zmian.
 
-Nie dodawać kolejnej funkcji Data ani zmieniać routingu przed dowodem urządzenia. Użytkownik wstrzymał ADB, więc nie inicjować kolejnej próby automatycznie. Gdy odbiór zostanie wznowiony, wykonać jeden konkretny test 1 MB z Wi-Fi i Tailscale włączonymi na APK118901. Zebrać: resultCode, bytes, duration, HTTP, failureStage, failureCause i failureErrno. Nie wykonywać identycznego testu na APK118501/118701.
+Nowy kontekst użytkownika: SOCKET / EPERM, 0 bytes przy Tailscale. To odmowa operacji gniazda, nie dowód braku internetu lub konkretnego ustawienia. Nie mamy w tej sesji pełnego eksportu ani niezależnego potwierdzenia versionCode próby. Nie powtarzać identycznych prób i nie uruchamiać ADB/transferu automatycznie.
 
-Kryterium: sukces to COMPLETED/1 000 000 bytes po bezpośredniej sieci komórkowej. `NETWORK_UNAVAILABLE/NETWORK_ACQUISITION` oznacza, że Android nie udostępnił wymaganej sieci w 10 s; inny błąd wymaga analizy zapisanej fazy/cause/errno. Żaden wynik nie potwierdza billingu. Nie wyłączać Wi-Fi, nie zmieniać Tailscale, nie dodawać Wi-Fi/VPN fallbacku i nie uruchamiać transferu bez świadomego działania użytkownika.
+Najbardziej użyteczny następny dowód to stan Android „Blokuj połączenia bez VPN” oraz obecność Test Dialera w wykluczeniach Tailscale, odczyt bez zmiany ustawień. Gdy użytkownik wróci do diagnozy, zapytać raz o te dwa stany; nie żądać wyłączenia Wi-Fi. allowBypass jest decyzją usługi VPN, nie uprawnieniem, które Test Dialer może sobie nadać. Sam requestNetwork nie gwarantuje możliwości użycia gniazda poza VPN.
 
-Po dowodzie: zaktualizować CURRENT_TASK/NEXT/raport i zdecydować, czy problem jest rozwiązany, czy potrzebna jest dokładnie jedna dalsza hipoteza. Fizyczne zachowanie danych przy aktualizacji, TalkBack i TTS nadal pozostają osobnym odbiorem.
+Zachować bezpośrednie CELLULAR, DNS i HTTP na tej samej sieci. Nie dodawać fallbacku przez Wi-Fi/VPN, globalnego bind ani retry. Nie oznaczać VPN_BLOCKED jako faktu na podstawie EPERM. Historia i billing pozostają oddzielone. Fizyczny sukces transferu, aktualizacja z zachowaniem historii, TalkBack/TTS nadal wymagają odbioru.
