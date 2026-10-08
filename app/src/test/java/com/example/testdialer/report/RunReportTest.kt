@@ -45,8 +45,8 @@ class RunReportTest {
         val headers = csvRow(rows[0])
         val values = csvRow(rows[1])
 
-        assertEquals("+48111111111", values[headers.indexOf("correlation_source_address")])
-        assertEquals("+48222222222", values[headers.indexOf("correlation_destination_address")])
+        assertEquals("'+48111111111", values[headers.indexOf("correlation_source_address")])
+        assertEquals("'+48222222222", values[headers.indexOf("correlation_destination_address")])
         assertEquals("SIM A", values[headers.indexOf("subscriber_alias")])
         assertNull(original.run.events.single().correlation.sourceAddress)
     }
