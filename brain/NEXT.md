@@ -1,5 +1,5 @@
 # Następne wartościowe kroki
-Najpierw odśwież PR/head/CI. Checkpoint pól korelacyjnych CSV zakończony na CI201/APK120101; nie dubluj implementacji. Checkpoint Wi-Fi STATUS także pozostaje ukończony.
+Najpierw odśwież PR/head/CI. Checkpoint czasu/rewizji CSV zakończony na CI203/APK120301; nie dubluj implementacji. Wcześniejsze pola korelacyjne CSV i Wi-Fi STATUS także pozostają ukończone.
 
 Data/Tailscale pozostaje ważne. Brakujący dowód wersji i polityki VPN zapisany w OPEN_QUESTIONS; nie powtarzaj identycznych transferów. Nie zmieniaj znaczenia testu komórkowego, ustawień telefonu ani nie dodawaj fallbacku Wi-Fi/VPN. Poprawki uzasadniaj kodem i dowodami.
 

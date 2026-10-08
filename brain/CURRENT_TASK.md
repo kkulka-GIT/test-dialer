@@ -1,7 +1,9 @@
 # Bieżący checkpoint — 2026-10-08
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
 
-Eksport CSV zachowuje teraz jawne adresy źródłowy/docelowy korelacji i alias abonenta; wcześniej te pola były dostępne w TXT/JSON, lecz pomijane w CSV. Chronione wartości rozpoczynające się od `+` nadal dostają apostrof, aby arkusz nie interpretował ich jako formuły. CI #200 poprawnie zatrzymało błędne oczekiwanie nowego testu; po zachowaniu zabezpieczenia finalne CI #201 PASS: 241 testów, 0 failures/errors. Stabilny APK120101 zachowuje tożsamość i certyfikat; pobrany hash zgodny z metadanymi. Dowody: brain/reports/csv-correlation-fields-20261008.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/37776490850/artifacts/11550745219 .
+Eksport CSV zachowuje teraz także rewizję oraz dokładny czas startu i końca sesji w każdym wierszu. Dzięki temu pusta lub przerwana sesja nie traci całej informacji czasowej. CI #203 PASS: 242 testy, 0 failures/errors. Stabilny APK120301 zachowuje tożsamość i certyfikat; pobrany hash zgodny z metadanymi. Dowody: brain/reports/csv-run-timing-20261008.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/37783174849/artifacts/11553196637 .
+
+Poprzedni checkpoint CSV z jawnymi adresami korelacji i aliasem abonenta pozostaje częścią brancha; ochrona wartości `+` przed interpretacją jako formuła pozostaje aktywna.
 
 Zwarty STATUS pozostaje ukończony; poprawka Wi-Fi z CI #198 jest częścią bieżącego brancha.
 
