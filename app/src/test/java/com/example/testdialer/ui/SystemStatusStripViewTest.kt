@@ -37,4 +37,22 @@ class SystemStatusStripViewTest {
         assertTrue(strip.isSingleColumn())
         assertEquals(6, strip.childCount)
     }
+
+    @Test fun `wifi summary distinguishes disabled disconnected and unknown radio`() {
+        val strip = SystemStatusStripView(ApplicationProvider.getApplicationContext<Context>())
+        val wifi = (strip.getChildAt(1) as LinearLayout).getChildAt(0)
+        val states = listOf(
+            "wyłączone · niepołączone" to "wyłączone",
+            "włączone · niepołączone" to "niepołączone",
+            "włączone · połączone" to "połączone",
+            "nie ustalono · niepołączone" to "nie ustalono",
+        )
+        states.forEach { (full, short) ->
+            strip.render(PhoneNetworkStatus("gotowa", "dane włączone", full, "nieaktywny", "Wi-Fi"))
+            assertTrue(wifi.contentDescription.toString().startsWith("Wi-Fi: $short,"))
+            wifi.performClick()
+            assertEquals("Wi-Fi: $full", strip.detailText())
+            wifi.performClick()
+        }
+    }
 }

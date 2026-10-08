@@ -125,6 +125,8 @@ internal class SystemStatusStripView(context: Context) : LinearLayout(context) {
 
     companion object {
         private fun wifiShort(value: String) = when {
+            value.substringBefore(" ·") == "wyłączone" -> "wyłączone"
+            value.substringBefore(" ·") == "nie ustalono" -> "nie ustalono"
             "niepołączone" in value -> "niepołączone"
             "połączone" in value -> "połączone"
             else -> value.substringBefore(" ·")
