@@ -26,6 +26,35 @@ class RunReportTest {
         assertTrue(csv.endsWith("\r\n"))
     }
 
+    @Test fun `CSV keeps explicit correlation addresses and subscriber alias`() {
+        val original = snapshot()
+        val correlation = CorrelationMetadata(
+            sourceAddress = "+48111111111",
+            destinationAddress = "+48222222222",
+            subscriberAlias = "SIM A",
+            references = original.run.events.single().correlation.references,
+        )
+        val stored = original.copy(run = original.run.copy(
+            events = listOf(original.run.events.single().copy(
+                action = TestAction.Sms("+48987654321", "bez przecinka i nowej linii"),
+                correlation = correlation,
+            )),
+        ))
+
+        val rows = RunReportFormatter.csv(stored).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("+48111111111", values[headers.indexOf("correlation_source_address")])
+        assertEquals("+48222222222", values[headers.indexOf("correlation_destination_address")])
+        assertEquals("SIM A", values[headers.indexOf("subscriber_alias")])
+        assertNull(original.run.events.single().correlation.sourceAddress)
+    }
+
+    private fun csvRow(row: String): List<String> = row.removePrefix("\"").removeSuffix("\"")
+        .split("\",\"")
+        .map { it.replace("\"\"", "\"") }
+
     @Test fun `billing annotations export separately without altering service observation`() {
         val stored = snapshot()
         val reviews = mapOf("event" to com.example.testdialer.review.BillingReview("0,79 PLN", "1,58 PLN", com.example.testdialer.review.BillingVerdict.FAIL, 5000))
