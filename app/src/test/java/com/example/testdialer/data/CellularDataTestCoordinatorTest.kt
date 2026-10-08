@@ -16,7 +16,11 @@ import org.junit.Test
 class CellularDataTestCoordinatorTest {
     @Test fun `captures independent before and after network context`() {
         var reads = 0
-        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), IncrementingTime(),
+        val clock = object : TimeProvider {
+            private var value = 100L
+            override fun capture() = CapturedTime(value, value).also { value += 10 }
+        }
+        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), clock,
             networkContext = { mapOf("vpn" to if (reads++ == 0) "aktywny" else "nieaktywny") },
         ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
         val refs = stored.run.events.single().correlation.references.associate { it.namespace to it.value }
