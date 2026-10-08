@@ -153,3 +153,5 @@ Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego proble
 
 
 2026-10-08: skrót STATUS zachowuje wyłączone/nieustalone Wi-Fi przed stanem połączenia. Uzasadnienie: rozróżnienie radia wyłączonego i włączonego bez sieci pomaga przygotować test. Niezależna poprawka bez zmian routingu; CI198 PASS (240 testów), APK119801. Raport brain/reports/status-wifi-summary-20261008.md.
+
+2026-10-08: CSV ma jawne kolumny `correlation_source_address`, `correlation_destination_address` i `subscriber_alias`, ponieważ sam `references_json` nie zawierał tych pól, a CSV ma służyć korelacji z CDR/billingiem. Zachowujemy dotychczasową neutralizację formuł dla wartości zaczynających się od `+`, `-`, `=` lub `@`. CI #200 ujawniło błędne oczekiwanie testu dla numeru z `+`; finalne CI #201 PASS (241 testów), APK120101. Raport: brain/reports/csv-correlation-fields-20261008.md.
