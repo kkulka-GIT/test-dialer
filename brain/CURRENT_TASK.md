@@ -1,5 +1,7 @@
 # STATUS: pasywna obserwacja telefonu i kontekst DATA
 
+Nowa uwaga po instalacji 119301: użytkownik widzi informacje, ale panel zajmuje zbyt dużo miejsca; preferuje ikony i rozwijane szczegóły. Następny checkpoint to podgląd zwartego STATUS przed zmianą aplikacji. Projekt: ikona + nazwa + krótki stan, cały element klikalny, jeden szczegół rozwinięty naraz; domyślna sieć zawsze widoczna, duży tekst przechodzi do jednej kolumny. Specyfikacja: brain/reports/status-compact-design-20261008.md. Nie wykonano jeszcze nowego podglądu ani implementacji. CI #193 pozostaje ostatnim zweryfikowanym buildem; diagnoza EPERM otwarta.
+
 Zatwierdzone przez użytkownika 2026-10-08 04:44 Warsaw. Branch feature/stable-signing-20261006 / PR #21. Wdrażany panel pięciu tekstowych wierszy SIM, cellular/dane/technologia, Wi-Fi, VPN, domyślna sieć aplikacji. Nie zamieniać nieznanego odczytu na brak. Pasywny callback wszystkich sieci i odczyt co 2 s tylko w onStart/onStop; brak requestNetwork ze STATUS, bez serwisu tła. DATA zachowuje własny dotychczasowy mechanizm requestNetwork po potwierdzeniu.
 
 ACCESS_WIFI_STATE i READ_BASIC_PHONE_STATE są normalnymi uprawnieniami. Technologia na API33+ z podstawowego odczytu, starsze API pokazują ograniczenie zamiast wymuszać zgodę READ_PHONE_STATE. Bez SSID, IMEI, IMSI, numerów i lokalizacji. SIM opisuje domyślną SIM; nie utożsamiać jej z wybraną kartą danych przy dual-SIM. 5G NR nie jest kopią ikony 5G NSA telefonu.
