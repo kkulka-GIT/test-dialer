@@ -55,6 +55,25 @@ class RunReportTest {
         .split("\",\"")
         .map { it.replace("\"\"", "\"") }
 
+    @Test fun `CSV keeps run timing and revision even when run has no events`() {
+        val original = snapshot()
+        val stored = original.copy(run = original.run.copy(
+            status = TestRunStatus.RUNNING,
+            completedAtMillis = null,
+            events = emptyList(),
+        ))
+
+        val rows = RunReportFormatter.csv(stored).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals(2, rows.size)
+        assertEquals("3", values[headers.indexOf("revision")])
+        assertEquals("1970-01-01T00:00:01Z", values[headers.indexOf("run_started_at_utc")])
+        assertEquals("", values[headers.indexOf("run_completed_at_utc")])
+        assertEquals("", values[headers.indexOf("event_id")])
+    }
+
     @Test fun `billing annotations export separately without altering service observation`() {
         val stored = snapshot()
         val reviews = mapOf("event" to com.example.testdialer.review.BillingReview("0,79 PLN", "1,58 PLN", com.example.testdialer.review.BillingVerdict.FAIL, 5000))
