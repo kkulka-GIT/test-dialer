@@ -1,9 +1,5 @@
-# Data: rozstrzygnąć odmowę SOCKET / EPERM
+# Domknąć STATUS
 
-Branch `feature/stable-signing-20261006`, PR #21 zależny od #20. CI #189 ponownie potwierdzone PASS 2026-10-08; bieżące stable APK118901 pozostaje bez zmian.
+Najpierw sprawdź aktualny PR/head/CI i nie dubluj aktywnej pracy. Po PASS potwierdź liczbę testów, certyfikat/tożsamość/versionCode APK i aktualizuj raport. Fizyczny odbiór: Wi-Fi i VPN przełączane ręcznie, cellular widoczne/niewidoczne, zmiana danych, duży tekst, TalkBack/TTS oraz aktualizacja z zachowaniem historii. Nie uruchamiaj transferów operatora automatycznie.
 
-Nowy kontekst użytkownika: SOCKET / EPERM, 0 bytes przy Tailscale. To odmowa operacji gniazda, nie dowód braku internetu lub konkretnego ustawienia. Nie mamy w tej sesji pełnego eksportu ani niezależnego potwierdzenia versionCode próby. Nie powtarzać identycznych prób i nie uruchamiać ADB/transferu automatycznie.
-
-Najbardziej użyteczny następny dowód to stan Android „Blokuj połączenia bez VPN” oraz obecność Test Dialera w wykluczeniach Tailscale, odczyt bez zmiany ustawień. Gdy użytkownik wróci do diagnozy, zapytać raz o te dwa stany; nie żądać wyłączenia Wi-Fi. allowBypass jest decyzją usługi VPN, nie uprawnieniem, które Test Dialer może sobie nadać. Sam requestNetwork nie gwarantuje możliwości użycia gniazda poza VPN.
-
-Zachować bezpośrednie CELLULAR, DNS i HTTP na tej samej sieci. Nie dodawać fallbacku przez Wi-Fi/VPN, globalnego bind ani retry. Nie oznaczać VPN_BLOCKED jako faktu na podstawie EPERM. Historia i billing pozostają oddzielone. Fizyczny sukces transferu, aktualizacja z zachowaniem historii, TalkBack/TTS nadal wymagają odbioru.
+Bez rozszerzania sterowania siecią. Dalsza diagnoza SOCKET/EPERM wymaga dowodów polityki VPN, nie powtarzania identycznych prób. Panel obserwacyjny nie zapewnia połączenia i nie pozyskuje cellular. Przy starszych API brak informacji telefonii opisuj jawnie; opcjonalną zgodę lub display-info 5G NSA rozważać dopiero po odbiorze minimalnej wersji.

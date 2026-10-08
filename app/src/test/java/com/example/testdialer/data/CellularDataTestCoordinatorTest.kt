@@ -14,6 +14,25 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CellularDataTestCoordinatorTest {
+    @Test fun `captures independent before and after network context`() {
+        var reads = 0
+        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), IncrementingTime(),
+            networkContext = { mapOf("vpn" to if (reads++ == 0) "aktywny" else "nieaktywny") },
+        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val refs = stored.run.events.single().correlation.references.associate { it.namespace to it.value }
+        assertEquals("aktywny", refs["networkBefore.vpn"])
+        assertEquals("nieaktywny", refs["networkAfter.vpn"])
+        assertTrue(refs.containsKey("networkBeforeAtEpochMillis"))
+        assertTrue(refs.containsKey("networkAfterAtEpochMillis"))
+    }
+
+    @Test fun `unavailable status reader does not prevent transfer or terminal history`() {
+        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), IncrementingTime(),
+            networkContext = { throw SecurityException("no permission") },
+        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        assertEquals("COMPLETED", stored.run.events.single().observation?.code)
+    }
+
     @Test fun `persists one completed terminal event with correlation`() {
         val repository = FakeRepository()
         val gateway = FakeGateway(DownloadStatus.COMPLETED)

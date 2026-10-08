@@ -1,8 +1,9 @@
 package com.example.testdialer.ui
 
 import android.content.Context
+import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -11,32 +12,14 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SystemStatusStripViewTest {
-    @Test
-    fun `strip exposes four truthful statuses in a compact container`() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val strip = SystemStatusStripView(
-            context, "SIM", "Sieć", "Dane", "S", "N", "D", "Wi-Fi", "W",
-        )
-
-        strip.render(
-            simReady = true,
-            networkAvailable = true,
-            cellularDataEnabled = false,
-            wifiAvailable = true,
-        )
-
-        assertTrue(strip.contentDescription.contains("SIM: dostępne"))
-        assertTrue(strip.contentDescription.contains("Sieć: dostępne"))
-        assertTrue(strip.contentDescription.contains("Dane: niedostępne"))
-        assertTrue(strip.contentDescription.contains("Wi-Fi: dostępne"))
-        var badgeCount = 0
-        repeat(strip.childCount) { index ->
-            val child = strip.getChildAt(index)
-            if (child is android.widget.LinearLayout) {
-                badgeCount += 1
-                assertTrue(child.minimumHeight <= (40 * context.resources.displayMetrics.density).toInt())
-            }
-        }
-        assertTrue(badgeCount == 4)
+    @Test fun `unknown states stay distinct from disabled states and VPN is textual`() {
+        val strip = SystemStatusStripView(ApplicationProvider.getApplicationContext<Context>())
+        strip.render(PhoneNetworkStatus("nie ustalono", "dane wyłączone", "włączone · niepołączone", "aktywny", "VPN"))
+        assertEquals(5, strip.childCount)
+        assertEquals("SIM: nie ustalono", (strip.getChildAt(0) as TextView).text.toString())
+        assertEquals("VPN: aktywny", (strip.getChildAt(3) as TextView).text.toString())
+        assertEquals("Sieć domyślna aplikacji: VPN", (strip.getChildAt(4) as TextView).text.toString())
+        strip.render(PhoneNetworkStatus("gotowa", "dane włączone", "wyłączone", "nieaktywny", "cellular"))
+        assertEquals("Wi-Fi: wyłączone", (strip.getChildAt(2) as TextView).text.toString())
     }
 }

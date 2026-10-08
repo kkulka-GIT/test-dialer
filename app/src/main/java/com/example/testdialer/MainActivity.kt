@@ -261,7 +261,7 @@ class MainActivity : ComponentActivity() {
         )[GuidedSmsViewModel::class.java]
         cellularDataViewModel = ViewModelProvider(
             this,
-            CellularDataViewModel.Factory(repository, connectivityManager),
+            CellularDataViewModel.Factory(repository, connectivityManager, applicationContext),
         )[CellularDataViewModel::class.java]
         activeRunViewModel = ViewModelProvider(
             this,
@@ -448,7 +448,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         registerNetworkCallback()
-        refreshVoiceStatusBar()
+        statusHandler.removeCallbacks(statusRefresh)
+        statusHandler.post(statusRefresh)
     }
 
     override fun onResume() {
@@ -512,6 +513,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         if (!isChangingConfigurations && cellularDataState.busy) cellularDataViewModel.cancel()
         speech.stop()
+        statusHandler.removeCallbacks(statusRefresh)
         unregisterNetworkCallback()
         super.onStop()
     }
@@ -519,7 +521,9 @@ class MainActivity : ComponentActivity() {
     private fun registerNetworkCallback() {
         if (networkCallbackRegistered) return
         try {
-            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            connectivityManager.registerNetworkCallback(
+                android.net.NetworkRequest.Builder().clearCapabilities().build(), networkCallback,
+            )
             networkCallbackRegistered = true
         } catch (_: SecurityException) {
             networkCallbackRegistered = false
@@ -2908,23 +2912,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createSystemStatusStrip(): SystemStatusStripView = SystemStatusStripView(
-        context = this,
-        simLabel = getString(R.string.status_sim_label),
-        networkLabel = getString(R.string.status_network_label),
-        cellularLabel = getString(R.string.status_cellular_label),
-        simSymbol = getString(R.string.status_sim_symbol),
-        networkSymbol = getString(R.string.status_network_symbol),
-        cellularSymbol = getString(R.string.status_cellular_symbol),
-        wifiLabel = getString(R.string.status_wifi_label),
-        wifiSymbol = getString(R.string.status_wifi_symbol),
-    ).also {
-        it.render(isSimReady(), isCellularConnected(), isMobileDataEnabled(), isWifiConnected())
+    private val phoneStatusReader by lazy { com.example.testdialer.ui.PhoneNetworkStatusReader(this) }
+    private val statusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val statusRefresh = object : Runnable {
+        override fun run() {
+            refreshVoiceStatusBar()
+            statusHandler.postDelayed(this, 2000)
+        }
+    }
+
+    private fun createSystemStatusStrip(): SystemStatusStripView = SystemStatusStripView(this).also {
+        it.render(phoneStatusReader.read())
     }
 
     private fun refreshVoiceStatusBar() {
-        if (!::systemStatusStrip.isInitialized) return
-        systemStatusStrip.render(isSimReady(), isCellularConnected(), isMobileDataEnabled(), isWifiConnected())
+        if (::systemStatusStrip.isInitialized) systemStatusStrip.render(phoneStatusReader.read())
     }
 
     private fun isWifiConnected(): Boolean {
