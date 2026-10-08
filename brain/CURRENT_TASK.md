@@ -1,5 +1,7 @@
 # Zwarty STATUS i otwarta diagnoza DATA
 
+2026-10-08: zapisano kierunek przyszłych aktualizacji poza Play w `brain/UPDATES.md` i NEXT. Wyłącznie analiza; kod i CI bez zmian. Obecne priorytety pozostają aktualne.
+
 Branch `feature/stable-signing-20261006`, PR #21. Zwarty STATUS zaimplementowany po uwadze użytkownika: istniejące ikony + krótki tekst w siatce 2 × 2, jeden rozwijany szczegół, stale widoczna sieć domyślna; duży tekst przełącza do jednej kolumny. Nie zmieniono pasywnych odczytów, uprawnień ani routingu Voice/SMS/Data.
 
 CI #194 (run 37726791968) PASS: 239 testów, 0 błędów/niepowodzeń. APK 119401, `com.example.testdialer`, non-debuggable, stały certyfikat; SHA-256 APK `44a177f7fc498b8704ab5fae1f6a58c34b128033c3ecb1c413edf503b8c3183d`. Podglądy 360 dp normalny/duży tekst ocenione bez obcięcia. Raport: `brain/reports/status-compact-implementation-20261008.md`.
