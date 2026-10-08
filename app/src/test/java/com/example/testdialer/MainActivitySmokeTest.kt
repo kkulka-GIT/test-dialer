@@ -377,7 +377,7 @@ class MainActivitySmokeTest {
         val strip = descendants(restored.findViewById(android.R.id.content))
             .filterIsInstance<SystemStatusStripView>()
             .single()
-        assertTrue(strip.contentDescription.contains(restored.getString(R.string.status_wifi_label)))
+        assertTrue(collectText(strip).contains(restored.getString(R.string.status_wifi_label)))
         assertNotNull(findButton(restored, restored.getString(R.string.run_add_test)))
     }
 
@@ -555,11 +555,12 @@ class MainActivitySmokeTest {
             .filterIsInstance<SystemStatusStripView>()
             .toList()
         assertEquals(1, strips.size)
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_sim_label)))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_network_label)))
-        assertTrue(strips.single().contentDescription.contains("Cellular:"))
-        assertTrue(strips.single().contentDescription.contains("VPN:"))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_wifi_label)))
+        val text = collectText(strips.single())
+        assertTrue(text.contains(activity.getString(R.string.status_sim_label)))
+        assertTrue(text.contains(activity.getString(R.string.status_cellular_label)))
+        assertTrue(text.contains("VPN"))
+        assertTrue(text.contains(activity.getString(R.string.status_wifi_label)))
+        assertTrue(text.contains("Sieć domyślna aplikacji:"))
     }
 
     private fun setRegisterState(activity: MainActivity, state: RegisterUiState) {
