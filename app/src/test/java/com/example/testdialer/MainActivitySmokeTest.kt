@@ -557,7 +557,8 @@ class MainActivitySmokeTest {
         assertEquals(1, strips.size)
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_sim_label)))
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_network_label)))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_cellular_label)))
+        assertTrue(strips.single().contentDescription.contains("Cellular:"))
+        assertTrue(strips.single().contentDescription.contains("VPN:"))
         assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_wifi_label)))
     }
 
