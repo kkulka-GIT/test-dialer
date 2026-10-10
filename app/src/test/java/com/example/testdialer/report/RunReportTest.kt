@@ -17,13 +17,71 @@ import org.robolectric.annotation.Config
 class RunReportTest {
     @Test fun `CSV quotes unicode commas newlines and neutralizes spreadsheet formulas`() {
         val csv = RunReportFormatter.csv(snapshot(), "  =HYPERLINK(\"bad\")")
-        assertTrue(csv.startsWith("\"run_id\",\"scenario\""))
+        assertTrue(csv.startsWith("\"run_id\",\"scenario_id\",\"scenario_version\",\"scenario\""))
         assertTrue(csv.contains("Zażółć \"\"test\"\"\nDruga linia"))
         assertTrue(csv.contains("'  =HYPERLINK"))
         assertTrue(csv.contains("'+48987654321"))
         assertEquals("\"'@SUM(A1)\"", RunReportFormatter.csvCell("@SUM(A1)"))
         assertEquals("\"a,b\"", RunReportFormatter.csvCell("a,b"))
         assertTrue(csv.endsWith("\r\n"))
+    }
+
+    @Test fun `CSV keeps explicit correlation addresses and subscriber alias`() {
+        val original = snapshot()
+        val correlation = CorrelationMetadata(
+            sourceAddress = "+48111111111",
+            destinationAddress = "+48222222222",
+            subscriberAlias = "SIM A",
+            references = original.run.events.single().correlation.references,
+        )
+        val stored = original.copy(run = original.run.copy(
+            events = listOf(original.run.events.single().copy(
+                action = TestAction.Sms("+48987654321", "bez przecinka i nowej linii"),
+                correlation = correlation,
+            )),
+        ))
+
+        val rows = RunReportFormatter.csv(stored).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("'+48111111111", values[headers.indexOf("correlation_source_address")])
+        assertEquals("'+48222222222", values[headers.indexOf("correlation_destination_address")])
+        assertEquals("SIM A", values[headers.indexOf("subscriber_alias")])
+        assertNull(original.run.events.single().correlation.sourceAddress)
+    }
+
+    private fun csvRow(row: String): List<String> = row.removePrefix("\"").removeSuffix("\"")
+        .split("\",\"")
+        .map { it.replace("\"\"", "\"") }
+
+    @Test fun `CSV keeps run timing and revision even when run has no events`() {
+        val original = snapshot()
+        val stored = original.copy(run = original.run.copy(
+            status = TestRunStatus.RUNNING,
+            completedAtMillis = null,
+            events = emptyList(),
+        ))
+
+        val rows = RunReportFormatter.csv(stored).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals(2, rows.size)
+        assertEquals("3", values[headers.indexOf("revision")])
+        assertEquals("1970-01-01T00:00:01Z", values[headers.indexOf("run_started_at_utc")])
+        assertEquals("", values[headers.indexOf("run_completed_at_utc")])
+        assertEquals("", values[headers.indexOf("event_id")])
+    }
+
+    @Test fun `CSV identifies the exact scenario definition`() {
+        val rows = RunReportFormatter.csv(snapshot()).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("scenario", values[headers.indexOf("scenario_id")])
+        assertEquals("1", values[headers.indexOf("scenario_version")])
+        assertEquals("Próba \"SIM\"", values[headers.indexOf("scenario")])
     }
 
     @Test fun `billing annotations export separately without altering service observation`() {

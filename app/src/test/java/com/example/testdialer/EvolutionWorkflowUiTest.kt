@@ -244,7 +244,7 @@ class EvolutionWorkflowUiTest {
         assertTrue(text.contains("Import nie uruchamia połączeń, SMS ani transferu danych"))
         assertTrue(text.contains("Sesje: 0"))
         assertEquals("Zamknij", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
-        assertNull(preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE))
+        assertEquals(View.GONE, preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).visibility)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -285,23 +285,18 @@ class EvolutionWorkflowUiTest {
         var dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        val repository = (activity.application as TestDialerApplication).testRunRepository
-        fun stored() = java.util.concurrent.Executors.newSingleThreadExecutor().let { worker ->
-            try { worker.submit<com.example.testdialer.persistence.StoredTestRun?> { repository.get(runId) }.get() }
-            finally { worker.shutdownNow() }
-        }
-        assertNull(stored())
+        val reader = java.util.concurrent.Executors.newSingleThreadExecutor()
+        fun storedRun() = reader.submit<com.example.testdialer.persistence.StoredTestRun?> {
+            (activity.application as TestDialerApplication).testRunRepository.get(runId)
+        }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        assertNull(storedRun())
 
         preview.invoke(activity, listOf(entry))
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        var restored: com.example.testdialer.persistence.StoredTestRun? = null
-        var attempts = 0
-        while (restored == null && attempts++ < 200) {
-            restored = stored()
-            if (restored == null) Thread.sleep(5)
-        }
-        assertEquals(4, restored?.revision)
+        await { storedRun() != null }
+        assertEquals(4L, storedRun()?.revision)
+        reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }

@@ -24,7 +24,15 @@ class CellularDataTestCoordinator(
     private val repository: TestRunRepository,
     private val gateway: CellularDownloadGateway,
     private val timeProvider: TimeProvider = SystemTimeProvider,
+    private val networkContext: () -> Map<String, String> = { emptyMap() },
 ) {
+    private fun captureNetworkContext(prefix: String): List<CorrelationReference> = runCatching {
+        val values = networkContext()
+        if (values.isEmpty()) emptyList() else listOf(
+            CorrelationReference("${prefix}AtEpochMillis", timeProvider.capture().epochMillis.toString()),
+        ) + values.map { (key, value) -> CorrelationReference("$prefix.$key", value) }
+    }.getOrDefault(emptyList())
+
     fun run(
         input: CellularDataInput,
         requestedAt: CapturedTime,
@@ -32,7 +40,8 @@ class CellularDataTestCoordinator(
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): StoredTestRun {
         require(input.targetBytes in 1..DataVolume.MAX_BYTES) { "Nieprawidłowa ilość danych" }
-        val prepared = gateway.prepare(input.url) // preflight before RUNNING
+        val contextBefore = captureNetworkContext("networkBefore")
+        val prepared = gateway.prepare(input.url) // URL and context only; cellular acquisition belongs to the recorded attempt
         val stepId = StepId("cellular-data-download")
         val scenario = ScenarioDefinition(
             id = ScenarioId("cellular-data-${UUID.randomUUID()}"),
@@ -55,6 +64,7 @@ class CellularDataTestCoordinator(
         var revision = repository.saveSnapshot(scenario, recorder.snapshot()).revision
         return try {
             val result = gateway.executeVolume(prepared, cancellation, input.targetBytes, onProgress)
+            val contextAfter = captureNetworkContext("networkAfter")
             val observation = Observation(
                 status = if (result.status == DownloadStatus.COMPLETED) {
                     ObservationStatus.CONFIRMED
@@ -63,6 +73,26 @@ class CellularDataTestCoordinator(
                 },
                 source = ObservationSource.APPLICATION,
                 code = result.resultCode.name,
+                description = result.failureStage?.let { stage ->
+                    val reason = when (result.resultCode) {
+                        DownloadResultCode.NETWORK_UNAVAILABLE -> "Android nie udostępnił bezpośredniej sieci komórkowej w wyznaczonym czasie."
+                        DownloadResultCode.DNS_FAILURE -> "Nie udało się rozwiązać nazwy hosta."
+                        DownloadResultCode.TLS_FAILURE -> "Nie udało się zestawić bezpiecznego połączenia TLS."
+                        DownloadResultCode.CONNECTION_FAILURE -> "Nie udało się połączyć z serwerem."
+                        DownloadResultCode.TIMEOUT -> "Upłynął limit czasu sieci."
+                        DownloadResultCode.SECURITY_REJECTED -> "Odrzucono operację ze względów bezpieczeństwa."
+                        else -> "Wystąpił błąd operacji sieciowej."
+                    }
+                    val vpn = when (prepared.vpnActiveAtPreparation) {
+                        true -> "Android wskazywał aktywny VPN. Nie potwierdza to przyczyny błędu; sprawdź możliwość połączeń poza VPN w ustawieniach telefonu/VPN."
+                        false -> "Android nie wskazywał aktywnego VPN."
+                        null -> "Stan VPN nie został ustalony."
+                    }
+                    val diagnostic = listOfNotNull(result.failureCause?.name, result.failureErrno).joinToString("/")
+                    val phaseNote = if (stage == DownloadFailureStage.RESPONSE) " Pobieranie odpowiedzi może obejmować DNS, połączenie i TLS." else ""
+                    val socketNote = if (result.failureErrno == "EPERM") " Odmowa operacji gniazda; przyczyna odmowy nie została potwierdzona." else ""
+                    "$reason$socketNote Etap: ${stage.name}.$phaseNote Diagnostyka: ${diagnostic.ifEmpty { "brak" }}. $vpn Test używa bezpośredniej sieci komórkowej."
+                },
             )
             recorder.recordEventAt(
                 capturedAt = result.endedAt,
@@ -80,11 +110,15 @@ class CellularDataTestCoordinator(
                         CorrelationReference("resultCode", result.resultCode.name),
                         CorrelationReference("host", prepared.url.host),
                         CorrelationReference("transport", "CELLULAR"),
-                    ) + listOfNotNull(
+                    ) + contextBefore + contextAfter + listOfNotNull(
                         result.networkStartedAt?.let {
                             CorrelationReference("networkStartedAtEpochMillis", it.epochMillis.toString())
                         },
                         result.httpStatus?.let { CorrelationReference("httpStatus", it.toString()) },
+                        result.failureStage?.let { CorrelationReference("failureStage", it.name) },
+                        result.failureCause?.let { CorrelationReference("failureCause", it.name) },
+                        result.failureErrno?.let { CorrelationReference("failureErrno", it) },
+                        prepared.vpnActiveAtPreparation?.let { CorrelationReference("vpnActiveAtPreparation", it.toString()) },
                     ),
                 ),
             )

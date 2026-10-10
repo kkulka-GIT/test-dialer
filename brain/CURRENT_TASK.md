@@ -1,8 +1,16 @@
-# Faza 14 — kontrolowane przywracanie historii w UI
-Problem testera: poprawna kopia miała podgląd, ale nie można było odzyskać zapisanych dowodów na telefonie.
-Korzyść: tester widzi zawartość i ryzyko przed zapisem, świadomie potwierdza operację, otrzymuje wynik i odświeżony Rejestr. Koszt: istniejący dialog i executor, bez nowego ekranu ani schematu.
-Kontekst: branch feature/template-portability-20261005; PR #20 zależny od #19. Faza 13 i CI #163 PASS; punkt wyjścia d9ebfd80fcf7ffb59936cd836b0c5e82c984ba66.
-Zakres: „Wczytaj kopię”, podgląd liczników i ostrzeżeń, jawne Przywróć/Anuluj, zapis w tle istniejącą atomową metodą, komunikat wyniku/konfliktu i odświeżenie Rejestru.
-Poza zakresem: wybieranie części sesji, rozwiązywanie konfliktów, usługi operatora, merge i schemat bazy.
-Kryteria/testy: pusty plik bez przycisku zapisu; anulowanie bez zmian; potwierdzony zapis zachowuje rewizję i nie otwiera Intentu telekomunikacyjnego; pełne CI, oba APK i zrzut dialogu.
-Raport: brain/reports/2026-10-06-phase14.md. Stan: implementacja i regresje gotowe lokalnie, oczekiwanie na CI.
+# Bieżący checkpoint — 2026-10-08
+Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
+
+CSV zapisuje `scenario_id` i `scenario_version`. Nazwa scenariusza pozostaje czytelna dla testera, a stabilny identyfikator i wersja jednoznacznie wskazują wykonaną definicję przy porównywaniu powtórzeń. CI #206 attempt 2 PASS: 243 testy, 0 failures/errors. Stabilny APK120602 zachowuje tożsamość i certyfikat; pobrany hash jest zgodny z metadanymi. Dowody: brain/reports/csv-scenario-identity-20261010.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/38080356350/artifacts/11680501268 .
+
+Poprzedni checkpoint czasu i rewizji CSV pozostaje ukończony na CI #203 / APK120301.
+
+Poprzedni checkpoint CSV z jawnymi adresami korelacji i aliasem abonenta pozostaje częścią brancha; ochrona wartości `+` przed interpretacją jako formuła pozostaje aktywna.
+
+Zwarty STATUS pozostaje ukończony; poprawka Wi-Fi z CI #198 jest częścią bieżącego brancha.
+
+Data/Tailscale: SOCKET/EPERM/0 B przy działającym internecie przeglądarki pozostaje nierozstrzygnięty. Użytkownik podał 2026-10-08, że „Blokuj połączenia bez sieci VPN” jest wyłączone; nie przypisywać błędu lockdown. Przejrzane źródła Tailscale nie wywołują allowBypass w ścieżce tworzenia VPN; to hipoteza ograniczenia bezpośredniego CELLULAR, bez potwierdzenia wersji/polityki na urządzeniu. Dowody: brain/reports/data-tailscale-bypass-source-20261008.md. Bez cichego fallbacku lub zmiany ustawień.
+
+Na telefonie nadal niepotwierdzone: TalkBack/TTS, wygoda panelu i upgrade z retencją historii. Pytania w brain/OPEN_QUESTIONS.md blokują tylko zależną pracę, nie cały rozwój. Nie wymagać rutynowego odbioru każdej tury.
+
+Przyszłe aktualizacje z GitHub Releases/Codex Review: analiza zapisana w brain/UPDATES.md, bez wdrożenia i automatycznego publikowania CI.

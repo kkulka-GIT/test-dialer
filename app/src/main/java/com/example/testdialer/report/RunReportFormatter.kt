@@ -111,8 +111,11 @@ object RunReportFormatter {
 
     /** RFC-style quoting plus spreadsheet formula neutralization for every user-controlled cell. */
     fun csv(stored: StoredTestRun, testerNote: String = "", reviews: Map<String, BillingReview> = emptyMap(), interruptedAtMillis: Long = 0): String = buildString {
-        val headers = listOf("run_id", "scenario", "run_status", "event_id", "step_id", "service", "occurred_at_utc",
-            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code", "references_json", "tester_note", "billing_expected", "billing_actual", "billing_verdict", "billing_reviewed_at_utc", "tester_marked_interrupted_at_utc")
+        val headers = listOf("run_id", "scenario_id", "scenario_version", "scenario", "run_status", "revision", "run_started_at_utc", "run_completed_at_utc",
+            "event_id", "step_id", "service", "occurred_at_utc",
+            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code",
+            "correlation_source_address", "correlation_destination_address", "subscriber_alias", "references_json",
+            "tester_note", "billing_expected", "billing_actual", "billing_verdict", "billing_reviewed_at_utc", "tester_marked_interrupted_at_utc")
         append(headers.joinToString(",") { csvCell(it) }); append("\r\n")
         val events = stored.run.events.map { it as com.example.testdialer.domain.TestEvent? }.ifEmpty { listOf(null) }
         events.forEach { event ->
@@ -122,11 +125,15 @@ object RunReportFormatter {
                 is TestAction.Data -> action.target
                 null -> ""
             }
-            val values = listOf(stored.run.id.value, stored.scenario.name, stored.run.status.name,
+            val values = listOf(stored.run.id.value, stored.scenario.id.value, stored.scenario.version.toString(),
+                stored.scenario.name, stored.run.status.name, stored.revision.toString(),
+                utc(stored.run.startedAtMillis), stored.run.completedAtMillis?.let(::utc).orEmpty(),
                 event?.id?.value.orEmpty(), event?.stepId?.value.orEmpty(), event?.action?.serviceType?.name.orEmpty(),
                 event?.occurredAtMillis?.let(::utc).orEmpty(), event?.occurredAtMillis?.toString().orEmpty(), target,
                 (event?.action as? TestAction.Sms)?.message.orEmpty(), event?.observation?.status?.name.orEmpty(),
                 event?.observation?.source?.name.orEmpty(), event?.observation?.code.orEmpty(),
+                event?.correlation?.sourceAddress.orEmpty(), event?.correlation?.destinationAddress.orEmpty(),
+                event?.correlation?.subscriberAlias.orEmpty(),
                 event?.correlation?.references?.let { refs -> array(refs.map { obj("namespace" to it.namespace, "value" to it.value) }).toString() }.orEmpty(), testerNote,
                 reviews[event?.id?.value]?.expected.orEmpty(), reviews[event?.id?.value]?.actual.orEmpty(),
                 reviews[event?.id?.value]?.verdict?.name ?: "NOT_CHECKED", reviews[event?.id?.value]?.reviewedAtMillis?.takeIf { it > 0 }?.let(::utc).orEmpty(),

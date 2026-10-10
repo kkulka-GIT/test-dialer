@@ -1,8 +1,10 @@
-# Bieżący checkpoint
-Kompas PRODUCT_COMPASS.md. Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 13 zakończona: d9ebfd80, CI #163 PASS; atomowy zapis przywracania potwierdzony.
+# Następne wartościowe kroki
+Najpierw odśwież PR/head/CI. Checkpoint `scenario_id` i `scenario_version` w CSV zakończony na CI206 attempt 2 / APK120602; nie dubluj implementacji. Wcześniejsze pola czasu, rewizji i korelacji CSV oraz Wi-Fi STATUS pozostają ukończone.
 
-Faza 14 podłącza przywracanie do istniejącego podglądu kopii. Zapis wymaga jawnego potwierdzenia, odbywa się w tle, odświeża Rejestr i raportuje wynik. Puste archiwum pozostaje tylko podglądem. Sesje CREATED/RUNNING nigdy nie są wznawiane. Test obejmuje anulowanie, potwierdzenie, zachowanie rewizji i brak Intentu telekomunikacyjnego. Stan: oczekiwanie na CI; najpierw sprawdzić zdalny SHA, CI i raport brain/reports/2026-10-06-phase14.md.
+Data/Tailscale pozostaje ważne. Brakujący dowód wersji i polityki VPN zapisany w OPEN_QUESTIONS; nie powtarzaj identycznych transferów. Nie zmieniaj znaczenia testu komórkowego, ustawień telefonu ani nie dodawaj fallbacku Wi-Fi/VPN. Poprawki uzasadniaj kodem i dowodami.
 
-Po PASS ponownie ocenić kierunek. Kandydat: informacja o warunkach urządzenia zapisana przy wykonaniu (źródło i czas, bez nadmiernych uprawnień) albo usprawnienie punktów kontrolnych scenariusza. Nie dodawać obu naraz. Konflikty importu pozostają bez automatycznego scalania.
+Oceń niezależną, wartościową poprawkę niezawodności/czytelności/korelacji zgodną z kompasem, zamiast zatrzymywać projekt na odpowiedzi użytkownika. Brak zmiany dopuszczalny po ocenie korzyści; żadnych funkcji dla aktywności.
 
-Bez force/main/merge, usług operatora i usuwania historii. Telefon/aktualizacja/dostawcy dokumentów/TalkBack/TTS/SIM/operator/VPN NOT TESTED. Użytkownik odbierze całość później. Terminal bez push auth; używać połączenia GitHub z expected SHA.
+Przy okazji odbioru: wygoda kafelków i szczegółów, TalkBack/TTS oraz aktualizacja stabilnego APK z zachowaniem historii. Nie wymagaj rutynowego odbioru przed dalszą pracą.
+
+Kierunek długoterminowy: zatwierdzone APK z GitHub Releases i opcjonalne Codex Code Review (UPDATES.md). Najpierw stabilność i retencja danych; później świadoma promocja dokładnego artefaktu PASS oraz klient aktualizacji z weryfikacją podpisu/tożsamości/hash i zgodami Androida. Bez wdrożenia teraz, publikowania każdej wersji CI, płatnych zależności i merge main.

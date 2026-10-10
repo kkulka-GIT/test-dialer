@@ -45,4 +45,14 @@ class CellularNetworkSelectionTest {
     @Test fun `cellular without internet capability is not selected`() {
         assertNull(select(mobile, mapOf(mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR).apply { shadowOf(this).removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) })))
     }
+
+    @Test fun `VPN presence is reported independently from cellular selection`() {
+        val available = mapOf(
+            vpn to caps(NetworkCapabilities.TRANSPORT_VPN),
+            mobile to caps(NetworkCapabilities.TRANSPORT_CELLULAR),
+        )
+        assertTrue(hasVpnTransport(available.keys.toList(), available::get))
+        assertEquals(mobile, select(vpn, available))
+        assertFalse(hasVpnTransport(listOf(mobile), available::get))
+    }
 }

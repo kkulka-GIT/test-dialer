@@ -86,13 +86,19 @@ class CellularDataViewModel(
     class Factory(
         private val repository: TestRunRepository,
         private val connectivityManager: ConnectivityManager,
+        private val context: android.content.Context? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             require(modelClass.isAssignableFrom(CellularDataViewModel::class.java))
             val gateway = AndroidCellularDownloadGateway(connectivityManager)
             return CellularDataViewModel(
-                CellularDataTestCoordinator(repository, gateway),
+                CellularDataTestCoordinator(repository, gateway, networkContext = {
+                    context?.let { com.example.testdialer.ui.PhoneNetworkStatusReader(it).read() }?.let {
+                        mapOf("sim" to it.sim, "cellular" to it.cellular, "wifi" to it.wifi,
+                            "vpn" to it.vpn, "defaultNetwork" to it.defaultNetwork)
+                    } ?: emptyMap()
+                }),
                 Executors.newSingleThreadExecutor(),
             ) as T
         }

@@ -14,6 +14,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CellularDataTestCoordinatorTest {
+    @Test fun `captures independent before and after network context`() {
+        var reads = 0
+        val clock = object : TimeProvider {
+            private var value = 100L
+            override fun capture() = CapturedTime(value, value).also { value += 10 }
+        }
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl))
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
+                DownloadStatus.COMPLETED, DownloadResultCode.COMPLETED, clock.capture(), clock.capture(), 512, 200,
+            )
+        }
+        val stored = CellularDataTestCoordinator(FakeRepository(), gateway, clock,
+            networkContext = { mapOf("vpn" to if (reads++ == 0) "aktywny" else "nieaktywny") },
+        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val refs = stored.run.events.single().correlation.references.associate { it.namespace to it.value }
+        assertEquals("aktywny", refs["networkBefore.vpn"])
+        assertEquals("nieaktywny", refs["networkAfter.vpn"])
+        assertTrue(refs.containsKey("networkBeforeAtEpochMillis"))
+        assertTrue(refs.containsKey("networkAfterAtEpochMillis"))
+    }
+
+    @Test fun `unavailable status reader does not prevent transfer or terminal history`() {
+        val stored = CellularDataTestCoordinator(FakeRepository(), FakeGateway(DownloadStatus.COMPLETED), IncrementingTime(),
+            networkContext = { throw SecurityException("no permission") },
+        ).run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        assertEquals("COMPLETED", stored.run.events.single().observation?.code)
+    }
+
     @Test fun `persists one completed terminal event with correlation`() {
         val repository = FakeRepository()
         val gateway = FakeGateway(DownloadStatus.COMPLETED)
@@ -68,6 +97,61 @@ class CellularDataTestCoordinatorTest {
         }
 
         assertEquals(0, repository.saveCount)
+    }
+
+    @Test fun `unavailable cellular is persisted as factual execution result`() {
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) =
+                PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl), vpnActiveAtPreparation = true)
+
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) =
+                DownloadResult(
+                    DownloadStatus.FAILED,
+                    DownloadResultCode.NETWORK_UNAVAILABLE,
+                    CapturedTime(400, 400),
+                    CapturedTime(500, 500),
+                    0,
+                    failureStage = DownloadFailureStage.CONNECTION,
+                    failureCause = DownloadFailureCause.NETWORK_ACQUISITION,
+                )
+        }
+
+        val repository = FakeRepository()
+        val stored = CellularDataTestCoordinator(repository, gateway, IncrementingTime())
+            .run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val event = stored.run.events.single()
+        val refs = event.correlation.references.associate { it.namespace to it.value }
+
+        assertEquals(TestRunStatus.COMPLETED, stored.run.status)
+        assertEquals("NETWORK_UNAVAILABLE", event.observation?.code)
+        assertTrue(event.observation?.description.orEmpty().contains("nie udostępnił bezpośredniej sieci komórkowej"))
+        assertEquals("NETWORK_ACQUISITION", refs["failureCause"])
+        assertEquals("0", refs["bytes"])
+        assertEquals(2, repository.saveCount)
+    }
+
+    @Test fun `failed transfer persists phase VPN context and cautious explanation`() {
+        val gateway = object : CellularDownloadGateway {
+            override fun prepare(rawUrl: String) = PreparedCellularDownload(SafeDownloadUrlValidator.requireValid(rawUrl), vpnActiveAtPreparation = true)
+            override fun execute(prepared: PreparedCellularDownload, cancellation: DownloadCancellation) = DownloadResult(
+                DownloadStatus.FAILED, DownloadResultCode.TLS_FAILURE, CapturedTime(400, 400), CapturedTime(500, 500),
+                0, failureStage = DownloadFailureStage.RESPONSE,
+                failureCause = DownloadFailureCause.TLS, failureErrno = "EACCES",
+            )
+        }
+        val stored = CellularDataTestCoordinator(FakeRepository(), gateway, IncrementingTime())
+            .run(CellularDataInput("https://example.com/file", null), CapturedTime(10, 1), DownloadCancellation())
+        val event = stored.run.events.single()
+        val refs = event.correlation.references.associate { it.namespace to it.value }
+        assertEquals("TLS_FAILURE", event.observation?.code)
+        assertEquals("RESPONSE", refs["failureStage"])
+        assertEquals("TLS", refs["failureCause"])
+        assertEquals("EACCES", refs["failureErrno"])
+        assertTrue(event.observation?.description.orEmpty().contains("może obejmować DNS"))
+        assertEquals("true", refs["vpnActiveAtPreparation"])
+        assertEquals("0", refs["bytes"])
+        assertTrue(event.observation?.description.orEmpty().contains("Nie potwierdza to przyczyny"))
+        assertTrue(event.observation?.description.orEmpty().contains("TLS"))
     }
 
     private class FakeGateway(private val status: DownloadStatus) : CellularDownloadGateway {

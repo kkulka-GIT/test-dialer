@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  build-debug:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,6 +32,12 @@ jobs:
 
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+
+      - name: Validate version numbering
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Set stable version
+        run: python3 scripts/android_version.py
 
       - name: Run debug unit tests
         run: ./gradlew testDebugUnitTest
@@ -54,28 +60,76 @@ jobs:
           path: app/schemas
           if-no-files-found: error
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-dialer-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-
-      - name: Build side-by-side preview APK
-        run: ./gradlew assemblePreview
-
-      - name: Verify preview application identity
+      - name: Restore temporary signing keystore
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/preview/app-preview.apk > preview-badging.txt
-          grep -F "package: name='com.example.testdialer.preview.evolution'" preview-badging.txt
-          grep -F "application-label:'Test Dialer Lab'" preview-badging.txt
+          umask 077
+          python3 - <<'PY'
+          import os, base64
+          from pathlib import Path
+          for key in ('ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD', 'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD'):
+              if not os.environ.get(key):
+                  raise SystemExit('Missing signing secret: ' + key)
+          directory = Path(os.environ['RUNNER_TEMP']) / 'test-dialer-signing'
+          directory.mkdir(mode=0o700, exist_ok=True)
+          try:
+              data = base64.b64decode(''.join(os.environ['ANDROID_KEYSTORE_BASE64'].split()), validate=True)
+          except Exception:
+              raise SystemExit('Invalid keystore encoding') from None
+          (directory / 'keystore.jks').write_bytes(data)
+          PY
+          python3 - <<'PYKEY'
+          import os, subprocess
+          from pathlib import Path
+          directory = Path(os.environ['RUNNER_TEMP']) / 'test-dialer-signing'
+          result = subprocess.run(['keytool', '-exportcert', '-keystore', str(directory / 'keystore.jks'),
+              '-storepass:env', 'ANDROID_KEYSTORE_PASSWORD', '-alias', os.environ['ANDROID_KEY_ALIAS'],
+              '-file', str(directory / 'certificate.der')], capture_output=True, text=True)
+          if result.returncode:
+              diagnostic = (result.stdout + result.stderr).lower()
+              if 'password was incorrect' in diagnostic or 'password is incorrect' in diagnostic or 'password verification failed' in diagnostic or 'password incorrect' in diagnostic:
+                  reason = 'keystore password rejected; check ANDROID_KEYSTORE_PASSWORD matches uploaded keystore'
+              elif 'does not exist' in diagnostic or 'no certificate' in diagnostic:
+                  reason = 'configured alias has no certificate; check ANDROID_KEY_ALIAS'
+              elif 'unrecognized keystore format' in diagnostic or 'invalid keystore format' in diagnostic:
+                  reason = 'unrecognized keystore format; check ANDROID_KEYSTORE_BASE64 encodes the binary keystore'
+              else:
+                  reason = 'keytool could not open configured keystore; raw diagnostic intentionally withheld'
+              raise SystemExit('Signing configuration error: ' + reason)
+          PYKEY
 
-      - name: Upload preview APK
+      - name: Build stable signed APK
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/test-dialer-signing/keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Verify stable signature and application identity
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/Test-Dialer-${TEST_DIALER_VERSION_CODE}.apk"
+          python3 scripts/verify_android_apk.py "dist/Test-Dialer-${TEST_DIALER_VERSION_CODE}.apk"
+
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/test-dialer-signing"
+
+      - name: Upload stable phone APK
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: actions/upload-artifact@v4
         with:
-          name: test-dialer-preview-apk
-          path: app/build/outputs/apk/preview/app-preview.apk
+          name: test-dialer-stable-apk
+          path: dist/
           if-no-files-found: error

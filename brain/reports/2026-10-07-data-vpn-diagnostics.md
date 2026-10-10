@@ -1,0 +1,11 @@
+# Diagnostyka błędu Data przy VPN
+
+Dowód użytkownika: przy aktywnym Tailscale 0 bajtów, NETWORK_ERROR, CELLULAR i 72 ms; późniejsza próba COMPLETED z 1 000 000 bajtów. Nie mamy dokładnego wyjątku ani pewności warunków drugiej próby. To wskazówka, nie potwierdzenie winy Tailscale.
+
+Kod już wybiera fizyczne CELLULAR + INTERNET bez VPN, przez Network.openConnection, bez fallbacku. Android może ograniczać ruch poza VPN; samo znalezienie Network nie dowodzi możliwości transferu. Źródła: https://developer.android.com/reference/android/net/Network i https://developer.android.com/develop/connectivity/vpn . Nie obchodzimy polityk systemu i nie zmieniamy trasy.
+
+Zmiana: TLS_FAILURE i CONNECTION_FAILURE oraz failureStage przy wyjątkach (DNS, CONNECTION, RESPONSE, BODY). RESPONSE obejmuje też zestawianie połączenia/TLS podczas leniwego responseCode. Zachowane częściowe bajty i status HTTP. Przygotowanie zapisuje opcjonalny vpnActiveAtPreparation z sieci widocznych Androidowi; nie identyfikuje Tailscale ani nie udowadnia przyczyny. Opis Observation wyjaśnia kategorię, fazę i kontekst; istniejące szczegóły zdarzenia, schowek i eksport go prezentują. Brak zmiany layoutu, migracji historii, retry i usług operatora. Nie dodano surowych komunikatów wyjątków.
+
+CI #184 https://github.com/kkulka-GIT/test-dialer/actions/runs/37575043013 PASS. Pobrany raport: 219 testów, 0 failures/errors/skipped; 5 testów Python również PASS lokalnie i w CI. Nowe regresje: DNS/TLS/connection/timeout, faza response/body, zachowanie 7 częściowych bajtów, terminalny zapis fazy i VPN bez przypisania przyczyny. git diff --check PASS. Stable APK118401: com.example.testdialer, debuggable=false, signatureVerified=true, pin 64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11, versionCode >118301. SHA256 pobranego APK 385c9a6f9495cdfc2a32b3c7d07c5a87341fcb769bd6d45f8f6ae637c3b64aac zgodny z metadanymi. Source head 30f77c8827c2031ce479afccba4c61069622a1a2. Cleanup i upload PASS.
+
+Nie deklarujemy naprawy zgłoszonego transferu: rzeczywisty telefon/Tailscale/VPN/SIM/operator/TalkBack/TTS i aktualizacja zachowująca dane NOT TESTED. Następna próba z nową wersją może zawęzić przyczynę. Bez merge do main.

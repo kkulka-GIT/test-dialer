@@ -18,16 +18,29 @@ android {
         applicationId = "com.example.testdialer"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = System.getenv("TEST_DIALER_VERSION_CODE")?.let { value ->
+            requireNotNull(value.toIntOrNull()?.takeIf { it in 1..2_100_000_000 }) { "Invalid TEST_DIALER_VERSION_CODE" }
+        } ?: 1
+        versionName = System.getenv("TEST_DIALER_VERSION_NAME") ?: "1.0-dev"
+    }
+    signingConfigs {
+        create("stable") {
+            System.getenv("ANDROID_KEYSTORE_PATH")?.let { storeFile = file(it) }
+            storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+        }
     }
     buildTypes {
-        create("preview") {
-            initWith(getByName("debug"))
-            applicationIdSuffix = ".preview.evolution"
-            versionNameSuffix = "-preview"
-            resValue("string", "app_name", "Test Dialer Lab")
-            matchingFallbacks += listOf("debug")
+        getByName("debug") {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "Test Dialer Dev")
+        }
+        getByName("release") {
+            isDebuggable = false
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("stable")
         }
     }
     testOptions {
@@ -55,3 +68,15 @@ dependencies {
     testImplementation("androidx.arch.core:core-testing:2.2.0")
     testImplementation("org.robolectric:robolectric:4.14.1")
 }
+
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+    doLast {
+        listOf("ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD",
+            "TEST_DIALER_VERSION_CODE", "TEST_DIALER_VERSION_NAME").forEach { name ->
+            require(!System.getenv(name).isNullOrBlank()) { "Missing release configuration: $name" }
+        }
+        require(System.getenv("ANDROID_KEY_ALIAS") == "test-dialer") { "Unexpected signing alias" }
+        require(file(System.getenv("ANDROID_KEYSTORE_PATH")).isFile) { "Signing keystore unavailable" }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(validateReleaseSigning) }

@@ -1,0 +1,7 @@
+# STATUS — implementacja po akceptacji planu
+
+Korzyść: tester widzi konfigurację niezależnie od testu i może sam przygotować telefon. Pięć czytelnych wierszy, jawne stany nieustalone, osobno przełącznik Wi-Fi i połączenie; VPN nie jest oceną błędu. Obserwacja tylko podczas widocznej Activity, pasywny callback i odczyt co 2 s. Odświeżanie identycznych wartości nie zmienia tekstu.
+
+Stan DATA przed/po z czasem trafia do istniejących danych korelacyjnych i eksportu. Brak odczytu nie blokuje transferu. Bez zmiany tras, fallbacków, Voice/SMS, danych/historycznych lub podpisu. ACCESS_WIFI_STATE i READ_BASIC_PHONE_STATE; nie wprowadzono runtime zgody, starsze Androidy pokazują ograniczenie technologii. Brak pełnej obsługi dual-SIM oraz wskaźnika 5G NSA.
+
+Walidacja: git diff --check PASS. Dodano regresje stanu nieznanego, zmiany renderu, API26/35, niezależnych snapshotów oraz niedostępnego odczytu. CI193 PASS: 238 testów, 0 błędów/pominięć. Release, apksigner/pin/tożsamość, cleanup i upload PASS. APK119301 com.example.testdialer, non-debuggable, cert64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11, SHA256 c88ef5d752fc02a08d7c6142f6d0b3a69752d1f4dbff30342f28a8caf16ecdc7, zgodność pobranego pliku z metadanymi. CI190 wykryło brak opisu dostępności oraz niespójny zegar fixture, CI191/192 etap poprawki zegara; finalny test używa wspólnego zegara obserwatora i gateway. Obejrzano natywne preview 360 px normalne/duży font. Realny telefon/SIM/VPN/TalkBack i retencja danych niepotwierdzone. Nie twierdzimy, że EPERM naprawiono.
