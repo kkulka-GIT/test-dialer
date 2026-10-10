@@ -16,6 +16,10 @@ Dodano kolumny `scenario_id` i `scenario_version` do każdego wiersza CSV. Dane 
 - APK: versionCode `120602`, versionName `1.0.120602`, `com.example.testdialer`, non-debuggable, `signatureVerified=true`
 - certyfikat SHA-256: `64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11`
 - SHA-256 pobranego APK: `f2c699fb2921aaa2c100fe21fb8c60bbc9e32dc69612409273ba10457f1add77`, zgodny z metadanymi
+- końcowy commit dokumentacji uruchomił CI #207: PASS, 243 testy, 0 failures, 0 errors
+- najnowszy stabilny artefakt: https://github.com/kkulka-GIT/test-dialer/actions/runs/38080933034/artifacts/11680846245
+- najnowszy APK: versionCode `120701`, versionName `1.0.120701`, ten sam certyfikat, `signatureVerified=true`, non-debuggable
+- SHA-256 najnowszego APK: `0cbe294d37108ba06567f9be4c3f0c60316d8ece9486e6f4dcac6d8da326b5c7`, zgodny z metadanymi
 
 ## Ograniczenia
 Nie wykonano odbioru CSV w konkretnym arkuszu ani na rzeczywistym telefonie. Data/Tailscale pozostaje osobnym otwartym problemem.
