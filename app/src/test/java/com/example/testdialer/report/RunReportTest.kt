@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
 class RunReportTest {
     @Test fun `CSV quotes unicode commas newlines and neutralizes spreadsheet formulas`() {
         val csv = RunReportFormatter.csv(snapshot(), "  =HYPERLINK(\"bad\")")
-        assertTrue(csv.startsWith("\"run_id\",\"scenario\""))
+        assertTrue(csv.startsWith("\"run_id\",\"scenario_id\",\"scenario_version\",\"scenario\""))
         assertTrue(csv.contains("Zażółć \"\"test\"\"\nDruga linia"))
         assertTrue(csv.contains("'  =HYPERLINK"))
         assertTrue(csv.contains("'+48987654321"))
@@ -72,6 +72,16 @@ class RunReportTest {
         assertEquals("1970-01-01T00:00:01Z", values[headers.indexOf("run_started_at_utc")])
         assertEquals("", values[headers.indexOf("run_completed_at_utc")])
         assertEquals("", values[headers.indexOf("event_id")])
+    }
+
+    @Test fun `CSV identifies the exact scenario definition`() {
+        val rows = RunReportFormatter.csv(snapshot()).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("scenario", values[headers.indexOf("scenario_id")])
+        assertEquals("1", values[headers.indexOf("scenario_version")])
+        assertEquals("Próba \"test\"", values[headers.indexOf("scenario")])
     }
 
     @Test fun `billing annotations export separately without altering service observation`() {

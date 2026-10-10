@@ -1,7 +1,9 @@
 # Bieżący checkpoint — 2026-10-08
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
 
-Eksport CSV zachowuje teraz także rewizję oraz dokładny czas startu i końca sesji w każdym wierszu. Dzięki temu pusta lub przerwana sesja nie traci całej informacji czasowej. CI #203 PASS: 242 testy, 0 failures/errors. Stabilny APK120301 zachowuje tożsamość i certyfikat; pobrany hash zgodny z metadanymi. Dowody: brain/reports/csv-run-timing-20261008.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/37783174849/artifacts/11553196637 .
+Trwa weryfikacja uzupełnienia CSV o `scenario_id` i `scenario_version`. Nazwa scenariusza pozostaje czytelna dla testera, a stabilny identyfikator i wersja mają jednoznacznie wskazywać wykonaną definicję przy porównywaniu powtórzeń. Implementacja i regresja są gotowe lokalnie; wynik CI i APK nie są jeszcze potwierdzone. Dowody: brain/reports/csv-scenario-identity-20261010.md.
+
+Poprzedni checkpoint czasu i rewizji CSV pozostaje ukończony na CI #203 / APK120301.
 
 Poprzedni checkpoint CSV z jawnymi adresami korelacji i aliasem abonenta pozostaje częścią brancha; ochrona wartości `+` przed interpretacją jako formuła pozostaje aktywna.
 
