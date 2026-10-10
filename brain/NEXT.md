@@ -1,5 +1,5 @@
 # Następne wartościowe kroki
-Najpierw dokończ weryfikację pól `scenario_id` i `scenario_version` w CSV: CI, stabilny APK, certyfikat i rosnący versionCode. Nie rozpoczynaj kolejnego checkpointu przed wynikiem. Wcześniejsze pola czasu, rewizji i korelacji CSV oraz Wi-Fi STATUS pozostają ukończone.
+Najpierw odśwież PR/head/CI. Checkpoint `scenario_id` i `scenario_version` w CSV zakończony na CI206 attempt 2 / APK120602; nie dubluj implementacji. Wcześniejsze pola czasu, rewizji i korelacji CSV oraz Wi-Fi STATUS pozostają ukończone.
 
 Data/Tailscale pozostaje ważne. Brakujący dowód wersji i polityki VPN zapisany w OPEN_QUESTIONS; nie powtarzaj identycznych transferów. Nie zmieniaj znaczenia testu komórkowego, ustawień telefonu ani nie dodawaj fallbacku Wi-Fi/VPN. Poprawki uzasadniaj kodem i dowodami.
 

@@ -1,7 +1,7 @@
 # Bieżący checkpoint — 2026-10-08
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
 
-Trwa weryfikacja uzupełnienia CSV o `scenario_id` i `scenario_version`. Nazwa scenariusza pozostaje czytelna dla testera, a stabilny identyfikator i wersja mają jednoznacznie wskazywać wykonaną definicję przy porównywaniu powtórzeń. Implementacja i regresja są gotowe lokalnie; wynik CI i APK nie są jeszcze potwierdzone. Dowody: brain/reports/csv-scenario-identity-20261010.md.
+CSV zapisuje `scenario_id` i `scenario_version`. Nazwa scenariusza pozostaje czytelna dla testera, a stabilny identyfikator i wersja jednoznacznie wskazują wykonaną definicję przy porównywaniu powtórzeń. CI #206 attempt 2 PASS: 243 testy, 0 failures/errors. Stabilny APK120602 zachowuje tożsamość i certyfikat; pobrany hash jest zgodny z metadanymi. Dowody: brain/reports/csv-scenario-identity-20261010.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/38080356350/artifacts/11680501268 .
 
 Poprzedni checkpoint czasu i rewizji CSV pozostaje ukończony na CI #203 / APK120301.
 
