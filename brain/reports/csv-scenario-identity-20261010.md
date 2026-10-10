@@ -9,7 +9,8 @@ Dodano kolumny `scenario_id` i `scenario_version` do każdego wiersza CSV. Dane 
 ## Weryfikacja
 - regresja sprawdza identyfikator, wersję i nazwę jako osobne pola
 - `git diff --check`: do wykonania przed commitem
-- GitHub Actions i stabilny APK: oczekują
+- CI #205 poprawnie zatrzymało błędne oczekiwanie nazwy scenariusza w nowej regresji; implementacja zwróciła prawdziwą zapisaną nazwę `Próba \"SIM\"`
+- finalne GitHub Actions i stabilny APK: oczekują po poprawieniu testu
 
 ## Ograniczenia
 Nie wykonano odbioru CSV w konkretnym arkuszu ani na rzeczywistym telefonie. Data/Tailscale pozostaje osobnym otwartym problemem.

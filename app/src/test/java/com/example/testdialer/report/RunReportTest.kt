@@ -81,7 +81,7 @@ class RunReportTest {
 
         assertEquals("scenario", values[headers.indexOf("scenario_id")])
         assertEquals("1", values[headers.indexOf("scenario_version")])
-        assertEquals("Próba \"test\"", values[headers.indexOf("scenario")])
+        assertEquals("Próba \"SIM\"", values[headers.indexOf("scenario")])
     }
 
     @Test fun `billing annotations export separately without altering service observation`() {
