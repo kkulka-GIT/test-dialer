@@ -132,6 +132,8 @@ class ReportWorkflowUiTest {
         assertEquals("200", views(rotated.findViewById(android.R.id.content)).filterIsInstance<EditText>()
             .first { it.hint == rotated.getString(R.string.data_amount_hint) }.text.toString())
         captureDataCard(rotated, "05-data-volume")
+        controller.configurationChange(Configuration(rotated.resources.configuration).apply { fontScale = 1.6f })
+        captureDataCard(controller.get(), "05-data-volume-large-font")
         controller.pause().stop().destroy()
     }
 
