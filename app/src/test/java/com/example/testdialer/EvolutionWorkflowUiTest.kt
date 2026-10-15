@@ -45,6 +45,7 @@ class EvolutionWorkflowUiTest {
         }.apply { isAccessible = true }
         val id = "note-retry-" + java.util.UUID.randomUUID()
         method.invoke(activity, id)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         val input = views(dialog.window!!.decorView).filterIsInstance<EditText>().single()
         // Bypass the UI length filter to force a deterministic store rejection.
