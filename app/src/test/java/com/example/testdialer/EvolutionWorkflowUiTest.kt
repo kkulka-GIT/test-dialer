@@ -42,9 +42,9 @@ class EvolutionWorkflowUiTest {
             val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
             controller.configurationChange(Configuration(controller.get().resources.configuration).apply { fontScale = scale })
             val activity = controller.get()
-            val method = MainActivity::class.java.getDeclaredMethod("showBillingReviewEditor", com.example.testdialer.domain.EventId::class.java)
+            val method = MainActivity::class.java.declaredMethods.single { it.name.startsWith("showBillingReviewEditor") }
                 .apply { isAccessible = true }
-            method.invoke(activity, com.example.testdialer.domain.EventId("billing-label-review"))
+            method.invoke(activity, "billing-label-review")
             val dialog = ShadowAlertDialog.getLatestAlertDialog()
             val root = dialog.window!!.decorView
             val all = views(root).toList()
