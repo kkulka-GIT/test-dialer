@@ -20,3 +20,8 @@ Nie zmieniono wykonania Voice, SMS ani Data, routingu, historii ani ręcznej oce
 
 ## Ograniczenia
 Nie wykonano odbioru CSV w konkretnym arkuszu ani testu na telefonie. Zmiana nie rozstrzyga przyczyny błędu Data/Tailscale; zachowuje lepszy dowód do dalszej analizy.
+
+## Domknięcie dystrybucji — 2026-10-15 10:20 Europe/Warsaw
+Pobrano artefakt 11952607763 i rozpakowano APK121001. Lokalnie obliczony SHA-256 jest identyczny z publicznymi metadanymi powyżej; metadane wskazują sourceHeadSha 0a153be35b92a2487bf2a17cf9651d119a14d5d9. Wszystkie kroki job 116280704904 nadal mają success. Udostępniono bezpośredni APK w odpowiedzi, aby tester mógł pobrać plik bez rozpakowywania artefaktu GitHuba.
+
+Nie dodano kolejnej kolumny CSV ani funkcji tylko dla aktywności: ostatni checkpoint jest spójny i zweryfikowany. W tej turze domknięto brak pobrania/weryfikacji dostarczanego pliku. Kolejny krok powinien ocenić usprawnienie pracy na telefonie zamiast seryjnie rozszerzać eksport; brak odbioru telefonu nie blokuje niezależnej pracy. Data/Tailscale i ograniczenia odbioru pozostają jak wyżej.
