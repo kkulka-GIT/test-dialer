@@ -173,3 +173,6 @@ Finalne CI #210 PASS: 245 testów, release build, stały podpis/tożsamość i u
 Użytkownik polecił na razie odłożyć Tailscale i kontynuować rozwój aplikacji, zwłaszcza GUI, warunków przygotowania i wygody testowania. Nie wracać do diagnozy Tailscale ani nie oczekiwać na dowód VPN jako warunek pracy. Zachować istniejące bezpieczne znaczenie Data i ustawienia telefonu.
 
 Przegląd formularzy wskazał trwałe etykiety i labelFor jako następny mały checkpoint. Kod niezmieniony; kryteria i ograniczenia w NEXT oraz reports/gui-priority-review-20261015.md.
+
+
+2026-10-15: trwałe etykiety ośmiu pól wykonania Voice/SMS/Data są powiązane labelFor z unikalnym ID EditText. Opcjonalna nazwa ma stały tekst, wartości i hint pozostają dostępne; nie nadpisujemy contentDescription. CI212 PASS, 246 testów; podglądy Data 336px/duży tekst 160% przejrzane. APK121201 ma ten sam certyfikat/ID i wyższy kod. Fizyczny TalkBack i aktualizacja z retencją historii NOT TESTED. Raport: brain/reports/gui-form-labels-20261015.md.

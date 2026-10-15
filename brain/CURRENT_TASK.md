@@ -1,9 +1,13 @@
+# Ukończony checkpoint GUI — 2026-10-15
+
+2026-10-15: trwałe etykiety ośmiu pól wykonania Voice/SMS/Data są powiązane labelFor z unikalnym ID EditText. Opcjonalna nazwa ma stały tekst, wartości i hint pozostają dostępne; nie nadpisujemy contentDescription. CI212 PASS, 246 testów; podglądy Data 336px/duży tekst 160% przejrzane. APK121201 ma ten sam certyfikat/ID i wyższy kod. Fizyczny TalkBack i aktualizacja z retencją historii NOT TESTED. Raport: brain/reports/gui-form-labels-20261015.md.
+
 
 
 ## Priorytet użytkownika — 2026-10-15
 Użytkownik polecił na razie odłożyć Tailscale i kontynuować rozwój aplikacji, zwłaszcza GUI, warunków przygotowania i wygody testowania. Nie wracać do diagnozy Tailscale ani nie oczekiwać na dowód VPN jako warunek pracy. Zachować istniejące bezpieczne znaczenie Data i ustawienia telefonu.
 
-Następny wybrany checkpoint: trwałe etykiety formularzy GUI; zakres i kryteria w NEXT.md. Przegląd kodu wykonany, implementacja jeszcze nie rozpoczęta. Raport brain/reports/gui-priority-review-20261015.md.
+Checkpoint etykiet ukończony na CI212 / APK121201. Raport brain/reports/gui-priority-review-20261015.md.
 
 # Bieżący checkpoint — 2026-10-15
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
