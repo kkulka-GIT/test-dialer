@@ -79,7 +79,7 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 
 ### Build i CI
 
-- GitHub Actions jest standardowym mechanizmem buildowania debug APK
+- GitHub Actions buduje stabilnie podpisany release APK do telefonu; debug służy testom developerskim
 - nie uruchamiaj lokalnego builda Androida domyślnie
 - lokalny build tylko na wyraźne polecenie użytkownika
 - task wymagający APK kończy się dopiero po PASS w CI i artifact
@@ -118,7 +118,7 @@ Jeżeli któregoś elementu brakuje, agent najpierw go proponuje zamiast zakład
 - Lokalny build uruchamiaj wyłącznie po wyraźnym poleceniu użytkownika lub nadzorcy.
 - Standardowa weryfikacja builda odbywa się przez GitHub Actions.
 - Na branchu `feature/*` CI uruchamia się przez pull request albo `workflow_dispatch`.
-- Zadanie wymagające APK nie jest zakończone bez `PASS` w CI i opublikowanego artifactu `test-dialer-debug-apk`.
+- Zadanie wymagające APK nie jest zakończone bez `PASS` w CI i opublikowanego artifactu `test-dialer-stable-apk`.
 
 ## Raportowanie
 

@@ -1,8 +1,7 @@
-# Bieżący checkpoint
-Kompas PRODUCT_COMPASS.md. Branch feature/template-portability-20261005, PR #20 zależny od #19. Faza 13 zakończona: d9ebfd80, CI #163 PASS; atomowy zapis przywracania potwierdzony.
+# Następne wartościowe kroki
 
-Faza 14 podłącza przywracanie do istniejącego podglądu kopii. Zapis wymaga jawnego potwierdzenia, odbywa się w tle, odświeża Rejestr i raportuje wynik. Puste archiwum pozostaje tylko podglądem. Sesje CREATED/RUNNING nigdy nie są wznawiane. Test obejmuje anulowanie, potwierdzenie, zachowanie rewizji i brak Intentu telekomunikacyjnego. Stan: oczekiwanie na CI; najpierw sprawdzić zdalny SHA, CI i raport brain/reports/2026-10-06-phase14.md.
+Notatki: zachowanie draftu po błędzie i retry ukończone na CI219 PASS / APK121901 (248 testów). Raport note-save-retry-20261015.md. Edytor billingu CI216 i etykiety wykonania CI212 ukończone. Przegląd powtarzania parametrów bez zmiany w repeat-parameters-review-20261015.md.
 
-Po PASS ponownie ocenić kierunek. Kandydat: informacja o warunkach urządzenia zapisana przy wykonaniu (źródło i czas, bez nadmiernych uprawnień) albo usprawnienie punktów kontrolnych scenariusza. Nie dodawać obu naraz. Konflikty importu pozostają bez automatycznego scalania.
+Najpierw odśwież remote/PR/CI. Tailscale pozostaje odłożony. Oceń konkretną potrzebę testera w GUI lub niezawodności; możliwy dalszy temat to trwałość draftów edytorów przy rotacji, ale najpierw ustal koszt i rzeczywiste zachowanie. Nie dodawaj funkcji/kolumn/etykiet wyłącznie dla aktywności. Fizyczny TalkBack/TTS i upgrade z retencją nadal osobnym odbiorem, nie blokują rozwoju. Aktualizacje APK pozostają analizą UPDATES.md.
 
-Bez force/main/merge, usług operatora i usuwania historii. Telefon/aktualizacja/dostawcy dokumentów/TalkBack/TTS/SIM/operator/VPN NOT TESTED. Użytkownik odbierze całość później. Terminal bez push auth; używać połączenia GitHub z expected SHA.
+Następny wybrany checkpoint: odtwarzanie draftu notatki po recreation Activity, z ochroną przed podwójnym zapisem. Dowody, zakres i kryteria: reports/note-editor-lifecycle-review-20261015.md. Nie jest jeszcze zaimplementowany.

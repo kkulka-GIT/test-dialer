@@ -37,6 +37,83 @@ class EvolutionWorkflowUiTest {
     }
     @After fun cleanup() { clear() }
 
+    @Test fun `failed note save preserves draft and allows retry`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        val id = "note-retry-" + java.util.UUID.randomUUID()
+        val scenario = com.example.testdialer.domain.ScenarioDefinition(
+            com.example.testdialer.domain.ScenarioId(id), 1, "Notatka kontrolna", null,
+            listOf(com.example.testdialer.domain.ScenarioStepDefinition(
+                com.example.testdialer.domain.StepId(id), 0, "SMS", "Ręcznie", TestAction.Sms("123", "Test"))),
+        )
+        val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            writer.submit {
+                (activity.application as TestDialerApplication).testRunRepository.saveSnapshot(
+                    scenario, com.example.testdialer.domain.TestRun(com.example.testdialer.domain.RunId(id),
+                        scenario.id, 1, com.example.testdialer.domain.TestRunStatus.CREATED, 1_000),
+                )
+            }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        } finally { writer.shutdownNow() }
+        method.invoke(activity, id)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val input = views(dialog.window!!.decorView).filterIsInstance<EditText>().single()
+        // Bypass the UI length filter to force a deterministic store rejection.
+        input.filters = emptyArray()
+        val draft = "x".repeat(com.example.testdialer.notes.RunNotesStore.MAX_LENGTH + 1)
+        input.setText(draft)
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { input.error != null }
+        assertTrue(dialog.isShowing)
+        assertEquals(draft, input.text.toString())
+        assertTrue(input.isEnabled)
+        assertTrue(dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).isEnabled)
+        input.setText("Dowód do korelacji")
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { !dialog.isShowing }
+        val store = com.example.testdialer.notes.RunNotesStore(activity, (activity.application as TestDialerApplication).annotationStore)
+        assertEquals("Dowód do korelacji", store.get(com.example.testdialer.domain.RunId(id)))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `billing editor keeps expected and actual labels when filled`() {
+        for (scale in listOf(1f, 1.6f)) {
+            val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+            controller.configurationChange(Configuration(controller.get().resources.configuration).apply { fontScale = scale })
+            val activity = controller.get()
+            val method = MainActivity::class.java.declaredMethods.single {
+                it.name.startsWith("showBillingReviewEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+            }
+                .apply { isAccessible = true }
+            method.invoke(activity, "billing-label-review")
+            val dialog = ShadowAlertDialog.getLatestAlertDialog()
+            val root = dialog.window!!.decorView
+            val all = views(root).toList()
+            val fields = all.filterIsInstance<EditText>()
+            assertEquals(2, fields.size)
+            fields[0].setText("0,79 PLN")
+            fields[1].setText("CDR: 0,79 PLN")
+            fields.forEach { field ->
+                val label = all.filterIsInstance<android.widget.TextView>()
+                    .single { field.id != View.NO_ID && it.labelFor == field.id }
+                assertEquals(field.hint.toString(), label.text.toString())
+                assertEquals(View.VISIBLE, label.visibility)
+                assertNull(field.contentDescription)
+            }
+            captureRoot(root, if (scale == 1f) "billing-labels" else "billing-labels-large")
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(dialog.isShowing)
+            assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun `saved template opens a new editable SMS test without sending`() {
         TestTemplateStore(context).save("SMS kontrolny", TestAction.Sms("+48123456789", "Treść kontrolna"))
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
@@ -244,7 +321,7 @@ class EvolutionWorkflowUiTest {
         assertTrue(text.contains("Import nie uruchamia połączeń, SMS ani transferu danych"))
         assertTrue(text.contains("Sesje: 0"))
         assertEquals("Zamknij", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
-        assertNull(preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE))
+        assertEquals(View.GONE, preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).visibility)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -285,23 +362,18 @@ class EvolutionWorkflowUiTest {
         var dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        val repository = (activity.application as TestDialerApplication).testRunRepository
-        fun stored() = java.util.concurrent.Executors.newSingleThreadExecutor().let { worker ->
-            try { worker.submit<com.example.testdialer.persistence.StoredTestRun?> { repository.get(runId) }.get() }
-            finally { worker.shutdownNow() }
-        }
-        assertNull(stored())
+        val reader = java.util.concurrent.Executors.newSingleThreadExecutor()
+        fun storedRun() = reader.submit<com.example.testdialer.persistence.StoredTestRun?> {
+            (activity.application as TestDialerApplication).testRunRepository.get(runId)
+        }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        assertNull(storedRun())
 
         preview.invoke(activity, listOf(entry))
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        var restored: com.example.testdialer.persistence.StoredTestRun? = null
-        var attempts = 0
-        while (restored == null && attempts++ < 200) {
-            restored = stored()
-            if (restored == null) Thread.sleep(5)
-        }
-        assertEquals(4, restored?.revision)
+        await { storedRun() != null }
+        assertEquals(4L, storedRun()?.revision)
+        reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }

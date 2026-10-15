@@ -263,6 +263,62 @@ class MainActivitySmokeTest {
     }
 
     @Test
+    fun `Voice observation requires confirmation and cancel keeps it unsaved`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("pendingPhoneNumber").apply {
+            isAccessible = true
+            set(activity, "+48123123123")
+        }
+        MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+            setBoolean(activity, true)
+        }
+        renderScenario(activity, "VOICE")
+
+        findButton(activity, activity.getString(R.string.outcome_success)).performClick()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains("+48123123123"))
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains(
+            activity.getString(R.string.outcome_success),
+        ))
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        assertTrue(MainActivity::class.java.getDeclaredField("awaitingVoiceOutcome").apply {
+            isAccessible = true
+        }.getBoolean(activity))
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.voice_outcome_title),
+        ))
+    }
+
+    @Test
+    fun `SMS observation requires confirmation and cancel keeps it pending`() {
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        MainActivity::class.java.getDeclaredField("guidedSmsState").apply {
+            isAccessible = true
+            set(activity, GuidedSmsUiState(
+                awaitingObservation = true,
+                input = com.example.testdialer.sms.GuidedSmsInput("+48999888777", "Kontrola", null),
+            ))
+        }
+        renderScenario(activity, "SMS")
+
+        findButton(activity, activity.getString(R.string.sms_user_reported_sent)).performClick()
+        val dialog = org.robolectric.shadows.ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(dialog.isShowing)
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains("+48999888777"))
+        assertTrue(dialog.findViewById<android.widget.TextView>(android.R.id.message).text.contains(
+            activity.getString(R.string.sms_user_reported_sent),
+        ))
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+
+        assertTrue(collectText(activity.findViewById(android.R.id.content)).contains(
+            activity.getString(R.string.sms_observation_title),
+        ))
+    }
+
+    @Test
     fun `running Data keeps its execution screen selected`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         findButton(activity, activity.getString(R.string.data_type)).performClick()
@@ -321,7 +377,7 @@ class MainActivitySmokeTest {
         val strip = descendants(restored.findViewById(android.R.id.content))
             .filterIsInstance<SystemStatusStripView>()
             .single()
-        assertTrue(strip.contentDescription.contains(restored.getString(R.string.status_wifi_label)))
+        assertTrue(collectText(strip).contains(restored.getString(R.string.status_wifi_label)))
         assertNotNull(findButton(restored, restored.getString(R.string.run_add_test)))
     }
 
@@ -371,6 +427,15 @@ class MainActivitySmokeTest {
         assertTrue(detailText.contains(activity.getString(R.string.register_event_detail_title)))
         assertTrue(detailText.contains("+48123"))
         assertTrue(detailText.contains("event-1"))
+
+        findButton(activity, activity.getString(R.string.register_copy_correlation)).performClick()
+        val copied = activity.getSystemService(android.content.ClipboardManager::class.java)
+            .primaryClip!!.getItemAt(0).text.toString()
+        assertTrue(copied.contains("Epoch ms: 1"))
+        assertTrue(copied.contains("Event ID: event-1"))
+        assertTrue(copied.contains("Cel: +48123"))
+        assertTrue(copied.contains("Ocena billingu: poza tym zestawem"))
+        assertFalse(copied.contains("Oczekiwano:"))
 
         findButton(activity, activity.getString(R.string.register_back_to_run)).performClick()
         setRegisterState(activity, RegisterUiState(selectedRun = stored))
@@ -490,10 +555,12 @@ class MainActivitySmokeTest {
             .filterIsInstance<SystemStatusStripView>()
             .toList()
         assertEquals(1, strips.size)
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_sim_label)))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_network_label)))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_cellular_label)))
-        assertTrue(strips.single().contentDescription.contains(activity.getString(R.string.status_wifi_label)))
+        val text = collectText(strips.single())
+        assertTrue(text.contains(activity.getString(R.string.status_sim_label)))
+        assertTrue(text.contains(activity.getString(R.string.status_cellular_label)))
+        assertTrue(text.contains("VPN"))
+        assertTrue(text.contains(activity.getString(R.string.status_wifi_label)))
+        assertTrue(text.contains("Sieć domyślna aplikacji:"))
     }
 
     private fun setRegisterState(activity: MainActivity, state: RegisterUiState) {
