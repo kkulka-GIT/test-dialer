@@ -1983,7 +1983,10 @@ class MainActivity : ComponentActivity() {
         val fields = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dimen(20), dimen(8), dimen(20), dimen(8))
             addView(createBodyText("To ręczna ocena rozliczenia. Nie zmienia technicznego wyniku usługi."))
-            addView(expected); addView(actual); addView(choice)
+            addView(createInputLabel(expected)); addView(expected)
+            addView(spaceVertical(dimen(8)))
+            addView(createInputLabel(actual)); addView(actual)
+            addView(choice)
         }
         val scroll = ScrollView(this).apply { addView(fields) }
         val dialog = AlertDialog.Builder(this).setTitle("Oczekiwano / otrzymano").setView(scroll)

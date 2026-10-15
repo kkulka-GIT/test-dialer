@@ -37,6 +37,36 @@ class EvolutionWorkflowUiTest {
     }
     @After fun cleanup() { clear() }
 
+    @Test fun `billing editor keeps expected and actual labels when filled`() {
+        for (scale in listOf(1f, 1.6f)) {
+            val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+            controller.configurationChange(Configuration(controller.get().resources.configuration).apply { fontScale = scale })
+            val activity = controller.get()
+            val method = MainActivity::class.java.getDeclaredMethod("showBillingReviewEditor", com.example.testdialer.domain.EventId::class.java)
+                .apply { isAccessible = true }
+            method.invoke(activity, com.example.testdialer.domain.EventId("billing-label-review"))
+            val dialog = ShadowAlertDialog.getLatestAlertDialog()
+            val root = dialog.window!!.decorView
+            val all = views(root).toList()
+            val fields = all.filterIsInstance<EditText>()
+            assertEquals(2, fields.size)
+            fields[0].setText("0,79 PLN")
+            fields[1].setText("CDR: 0,79 PLN")
+            fields.forEach { field ->
+                val label = all.filterIsInstance<android.widget.TextView>()
+                    .single { field.id != View.NO_ID && it.labelFor == field.id }
+                assertEquals(field.hint.toString(), label.text.toString())
+                assertEquals(View.VISIBLE, label.visibility)
+                assertNull(field.contentDescription)
+            }
+            captureRoot(root, if (scale == 1f) "billing-labels" else "billing-labels-large")
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+            assertFalse(dialog.isShowing)
+            assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun `saved template opens a new editable SMS test without sending`() {
         TestTemplateStore(context).save("SMS kontrolny", TestAction.Sms("+48123456789", "Treść kontrolna"))
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
