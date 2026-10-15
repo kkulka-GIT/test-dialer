@@ -176,3 +176,7 @@ Przegląd formularzy wskazał trwałe etykiety i labelFor jako następny mały c
 
 
 2026-10-15: trwałe etykiety ośmiu pól wykonania Voice/SMS/Data są powiązane labelFor z unikalnym ID EditText. Opcjonalna nazwa ma stały tekst, wartości i hint pozostają dostępne; nie nadpisujemy contentDescription. CI212 PASS, 246 testów; podglądy Data 336px/duży tekst 160% przejrzane. APK121201 ma ten sam certyfikat/ID i wyższy kod. Fizyczny TalkBack i aktualizacja z retencją historii NOT TESTED. Raport: brain/reports/gui-form-labels-20261015.md.
+
+
+2026-10-15: edytor ręcznej oceny billingu ma trwałe, powiązane labelFor podpisy oczekiwanego naliczenia i rzeczywistego wyniku/dowodu. Zapobiega utracie znaczenia pól po wpisaniu danych. CI216 PASS, 247 testów, podglądy 360px przy fontach 100%/160% przejrzane. Stabilny APK121601 zachowuje certyfikat/ID i rosnący kod. Fizyczny TalkBack i retencja danych przy aktualizacji NOT TESTED.
+Raport: brain/reports/billing-editor-labels-20261015.md.
