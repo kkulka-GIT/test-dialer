@@ -1,7 +1,7 @@
 # Bieżący checkpoint — 2026-10-15
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
 
-Bieżący mały checkpoint zachowuje w CSV `observation_description` obok statusu, źródła i kodu obserwacji. Dzięki temu bezpieczne szczegóły diagnostyczne Data, w tym faza i sklasyfikowana przyczyna błędu, nie giną przy eksporcie do arkusza używanego do późniejszej analizy. Implementacja i regresja są gotowe; CI oraz stabilny APK wymagają potwierdzenia po pushu. Raport: brain/reports/csv-observation-description-20261015.md.
+Bieżący mały checkpoint zachowuje w CSV `observation_description` obok statusu, źródła i kodu obserwacji. Dzięki temu bezpieczne szczegóły diagnostyczne Data, w tym faza i sklasyfikowana przyczyna błędu, nie giną przy eksporcie do arkusza używanego do późniejszej analizy. CI #210 PASS; stabilny APK121001 zachowuje aplikację, certyfikat i rosnący versionCode. Raport: brain/reports/csv-observation-description-20261015.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/38692276336/artifacts/11952607763 .
 
 Kontrola zastoju potwierdziła brak nowych commitów od 10 października mimo kolejnych uruchomień. Nie znaleziono blokady repozytorium, PR ani ostatniego CI; przyczyną był brak podjęcia niezależnego checkpointu podczas oczekiwania na dowód Data/Tailscale. Mały checkpoint CSV zapisuje surowe czasy początku i końca sesji w epoch millis obok UTC, aby uprościć bezpośrednią korelację z backendem/CDR. CI #208 PASS; stabilny APK120801 zachowuje aplikację, certyfikat i rosnący versionCode. Raport: brain/reports/stall-control-20261015.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/38675454771/artifacts/11946251513 .
 

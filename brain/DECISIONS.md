@@ -165,3 +165,5 @@ Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego proble
 2026-10-15: CSV zachowuje `observation_description` obok statusu, źródła i kodu. Uzasadnienie: opis jest zapisanym faktem obserwacji i zawiera bezpieczne szczegóły diagnostyczne Data potrzebne do analizy błędów takich jak Tailscale; wcześniej były dostępne w JSON/tekście, ale ginęły w CSV. Pole pozostaje puste przy braku opisu, przechodzi istniejącą neutralizację formuł i nie jest oceną billingu. Wykonanie usług, routing i historia nie zmieniają się. Raport: brain/reports/csv-observation-description-20261015.md.
 
 CI #209 ujawniło ograniczenie testowego parsera CSV, nie eksportu: fixture zawierała prawidłowo cytowane pole SMS z nową linią, a helper dzielił rekord po fizycznych liniach. Regresja opisu używa jednowierszowej wiadomości, ponieważ test wielowierszowego cytowania istnieje osobno. Nie upraszczamy ani nie zmieniamy produkcyjnego CSV.
+
+Finalne CI #210 PASS: 245 testów, release build, stały podpis/tożsamość i upload stabilnego APK121001 zakończone powodzeniem. Raport: brain/reports/csv-observation-description-20261015.md.
