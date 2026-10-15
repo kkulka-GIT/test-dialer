@@ -1,5 +1,5 @@
 # Następne wartościowe kroki
-Najpierw domknij checkpoint epoch millis czasu sesji w CSV: potwierdź CI, liczbę testów, stały podpis/tożsamość, rosnący versionCode i stabilny artefakt; następnie uzupełnij brain/reports/stall-control-20261015.md. Nie dubluj implementacji. Checkpoint `scenario_id` i `scenario_version` w CSV zakończony na CI207 / APK120701; wcześniejsze pola czasu, rewizji i korelacji CSV oraz Wi-Fi STATUS pozostają ukończone.
+Checkpoint epoch millis czasu sesji w CSV zakończony na CI208 / APK120801; nie dubluj implementacji. Checkpoint `scenario_id` i `scenario_version` w CSV zakończony na CI207 / APK120701; wcześniejsze pola czasu, rewizji i korelacji CSV oraz Wi-Fi STATUS pozostają ukończone. Przy następnym uruchomieniu najpierw odśwież PR/head/CI, potem wybierz niezależną poprawkę zgodną z kompasem albo udokumentowany brak zmiany.
 
 Data/Tailscale pozostaje ważne. Brakujący dowód wersji i polityki VPN zapisany w OPEN_QUESTIONS; nie powtarzaj identycznych transferów. Nie zmieniaj znaczenia testu komórkowego, ustawień telefonu ani nie dodawaj fallbacku Wi-Fi/VPN. Poprawki uzasadniaj kodem i dowodami.
 
