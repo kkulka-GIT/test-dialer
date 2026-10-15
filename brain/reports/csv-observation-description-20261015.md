@@ -12,6 +12,7 @@ Nie zmieniono wykonania Voice, SMS ani Data, routingu, historii ani ręcznej oce
 - regresja sprawdza osobno kod i opis obserwacji z diagnostyką `RESPONSE/SOCKET/EPERM`
 - `git diff --check`: do wykonania przed zapisem
 - GitHub Actions i stabilny APK: oczekują na push
+- CI #209 poprawnie zatrzymało błędny test: pomocniczy parser pojedynczego wiersza nie obsługuje prawidłowego wielowierszowego pola SMS i odciął kolumny po wiadomości. Fixture regresji opisu używa teraz jednowierszowej treści; produkcyjne kodowanie CSV nie zostało osłabione.
 
 ## Ograniczenia
 Nie wykonano odbioru CSV w konkretnym arkuszu ani testu na telefonie. Zmiana nie rozstrzyga przyczyny błędu Data/Tailscale; zachowuje lepszy dowód do dalszej analizy.

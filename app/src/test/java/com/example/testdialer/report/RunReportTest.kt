@@ -100,7 +100,10 @@ class RunReportTest {
         val original = snapshot()
         val diagnostic = "failureStage=RESPONSE; failureCause=SOCKET; failureErrno=EPERM"
         val stored = original.copy(run = original.run.copy(events = listOf(
-            original.run.events.single().copy(observation = original.run.events.single().observation?.copy(description = diagnostic)),
+            original.run.events.single().copy(
+                action = TestAction.Sms("+48987654321", "bez wielowierszowej treści"),
+                observation = original.run.events.single().observation?.copy(description = diagnostic),
+            ),
         )))
 
         val rows = RunReportFormatter.csv(stored).trim().lines()
