@@ -63,6 +63,7 @@ class EvolutionWorkflowUiTest {
             }
             captureRoot(root, if (scale == 1f) "billing-labels" else "billing-labels-large")
             dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
             assertFalse(dialog.isShowing)
             assertNull(Shadows.shadowOf(activity).nextStartedActivity)
             controller.pause().stop().destroy()
