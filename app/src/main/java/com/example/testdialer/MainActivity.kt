@@ -2472,7 +2472,7 @@ class MainActivity : ComponentActivity() {
                 })
             }
             addView(optionalFields("Szybki wybór ilości danych") { addView(presets) })
-            addView(createBodyText(getString(R.string.data_amount_hint)))
+            addView(createInputLabel(amount))
             addView(spaceVertical(dimen(6)))
             addView(amount)
             val units = com.example.testdialer.data.DataVolume.units
@@ -2489,11 +2489,12 @@ class MainActivity : ComponentActivity() {
             addView(unit)
             addView(createStatusText(getString(R.string.data_units_hint)))
             addView(spaceVertical(dimen(8)))
-            addView(createBodyText(getString(R.string.data_url_hint)))
+            addView(createInputLabel(url))
             addView(url)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
                 addView(spaceVertical(dimen(8)))
+                addView(createInputLabel(label))
                 addView(label)
             })
             state.error?.let {
@@ -2570,16 +2571,17 @@ class MainActivity : ComponentActivity() {
                 setText(initialMessage)
                 trackDraft { smsMessageDraft = it }
             }
-            addView(createBodyText(getString(R.string.sms_destination_hint)))
+            addView(createInputLabel(destinationInput))
             addView(spaceVertical(dimen(6)))
             addView(destinationInput)
             addView(spaceVertical(dimen(10)))
-            addView(createBodyText(getString(R.string.sms_message_hint)))
+            addView(createInputLabel(messageInput))
             addView(spaceVertical(dimen(6)))
             addView(messageInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
                 addView(spaceVertical(dimen(8)))
+                addView(createInputLabel(labelInput))
                 addView(labelInput)
             })
             state.error?.let {
@@ -2712,12 +2714,13 @@ class MainActivity : ComponentActivity() {
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
             voicePhoneInput.setText(voicePhoneDraft ?: (selectedTaskAction() as? TestAction.Voice)?.destination.orEmpty())
             voicePhoneInput.trackDraft { voicePhoneDraft = it }
-            addView(createBodyText(getString(R.string.voice_number_hint)))
+            addView(createInputLabel(voicePhoneInput))
             addView(spaceVertical(dimen(6)))
             addView(voicePhoneInput)
             addView(spaceVertical(dimen(8)))
             addView(optionalFields(getString(R.string.execution_optional_details)) {
                 addView(spaceVertical(dimen(8)))
+                addView(createInputLabel(voiceNameInput))
                 addView(voiceNameInput)
             })
             addView(spaceVertical(dimen(14)))
@@ -2882,6 +2885,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun createInputLabel(input: EditText): TextView {
+        if (input.id == View.NO_ID) input.id = View.generateViewId()
+        return createBodyText(input.hint.toString()).apply { labelFor = input.id }
     }
 
     private fun createOptionalInput(hint: String): EditText {
