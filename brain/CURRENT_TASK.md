@@ -1,5 +1,7 @@
-# Bieżący checkpoint — 2026-10-08
+# Bieżący checkpoint — 2026-10-15
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
+
+Kontrola zastoju potwierdziła brak nowych commitów od 10 października mimo kolejnych uruchomień. Nie znaleziono blokady repozytorium, PR ani ostatniego CI; przyczyną był brak podjęcia niezależnego checkpointu podczas oczekiwania na dowód Data/Tailscale. Rozpoczęto mały checkpoint: CSV zapisuje surowe czasy początku i końca sesji w epoch millis obok UTC, aby uprościć bezpośrednią korelację z backendem/CDR. Implementacja i regresje są gotowe; CI oraz stabilny APK wymagają potwierdzenia po pushu. Raport: brain/reports/stall-control-20261015.md.
 
 CSV zapisuje `scenario_id` i `scenario_version`. Nazwa scenariusza pozostaje czytelna dla testera, a stabilny identyfikator i wersja jednoznacznie wskazują wykonaną definicję przy porównywaniu powtórzeń. Końcowe CI #207 PASS: 243 testy, 0 failures/errors. Stabilny APK120701 zachowuje tożsamość i certyfikat; pobrany hash jest zgodny z metadanymi. Dowody: brain/reports/csv-scenario-identity-20261010.md. APK: https://github.com/kkulka-GIT/test-dialer/actions/runs/38080933034/artifacts/11680846245 .
 

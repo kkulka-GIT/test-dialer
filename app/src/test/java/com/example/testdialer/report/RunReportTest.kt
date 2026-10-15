@@ -70,8 +70,20 @@ class RunReportTest {
         assertEquals(2, rows.size)
         assertEquals("3", values[headers.indexOf("revision")])
         assertEquals("1970-01-01T00:00:01Z", values[headers.indexOf("run_started_at_utc")])
+        assertEquals("1000", values[headers.indexOf("run_started_at_epoch_millis")])
         assertEquals("", values[headers.indexOf("run_completed_at_utc")])
+        assertEquals("", values[headers.indexOf("run_completed_at_epoch_millis")])
         assertEquals("", values[headers.indexOf("event_id")])
+    }
+
+    @Test fun `CSV keeps completed run epoch timestamps for direct backend correlation`() {
+        val rows = RunReportFormatter.csv(snapshot()).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("1000", values[headers.indexOf("run_started_at_epoch_millis")])
+        assertEquals("2000", values[headers.indexOf("run_completed_at_epoch_millis")])
+        assertEquals("1501", values[headers.indexOf("epoch_millis")])
     }
 
     @Test fun `CSV identifies the exact scenario definition`() {
