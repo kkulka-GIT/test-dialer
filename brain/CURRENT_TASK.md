@@ -1,3 +1,10 @@
+
+
+## Priorytet użytkownika — 2026-10-15
+Użytkownik polecił na razie odłożyć Tailscale i kontynuować rozwój aplikacji, zwłaszcza GUI, warunków przygotowania i wygody testowania. Nie wracać do diagnozy Tailscale ani nie oczekiwać na dowód VPN jako warunek pracy. Zachować istniejące bezpieczne znaczenie Data i ustawienia telefonu.
+
+Następny wybrany checkpoint: trwałe etykiety formularzy GUI; zakres i kryteria w NEXT.md. Przegląd kodu wykonany, implementacja jeszcze nie rozpoczęta. Raport brain/reports/gui-priority-review-20261015.md.
+
 # Bieżący checkpoint — 2026-10-15
 Branch feature/stable-signing-20261006, PR #21 zależny od #20, bez merge main.
 

@@ -167,3 +167,9 @@ Użytkownik doprecyzował autonomię: brak odpowiedzi dotyczącej jednego proble
 CI #209 ujawniło ograniczenie testowego parsera CSV, nie eksportu: fixture zawierała prawidłowo cytowane pole SMS z nową linią, a helper dzielił rekord po fizycznych liniach. Regresja opisu używa jednowierszowej wiadomości, ponieważ test wielowierszowego cytowania istnieje osobno. Nie upraszczamy ani nie zmieniamy produkcyjnego CSV.
 
 Finalne CI #210 PASS: 245 testów, release build, stały podpis/tożsamość i upload stabilnego APK121001 zakończone powodzeniem. Raport: brain/reports/csv-observation-description-20261015.md.
+
+
+## Priorytet użytkownika — 2026-10-15
+Użytkownik polecił na razie odłożyć Tailscale i kontynuować rozwój aplikacji, zwłaszcza GUI, warunków przygotowania i wygody testowania. Nie wracać do diagnozy Tailscale ani nie oczekiwać na dowód VPN jako warunek pracy. Zachować istniejące bezpieczne znaczenie Data i ustawienia telefonu.
+
+Przegląd formularzy wskazał trwałe etykiety i labelFor jako następny mały checkpoint. Kod niezmieniony; kryteria i ograniczenia w NEXT oraz reports/gui-priority-review-20261015.md.
