@@ -37,6 +37,35 @@ class EvolutionWorkflowUiTest {
     }
     @After fun cleanup() { clear() }
 
+    @Test fun `failed note save preserves draft and allows retry`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        val id = "note-retry-" + java.util.UUID.randomUUID()
+        method.invoke(activity, id)
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val input = views(dialog.window!!.decorView).filterIsInstance<EditText>().single()
+        // Bypass the UI length filter to force a deterministic store rejection.
+        input.filters = emptyArray()
+        val draft = "x".repeat(com.example.testdialer.notes.RunNotesStore.MAX_LENGTH + 1)
+        input.setText(draft)
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { input.error != null }
+        assertTrue(dialog.isShowing)
+        assertEquals(draft, input.text.toString())
+        assertTrue(input.isEnabled)
+        assertTrue(dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).isEnabled)
+        input.setText("Dowód do korelacji")
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { !dialog.isShowing }
+        val store = com.example.testdialer.notes.RunNotesStore(activity, (activity.application as TestDialerApplication).annotationStore)
+        assertEquals("Dowód do korelacji", store.get(com.example.testdialer.domain.RunId(id)))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `billing editor keeps expected and actual labels when filled`() {
         for (scale in listOf(1f, 1.6f)) {
             val controller = Robolectric.buildActivity(MainActivity::class.java).setup()

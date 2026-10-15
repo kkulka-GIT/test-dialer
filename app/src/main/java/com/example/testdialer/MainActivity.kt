@@ -1850,20 +1850,37 @@ class MainActivity : ComponentActivity() {
             filters = arrayOf(android.text.InputFilter.LengthFilter(com.example.testdialer.notes.RunNotesStore.MAX_LENGTH))
             setPadding(dimen(18), dimen(12), dimen(18), dimen(12))
         }
-        AlertDialog.Builder(this).setTitle(R.string.run_note).setView(input)
+        val dialog = AlertDialog.Builder(this).setTitle(R.string.run_note).setView(input)
             .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.run_note_save) { _, _ ->
+            .setPositiveButton(R.string.run_note_save, null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val text = input.text.toString()
+                input.isEnabled = false
+                dialog.setCancelable(false)
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = false
                 reportExecutor.execute {
                     val saved = runCatching { runNotes.save(runId, text) }.getOrDefault(false)
                     runOnUiThread {
                         if (!isDestroyed && !isFinishing) {
-                            Toast.makeText(this, if (saved) R.string.run_note_saved else R.string.run_note_failed, Toast.LENGTH_LONG).show()
-                            renderRegister()
+                            if (saved) {
+                                dialog.dismiss()
+                                Toast.makeText(this, R.string.run_note_saved, Toast.LENGTH_LONG).show()
+                                renderRegister()
+                            } else {
+                                input.isEnabled = true
+                                dialog.setCancelable(true)
+                                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
+                                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = true
+                                input.error = getString(R.string.run_note_failed)
+                            }
                         }
                     }
                 }
-            }.show()
+            }
+        }
+        dialog.show()
     }
 
     private fun saveTemplate(event: TestEvent) {
