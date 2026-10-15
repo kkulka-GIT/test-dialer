@@ -44,6 +44,20 @@ class EvolutionWorkflowUiTest {
             it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
         }.apply { isAccessible = true }
         val id = "note-retry-" + java.util.UUID.randomUUID()
+        val scenario = com.example.testdialer.domain.ScenarioDefinition(
+            com.example.testdialer.domain.ScenarioId(id), 1, "Notatka kontrolna", null,
+            listOf(com.example.testdialer.domain.ScenarioStepDefinition(
+                com.example.testdialer.domain.StepId(id), 0, "SMS", "Ręcznie", TestAction.Sms("123", "Test"))),
+        )
+        val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            writer.submit {
+                (activity.application as TestDialerApplication).testRunRepository.saveSnapshot(
+                    scenario, com.example.testdialer.domain.TestRun(com.example.testdialer.domain.RunId(id),
+                        scenario.id, 1, com.example.testdialer.domain.TestRunStatus.CREATED, 1_000),
+                )
+            }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        } finally { writer.shutdownNow() }
         method.invoke(activity, id)
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
