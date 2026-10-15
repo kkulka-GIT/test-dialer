@@ -1,3 +1,7 @@
+# Ukończony checkpoint notatek — 2026-10-15
+
+2026-10-15: edytor notatki zamyka się dopiero po udanym zapisie. Błąd zachowuje tekst w otwartym edytorze i pozwala ponowić; na czas zapisu pole i akcje są zablokowane. CI219 PASS (248 testów), APK121901 z tym samym certyfikatem i wyższym kodem. Raport brain/reports/note-save-retry-20261015.md.
+
 # Ukończony checkpoint edytora billingu — 2026-10-15
 
 2026-10-15: edytor ręcznej oceny billingu ma trwałe, powiązane labelFor podpisy oczekiwanego naliczenia i rzeczywistego wyniku/dowodu. Zapobiega utracie znaczenia pól po wpisaniu danych. CI216 PASS, 247 testów, podglądy 360px przy fontach 100%/160% przejrzane. Stabilny APK121601 zachowuje certyfikat/ID i rosnący kod. Fizyczny TalkBack i retencja danych przy aktualizacji NOT TESTED.

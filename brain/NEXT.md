@@ -1,7 +1,5 @@
 # Następne wartościowe kroki
 
-Edytor billingu ukończony na CI216 PASS / APK121601 (247 testów). Etykiety formularzy wykonania ukończone na CI212. Raporty billing-editor-labels-20261015.md i gui-form-labels-20261015.md. Nie dublować zmian.
+Notatki: zachowanie draftu po błędzie i retry ukończone na CI219 PASS / APK121901 (248 testów). Raport note-save-retry-20261015.md. Edytor billingu CI216 i etykiety wykonania CI212 ukończone. Przegląd powtarzania parametrów bez zmiany w repeat-parameters-review-20261015.md.
 
-Najpierw odśwież remote/PR/CI. Tailscale pozostaje odłożony na polecenie użytkownika z 2026-10-15. Następnie oceń najbardziej wartościową poprawę ergonomii przygotowania testu, czytelności wyników albo bezpiecznego powtarzania parametrów. Sprawdź konkretny problem przed wyborem; nie rozszerzaj seryjnie etykiet ani CSV tylko dla aktywności.
-
-Fizyczny TalkBack/TTS i upgrade z retencją danych pozostają osobnym odbiorem; nie blokują niezależnego rozwoju. Aktualizacje GitHub Releases pozostają analizą UPDATES.md.
+Najpierw odśwież remote/PR/CI. Tailscale pozostaje odłożony. Oceń konkretną potrzebę testera w GUI lub niezawodności; możliwy dalszy temat to trwałość draftów edytorów przy rotacji, ale najpierw ustal koszt i rzeczywiste zachowanie. Nie dodawaj funkcji/kolumn/etykiet wyłącznie dla aktywności. Fizyczny TalkBack/TTS i upgrade z retencją nadal osobnym odbiorem, nie blokują rozwoju. Aktualizacje APK pozostają analizą UPDATES.md.
