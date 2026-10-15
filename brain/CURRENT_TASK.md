@@ -38,3 +38,6 @@ Data/Tailscale: SOCKET/EPERM/0 B przy działającym internecie przeglądarki poz
 Na telefonie nadal niepotwierdzone: TalkBack/TTS, wygoda panelu i upgrade z retencją historii. Pytania w brain/OPEN_QUESTIONS.md blokują tylko zależną pracę, nie cały rozwój. Nie wymagać rutynowego odbioru każdej tury.
 
 Przyszłe aktualizacje z GitHub Releases/Codex Review: analiza zapisana w brain/UPDATES.md, bez wdrożenia i automatycznego publikowania CI.
+
+
+2026-10-15: statyczny przegląd cyklu życia notatki wykazał brak odtworzenia lokalnego dialogu/draftu po recreation Activity. Kolejny checkpoint ma chronić tekst bez automatycznego zapisu i uwzględnić operację w toku; nie stosować configChanges jako obejścia. Brak implementacji/testu recreation w tej turze. Raport reports/note-editor-lifecycle-review-20261015.md.

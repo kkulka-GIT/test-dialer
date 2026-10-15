@@ -183,3 +183,6 @@ Raport: brain/reports/billing-editor-labels-20261015.md.
 
 
 2026-10-15: edytor notatki zamyka się dopiero po udanym zapisie. Błąd zachowuje tekst w otwartym edytorze i pozwala ponowić; na czas zapisu pole i akcje są zablokowane. CI219 PASS (248 testów), APK121901 z tym samym certyfikatem i wyższym kodem. Raport brain/reports/note-save-retry-20261015.md.
+
+
+2026-10-15: statyczny przegląd cyklu życia notatki wykazał brak odtworzenia lokalnego dialogu/draftu po recreation Activity. Kolejny checkpoint ma chronić tekst bez automatycznego zapisu i uwzględnić operację w toku; nie stosować configChanges jako obejścia. Brak implementacji/testu recreation w tej turze. Raport reports/note-editor-lifecycle-review-20261015.md.
