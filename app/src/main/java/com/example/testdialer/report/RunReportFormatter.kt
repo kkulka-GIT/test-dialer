@@ -114,7 +114,7 @@ object RunReportFormatter {
         val headers = listOf("run_id", "scenario_id", "scenario_version", "scenario", "run_status", "revision",
             "run_started_at_utc", "run_started_at_epoch_millis", "run_completed_at_utc", "run_completed_at_epoch_millis",
             "event_id", "step_id", "service", "occurred_at_utc",
-            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code",
+            "epoch_millis", "destination_or_target", "message", "observation_status", "observation_source", "observation_code", "observation_description",
             "correlation_source_address", "correlation_destination_address", "subscriber_alias", "references_json",
             "tester_note", "billing_expected", "billing_actual", "billing_verdict", "billing_reviewed_at_utc", "tester_marked_interrupted_at_utc")
         append(headers.joinToString(",") { csvCell(it) }); append("\r\n")
@@ -133,7 +133,7 @@ object RunReportFormatter {
                 event?.id?.value.orEmpty(), event?.stepId?.value.orEmpty(), event?.action?.serviceType?.name.orEmpty(),
                 event?.occurredAtMillis?.let(::utc).orEmpty(), event?.occurredAtMillis?.toString().orEmpty(), target,
                 (event?.action as? TestAction.Sms)?.message.orEmpty(), event?.observation?.status?.name.orEmpty(),
-                event?.observation?.source?.name.orEmpty(), event?.observation?.code.orEmpty(),
+                event?.observation?.source?.name.orEmpty(), event?.observation?.code.orEmpty(), event?.observation?.description.orEmpty(),
                 event?.correlation?.sourceAddress.orEmpty(), event?.correlation?.destinationAddress.orEmpty(),
                 event?.correlation?.subscriberAlias.orEmpty(),
                 event?.correlation?.references?.let { refs -> array(refs.map { obj("namespace" to it.namespace, "value" to it.value) }).toString() }.orEmpty(), testerNote,

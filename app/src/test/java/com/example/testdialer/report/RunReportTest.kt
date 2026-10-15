@@ -96,6 +96,21 @@ class RunReportTest {
         assertEquals("Próba \"SIM\"", values[headers.indexOf("scenario")])
     }
 
+    @Test fun `CSV keeps observation description for later diagnostics`() {
+        val original = snapshot()
+        val diagnostic = "failureStage=RESPONSE; failureCause=SOCKET; failureErrno=EPERM"
+        val stored = original.copy(run = original.run.copy(events = listOf(
+            original.run.events.single().copy(observation = original.run.events.single().observation?.copy(description = diagnostic)),
+        )))
+
+        val rows = RunReportFormatter.csv(stored).trim().lines()
+        val headers = csvRow(rows[0])
+        val values = csvRow(rows[1])
+
+        assertEquals("NOT_VERIFIED", values[headers.indexOf("observation_code")])
+        assertEquals(diagnostic, values[headers.indexOf("observation_description")])
+    }
+
     @Test fun `billing annotations export separately without altering service observation`() {
         val stored = snapshot()
         val reviews = mapOf("event" to com.example.testdialer.review.BillingReview("0,79 PLN", "1,58 PLN", com.example.testdialer.review.BillingVerdict.FAIL, 5000))
