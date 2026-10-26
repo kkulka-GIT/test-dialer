@@ -7,3 +7,7 @@ Najpierw odśwież remote/PR/CI. Tailscale pozostaje odłożony. Oceń konkretn�
 Odtwarzanie szkicu notatki po recreation Activity ukończone na CI221 PASS / APK122101 (252 testy). Trwający zapis nie jest dublowany, a błąd nadal zachowuje tekst do retry. Raport: reports/note-draft-recreation-20261026.md.
 
 Następna tura: najpierw odśwież PR i CI. Oceń kolejną konkretną potrzebę GUI lub niezawodności na podstawie kodu i pracy testera. Nie rozszerzaj mechanizmu szkiców na inne dialogi bez wykazania ryzyka utraty danych. Tailscale pozostaje odłożony. Fizyczny obrót telefonu, TalkBack/TTS i upgrade z retencją pozostają osobnym odbiorem, nie blokują dalszego rozwoju.
+
+Trwałość szkicu ręcznej oceny billingu ukończona na CI222 PASS / APK122201 (255 testów). Oba pola, werdykt i kursory przeżywają recreation Activity, a zapis w toku pozostaje pojedynczy. Raport: reports/billing-draft-recreation-20261026.md.
+
+Następna tura: odśwież PR i CI, następnie oceń konkretną potrzebę GUI lub niezawodności. Nie rozszerzaj tego wzorca na krótkie formularze bez porównywalnego ryzyka utraty wartościowego dowodu. Tailscale pozostaje odłożony. Fizyczny obrót, TalkBack/TTS, śmierć procesu i upgrade z retencją są osobnym odbiorem.

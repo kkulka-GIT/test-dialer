@@ -1,3 +1,7 @@
+# Ukończony checkpoint trwałości oceny billingu — 2026-10-26
+
+2026-10-26: szkic ręcznej oceny billingu nie znika już przy odtworzeniu Activity. Zachowane są identyfikator zdarzenia, oczekiwane i rzeczywiste naliczenie/dowód, werdykt oraz pozycje obu kursorów. Zapis w toku nie jest dublowany. CI222 PASS: 255 testów, stabilny APK122201, stały certyfikat i applicationId. Raport brain/reports/billing-draft-recreation-20261026.md.
+
 # Ukończony checkpoint trwałości szkicu notatki — 2026-10-26
 
 2026-10-26: szkic notatki, identyfikator sesji i pozycja kursora przeżywają odtworzenie Activity, np. obrót telefonu. Trwający zapis pozostaje w ViewModelu, więc nowy ekran nie uruchamia drugiej operacji. Anulowanie czyści szkic, błąd zachowuje tekst i retry, a sukces nie odtwarza dialogu. CI221 PASS: 252 testy, stabilny APK122101, stały certyfikat i applicationId. Raport brain/reports/note-draft-recreation-20261026.md.
