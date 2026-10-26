@@ -61,6 +61,8 @@ import com.example.testdialer.sms.GuidedSmsOutcome
 import com.example.testdialer.sms.GuidedSmsUiState
 import com.example.testdialer.sms.GuidedSmsViewModel
 import com.example.testdialer.sms.SmsComposerIntentFactory
+import com.example.testdialer.notes.RunNoteEditorUiState
+import com.example.testdialer.notes.RunNoteEditorViewModel
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import com.example.testdialer.ui.AppSection
 import com.example.testdialer.ui.RunHomeView
@@ -70,6 +72,20 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+
+private class NoteEditText(context: android.content.Context) : EditText(context) {
+    var draftChanged: ((String, Int) -> Unit)? = null
+
+    override fun onSelectionChanged(selStart: Int, selEnd: Int) {
+        super.onSelectionChanged(selStart, selEnd)
+        draftChanged?.invoke(text?.toString().orEmpty(), selStart.coerceAtLeast(0))
+    }
+
+    override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
+        super.onTextChanged(text, start, before, count)
+        draftChanged?.invoke(text?.toString().orEmpty(), selectionStart.coerceAtLeast(0))
+    }
+}
 
 class MainActivity : ComponentActivity() {
     private val speech by lazy { com.example.testdialer.accessibility.SpeechAnnouncements(applicationContext).apply {
@@ -190,6 +206,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var cellularDataViewModel: CellularDataViewModel
     private lateinit var activeRunViewModel: ActiveRunViewModel
     private lateinit var registerViewModel: RegisterViewModel
+    private lateinit var runNoteEditorViewModel: RunNoteEditorViewModel
+    private var runNoteDialog: AlertDialog? = null
+    private var runNoteInput: NoteEditText? = null
+    private var updatingRunNoteInput = false
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -267,6 +287,10 @@ class MainActivity : ComponentActivity() {
             this,
             ActiveRunViewModel.Factory(repository),
         )[ActiveRunViewModel::class.java]
+        runNoteEditorViewModel = ViewModelProvider(
+            this,
+            RunNoteEditorViewModel.Factory(runNotes),
+        )[RunNoteEditorViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -404,6 +428,7 @@ class MainActivity : ComponentActivity() {
             registerState = state
             renderRegister()
         }
+        runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         onBackPressedDispatcher.addCallback(this) {
             if (currentSection == AppSection.REGISTER && registerState.selectedEventId != null) {
                 registerViewModel.clearEvent()
@@ -1840,8 +1865,36 @@ class MainActivity : ComponentActivity() {
     private fun editRunNote(runId: RunId) = withAnnotationsReady { showRunNoteEditor(runId) }
 
     private fun showRunNoteEditor(runId: RunId) {
-        val input = EditText(this).apply {
-            setText(runNotes.get(runId))
+        runNoteEditorViewModel.open(runId)
+    }
+
+    private fun renderRunNoteEditor(state: RunNoteEditorUiState) {
+        if (!state.open) {
+            runNoteDialog?.dismiss()
+            runNoteDialog = null
+            runNoteInput = null
+            if (state.saved) {
+                Toast.makeText(this, R.string.run_note_saved, Toast.LENGTH_LONG).show()
+                renderRegister()
+                runNoteEditorViewModel.acknowledgeSaved()
+            }
+            return
+        }
+        val currentDialog = runNoteDialog
+        if (currentDialog == null || !currentDialog.isShowing) {
+            showRunNoteDialog(state)
+            return
+        }
+        updateRunNoteDialog(state)
+    }
+
+    private fun showRunNoteDialog(state: RunNoteEditorUiState) {
+        val input = NoteEditText(this).apply {
+            setText(state.text)
+            setSelection(state.selection.coerceIn(0, state.text.length))
+            draftChanged = { text, selection ->
+                if (!updatingRunNoteInput) runNoteEditorViewModel.updateDraft(text, selection)
+            }
             hint = getString(R.string.run_note_hint)
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
             minLines = 5
@@ -1851,36 +1904,35 @@ class MainActivity : ComponentActivity() {
             setPadding(dimen(18), dimen(12), dimen(18), dimen(12))
         }
         val dialog = AlertDialog.Builder(this).setTitle(R.string.run_note).setView(input)
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(android.R.string.cancel) { _, _ -> runNoteEditorViewModel.cancel() }
             .setPositiveButton(R.string.run_note_save, null).create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val text = input.text.toString()
-                input.isEnabled = false
-                dialog.setCancelable(false)
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = false
-                reportExecutor.execute {
-                    val saved = runCatching { runNotes.save(runId, text) }.getOrDefault(false)
-                    runOnUiThread {
-                        if (!isDestroyed && !isFinishing) {
-                            if (saved) {
-                                dialog.dismiss()
-                                Toast.makeText(this, R.string.run_note_saved, Toast.LENGTH_LONG).show()
-                                renderRegister()
-                            } else {
-                                input.isEnabled = true
-                                dialog.setCancelable(true)
-                                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = true
-                                input.error = getString(R.string.run_note_failed)
-                            }
-                        }
-                    }
-                }
+                runNoteEditorViewModel.updateDraft(input.text.toString(), input.selectionStart)
+                runNoteEditorViewModel.save()
             }
+            updateRunNoteDialog(state)
         }
+        dialog.setOnCancelListener { runNoteEditorViewModel.cancel() }
+        runNoteDialog = dialog
+        runNoteInput = input
         dialog.show()
+    }
+
+    private fun updateRunNoteDialog(state: RunNoteEditorUiState) {
+        val dialog = runNoteDialog ?: return
+        val input = runNoteInput ?: return
+        if (input.text.toString() != state.text) {
+            updatingRunNoteInput = true
+            input.setText(state.text)
+            input.setSelection(state.selection.coerceIn(0, state.text.length))
+            updatingRunNoteInput = false
+        }
+        input.isEnabled = !state.busy
+        dialog.setCancelable(!state.busy)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = !state.busy
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.isEnabled = !state.busy
+        if (state.error) input.error = getString(R.string.run_note_failed)
     }
 
     private fun saveTemplate(event: TestEvent) {

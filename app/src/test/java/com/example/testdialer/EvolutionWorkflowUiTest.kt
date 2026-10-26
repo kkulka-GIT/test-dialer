@@ -81,6 +81,34 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
+    @Test fun `note draft and cursor survive activity recreation without saving`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        method.invoke(controller.get(), "note-recreation")
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val firstDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val firstInput = views(firstDialog.window!!.decorView).filterIsInstance<EditText>().single()
+        firstInput.setText("Szkic przed obrotem")
+        firstInput.setSelection(6)
+
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val restoredDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val restoredInput = views(restoredDialog.window!!.decorView).filterIsInstance<EditText>().single()
+        assertTrue(restoredDialog.isShowing)
+        assertEquals("Szkic przed obrotem", restoredInput.text.toString())
+        assertEquals(6, restoredInput.selectionStart)
+        restoredDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(restoredDialog.isShowing)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `billing editor keeps expected and actual labels when filled`() {
         for (scale in listOf(1f, 1.6f)) {
             val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
