@@ -142,6 +142,42 @@ class EvolutionWorkflowUiTest {
         }
     }
 
+    @Test fun `billing draft verdict and cursors survive activity recreation without saving`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showBillingReviewEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        method.invoke(controller.get(), "billing-recreation")
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val firstDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val fields = views(firstDialog.window!!.decorView).filterIsInstance<EditText>().toList()
+        val spinner = views(firstDialog.window!!.decorView).filterIsInstance<android.widget.Spinner>().single()
+        fields[0].setText("0,79 PLN")
+        fields[0].setSelection(4)
+        fields[1].setText("CDR 0,79 PLN")
+        fields[1].setSelection(3)
+        spinner.setSelection(com.example.testdialer.review.BillingVerdict.entries.indexOf(com.example.testdialer.review.BillingVerdict.PASS))
+
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val restored = ShadowAlertDialog.getLatestAlertDialog()
+        val restoredFields = views(restored.window!!.decorView).filterIsInstance<EditText>().toList()
+        val restoredSpinner = views(restored.window!!.decorView).filterIsInstance<android.widget.Spinner>().single()
+        assertTrue(restored.isShowing)
+        assertEquals("0,79 PLN", restoredFields[0].text.toString())
+        assertEquals(4, restoredFields[0].selectionStart)
+        assertEquals("CDR 0,79 PLN", restoredFields[1].text.toString())
+        assertEquals(3, restoredFields[1].selectionStart)
+        assertEquals(com.example.testdialer.review.BillingVerdict.PASS.ordinal, restoredSpinner.selectedItemPosition)
+        restored.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(restored.isShowing)
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `saved template opens a new editable SMS test without sending`() {
         TestTemplateStore(context).save("SMS kontrolny", TestAction.Sms("+48123456789", "Treść kontrolna"))
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()

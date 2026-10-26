@@ -63,6 +63,8 @@ import com.example.testdialer.sms.GuidedSmsViewModel
 import com.example.testdialer.sms.SmsComposerIntentFactory
 import com.example.testdialer.notes.RunNoteEditorUiState
 import com.example.testdialer.notes.RunNoteEditorViewModel
+import com.example.testdialer.review.BillingReviewEditorUiState
+import com.example.testdialer.review.BillingReviewEditorViewModel
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import com.example.testdialer.ui.AppSection
 import com.example.testdialer.ui.RunHomeView
@@ -207,9 +209,15 @@ class MainActivity : ComponentActivity() {
     private lateinit var activeRunViewModel: ActiveRunViewModel
     private lateinit var registerViewModel: RegisterViewModel
     private lateinit var runNoteEditorViewModel: RunNoteEditorViewModel
+    private lateinit var billingReviewEditorViewModel: BillingReviewEditorViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
+    private var billingReviewDialog: AlertDialog? = null
+    private var billingExpectedInput: NoteEditText? = null
+    private var billingActualInput: NoteEditText? = null
+    private var billingVerdictChoice: android.widget.Spinner? = null
+    private var updatingBillingReviewInput = false
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -291,6 +299,10 @@ class MainActivity : ComponentActivity() {
             this,
             RunNoteEditorViewModel.Factory(runNotes),
         )[RunNoteEditorViewModel::class.java]
+        billingReviewEditorViewModel = ViewModelProvider(
+            this,
+            BillingReviewEditorViewModel.Factory(billingReviews),
+        )[BillingReviewEditorViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -429,6 +441,7 @@ class MainActivity : ComponentActivity() {
             renderRegister()
         }
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
+        billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
             if (currentSection == AppSection.REGISTER && registerState.selectedEventId != null) {
                 registerViewModel.clearEvent()
@@ -2039,13 +2052,44 @@ class MainActivity : ComponentActivity() {
     private fun editBillingReview(eventId: EventId) = withAnnotationsReady { showBillingReviewEditor(eventId) }
 
     private fun showBillingReviewEditor(eventId: EventId) {
-        val before = billingReviews.get(eventId)
-        val expected = createOptionalInput("Oczekiwane naliczenie, np. 0,79 PLN").apply { setText(before.expected); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
-        val actual = createOptionalInput("Rzeczywiste naliczenie / dowód, np. CDR").apply { setText(before.actual); filters = arrayOf(android.text.InputFilter.LengthFilter(2000)) }
+        billingReviewEditorViewModel.open(eventId)
+    }
+
+    private fun renderBillingReviewEditor(state: BillingReviewEditorUiState) {
+        if (!state.open) {
+            billingReviewDialog?.dismiss()
+            billingReviewDialog = null
+            billingExpectedInput = null
+            billingActualInput = null
+            billingVerdictChoice = null
+            if (state.saved) {
+                renderRegister()
+                billingReviewEditorViewModel.acknowledgeSaved()
+            }
+            return
+        }
+        val dialog = billingReviewDialog
+        if (dialog == null || !dialog.isShowing) showBillingReviewDialog(state)
+        else updateBillingReviewDialog(state)
+    }
+
+    private fun showBillingReviewDialog(state: BillingReviewEditorUiState) {
+        val expected = NoteEditText(this).apply {
+            hint = "Oczekiwane naliczenie, np. 0,79 PLN"
+            setText(state.expected)
+            setSelection(state.expectedSelection.coerceIn(0, state.expected.length))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(2000))
+        }
+        val actual = NoteEditText(this).apply {
+            hint = "Rzeczywiste naliczenie / dowód, np. CDR"
+            setText(state.actual)
+            setSelection(state.actualSelection.coerceIn(0, state.actual.length))
+            filters = arrayOf(android.text.InputFilter.LengthFilter(2000))
+        }
         val verdicts = com.example.testdialer.review.BillingVerdict.entries
         val choice = android.widget.Spinner(this).apply {
             adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, verdicts.map(::billingVerdictLabel))
-            setSelection(verdicts.indexOf(before.verdict))
+            setSelection(verdicts.indexOf(state.verdict))
             minimumHeight = dimen(48)
             contentDescription = "Ocena poprawności rozliczenia przez testera"
         }
@@ -2059,25 +2103,64 @@ class MainActivity : ComponentActivity() {
         }
         val scroll = ScrollView(this).apply { addView(fields) }
         val dialog = AlertDialog.Builder(this).setTitle("Oczekiwano / otrzymano").setView(scroll)
-            .setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+            .setPositiveButton("Zapisz", null)
+            .setNegativeButton("Anuluj") { _, _ -> billingReviewEditorViewModel.cancel() }
+            .create()
         dialog.setOnShowListener {
+            val updateDraft = {
+                if (!updatingBillingReviewInput) billingReviewEditorViewModel.updateDraft(
+                    expected.text.toString(), actual.text.toString(), expected.selectionStart, actual.selectionStart,
+                    verdicts[choice.selectedItemPosition],
+                )
+            }
+            expected.draftChanged = { _, _ -> updateDraft() }
+            actual.draftChanged = { _, _ -> updateDraft() }
+            choice.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) = updateDraft()
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+            }
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val review = com.example.testdialer.review.BillingReview(expected.text.toString(), actual.text.toString(), verdicts[choice.selectedItemPosition], System.currentTimeMillis())
-                if (review.verdict != com.example.testdialer.review.BillingVerdict.NOT_CHECKED && (review.expected.isBlank() || review.actual.isBlank())) {
+                val verdict = verdicts[choice.selectedItemPosition]
+                if (verdict != com.example.testdialer.review.BillingVerdict.NOT_CHECKED && (expected.text.isBlank() || actual.text.isBlank())) {
                     actual.error = "Opisz oczekiwanie i otrzymany wynik, aby zapisać PASS/FAIL"; return@setOnClickListener
                 }
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                reportExecutor.execute {
-                    val result = runCatching { check(billingReviews.save(eventId, review)) }
-                    runOnUiThread {
-                        if (isDestroyed || isFinishing) return@runOnUiThread
-                        if (result.isSuccess) { dialog.dismiss(); renderRegister() }
-                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; actual.error = "Nie udało się zapisać oceny" }
-                    }
-                }
+                updateDraft()
+                billingReviewEditorViewModel.save()
             }
+            updateBillingReviewDialog(state)
         }
+        dialog.setOnCancelListener { billingReviewEditorViewModel.cancel() }
+        billingReviewDialog = dialog
+        billingExpectedInput = expected
+        billingActualInput = actual
+        billingVerdictChoice = choice
         dialog.show()
+    }
+
+    private fun updateBillingReviewDialog(state: BillingReviewEditorUiState) {
+        val dialog = billingReviewDialog ?: return
+        val expected = billingExpectedInput ?: return
+        val actual = billingActualInput ?: return
+        val choice = billingVerdictChoice ?: return
+        updatingBillingReviewInput = true
+        if (expected.text.toString() != state.expected) {
+            expected.setText(state.expected)
+            expected.setSelection(state.expectedSelection.coerceIn(0, state.expected.length))
+        }
+        if (actual.text.toString() != state.actual) {
+            actual.setText(state.actual)
+            actual.setSelection(state.actualSelection.coerceIn(0, state.actual.length))
+        }
+        val position = com.example.testdialer.review.BillingVerdict.entries.indexOf(state.verdict)
+        if (choice.selectedItemPosition != position) choice.setSelection(position)
+        updatingBillingReviewInput = false
+        expected.isEnabled = !state.busy
+        actual.isEnabled = !state.busy
+        choice.isEnabled = !state.busy
+        dialog.setCancelable(!state.busy)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = !state.busy
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.isEnabled = !state.busy
+        if (state.error) actual.error = "Nie udało się zapisać oceny"
     }
 
     private fun startDataScenario() {
