@@ -1,3 +1,7 @@
+# Ukończony checkpoint trwałości szkicu notatki — 2026-10-26
+
+2026-10-26: szkic notatki, identyfikator sesji i pozycja kursora przeżywają odtworzenie Activity, np. obrót telefonu. Trwający zapis pozostaje w ViewModelu, więc nowy ekran nie uruchamia drugiej operacji. Anulowanie czyści szkic, błąd zachowuje tekst i retry, a sukces nie odtwarza dialogu. CI221 PASS: 252 testy, stabilny APK122101, stały certyfikat i applicationId. Raport brain/reports/note-draft-recreation-20261026.md.
+
 # Ukończony checkpoint notatek — 2026-10-15
 
 2026-10-15: edytor notatki zamyka się dopiero po udanym zapisie. Błąd zachowuje tekst w otwartym edytorze i pozwala ponowić; na czas zapisu pole i akcje są zablokowane. CI219 PASS (248 testów), APK121901 z tym samym certyfikatem i wyższym kodem. Raport brain/reports/note-save-retry-20261015.md.
