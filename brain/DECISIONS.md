@@ -33,9 +33,9 @@
 - [SUPERSEDED by F06] `Data` pozostaje placeholderem; `SMS` używa kontrolowanego scenariusza Guided SMS; zapis zachowany jako decyzja historyczna.
 - UI budujemy programowo w Android Views, bez migracji do Compose w tym etapie.
 - Kotlin, `minSdk 26`, `compileSdk 36`, `targetSdk 36`, JVM 17.
-- GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.
+- [SUPERSEDED 2026-10-06 przez stały podpis] GitHub Actions uruchamia testy JVM przed buildem debug APK i jest głównym źródłem prawdy dla weryfikacji.
 - Lokalny build w obecnym środowisku jest BLOCKED przez znany problem AAPT2.
-- Pipeline buduje debug APK, nie release.
+- [SUPERSEDED 2026-10-06 przez stały podpis] Pipeline buduje debug APK, nie release.
 
 - Trwała historia nowych testów używa Room v1 w osobnym pakiecie persistence; legacy VoiceResultStore/JSON pozostaje niezależny.
 - Snapshot scenariusza jest zapisany razem z jego identyfikatorem i wersją, łącznie z ExpectedResult każdego kroku.
@@ -56,7 +56,7 @@
 - Powrót z composera nie jest dowodem wysłania ani delivery; tester zapisuje neutralną obserwację `CONFIRMED`, `NOT_CONFIRMED` albo `NOT_VERIFIED` ze źródłem `TESTER`.
 - Step i attempt Guided SMS rozpoczynają się przed otwarciem composera i są częścią pierwszego trwałego RUNNING snapshotu; po śmierci procesu pozostają historią read-only bez automatycznego wznowienia.
 - Zdarzenie Guided SMS otrzymuje `CapturedTime` synchronicznie w momencie wyboru obserwacji użytkownika, przed kolejką zapisu; późniejsze opóźnienie executora nie zmienia czasu `TestEvent` ani `ACTION_RECORDED`.
-- F06 używa wyłącznie `ConnectivityManager.activeNetwork` z transportem CELLULAR bez VPN; nie żąda, nie wiąże i nie przełącza sieci.
+- [SUPERSEDED 2026-10-07 przez kontrolowane `requestNetwork`] F06 używa wyłącznie `ConnectivityManager.activeNetwork` z transportem CELLULAR bez VPN; nie żąda, nie wiąże i nie przełącza sieci.
 - Data wykonuje ograniczony foreground HTTPS GET na publiczny host/443 bez redirect, auth, upload, cache i compression, z limitem 1 MiB i timeoutami.
 - URL i transport są sprawdzane przed pierwszym RUNNING snapshotem; błędny preflight nie tworzy sesji.
 - Czas żądania jest chwytany synchronicznie przy kliknięciu, a zdarzenie terminalne zapisuje czas startu sieci, końca, bytes, duration, status, host i transport.

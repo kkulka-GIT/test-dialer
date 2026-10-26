@@ -1,3 +1,7 @@
+# Ukończony audyt aktualności decyzji — 2026-10-26
+
+2026-10-26: oznaczono jako historyczne trzy nieaktualne decyzje, które mogły skierować kolejną sesję na debug APK albo dawną ścieżkę Data opartą wyłącznie na `activeNetwork`. Obowiązuje stabilny release ze stałym podpisem oraz późniejsza decyzja o kontrolowanym `requestNetwork(CELLULAR, INTERNET, NOT_VPN)`. To zmiana wyłącznie dokumentacyjna: bez kodu, CI i nowego APK. Raport brain/reports/decision-freshness-audit-20261026.md.
+
 # Ukończony checkpoint trwałości oceny billingu — 2026-10-26
 
 2026-10-26: szkic ręcznej oceny billingu nie znika już przy odtworzeniu Activity. Zachowane są identyfikator zdarzenia, oczekiwane i rzeczywiste naliczenie/dowód, werdykt oraz pozycje obu kursorów. Zapis w toku nie jest dublowany. CI222 PASS: 255 testów, stabilny APK122201, stały certyfikat i applicationId. Raport brain/reports/billing-draft-recreation-20261026.md.
