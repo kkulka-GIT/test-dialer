@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
+import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -175,6 +176,36 @@ class EvolutionWorkflowUiTest {
         restored.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertFalse(restored.isShowing)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `history import preview survives activity recreation without restarting read`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val field = MainActivity::class.java.getDeclaredField("historyBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.HistoryBackupViewModel
+        val file = File(activity.cacheDir, "history-recreation.json").apply {
+            writeText(com.example.testdialer.report.HistoryArchive.encode(emptyList(), 2_000))
+        }
+
+        viewModel.readImport(Uri.fromFile(file))
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val rotated = controller.get()
+
+        assertSame(viewModel, field.get(rotated))
+        await {
+            val latest = ShadowAlertDialog.getLatestAlertDialog() ?: return@await false
+            views(latest.window!!.decorView).filterIsInstance<android.widget.TextView>()
+                .any { it.text.toString() == "Podgląd kopii historii" }
+        }
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(preview.isShowing)
+        preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(com.example.testdialer.backup.HistoryBackupState.Idle, viewModel.state.value)
         controller.pause().stop().destroy()
     }
 

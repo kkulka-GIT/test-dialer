@@ -120,35 +120,10 @@ class MainActivity : ComponentActivity() {
         }
     }
     private val exportHistoryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                val repository = (application as TestDialerApplication).testRunRepository
-                val entries = repository.listSummaries().map { summary ->
-                    val stored = repository.get(summary.runId) ?: error("Sesja ${summary.runId.value} jest niedostępna.")
-                    val reviews = stored.run.events.associate { it.id to billingReviews.get(it.id) }
-                        .filterValues { it.reviewedAtMillis > 0 }
-                    com.example.testdialer.report.HistoryArchiveEntry(
-                        stored, runNotes.get(stored.run.id), reviews, billingReviews.interruptedAt(stored.run.id),
-                    )
-                }
-                val archive = com.example.testdialer.report.HistoryArchive.encode(entries)
-                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
-                    ?: error("Nie można otworzyć pliku do zapisu.")
-                entries.size
-            }
-            templateTransferMessage(result.fold({ "Kopia historii zapisana. Sesje: $it." }, { "Nie udało się zapisać historii: ${it.message}" }))
-        }
+        uri?.let(historyBackupViewModel::export)
     }
     private val previewHistoryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                contentResolver.openInputStream(uri)?.use(com.example.testdialer.report.HistoryArchive::read)
-                    ?: error("Nie można otworzyć pliku.")
-            }
-            runOnUiThread { if (!isDestroyed && !isFinishing) result.fold(::showHistoryImportPreview) {
-                templateTransferMessage("Nie udało się odczytać kopii historii: ${it.message}")
-            } }
-        }
+        uri?.let(historyBackupViewModel::readImport)
     }
     private val exportTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) reportExecutor.execute {
@@ -210,6 +185,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var registerViewModel: RegisterViewModel
     private lateinit var runNoteEditorViewModel: RunNoteEditorViewModel
     private lateinit var billingReviewEditorViewModel: BillingReviewEditorViewModel
+    private lateinit var historyBackupViewModel: com.example.testdialer.backup.HistoryBackupViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -218,6 +194,8 @@ class MainActivity : ComponentActivity() {
     private var billingActualInput: NoteEditText? = null
     private var billingVerdictChoice: android.widget.Spinner? = null
     private var updatingBillingReviewInput = false
+    private var historyBackupProgressDialog: AlertDialog? = null
+    private var historyBackupPreviewDialog: AlertDialog? = null
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -303,6 +281,7 @@ class MainActivity : ComponentActivity() {
             this,
             BillingReviewEditorViewModel.Factory(billingReviews),
         )[BillingReviewEditorViewModel::class.java]
+        historyBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.HistoryBackupViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -440,6 +419,7 @@ class MainActivity : ComponentActivity() {
             registerState = state
             renderRegister()
         }
+        historyBackupViewModel.state.observe(this, ::renderHistoryBackupState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -1725,6 +1705,55 @@ class MainActivity : ComponentActivity() {
             .setNegativeButton("Zamknij", null).show()
     }
 
+    private fun renderHistoryBackupState(state: com.example.testdialer.backup.HistoryBackupState) {
+        when (state) {
+            com.example.testdialer.backup.HistoryBackupState.Idle -> {
+                historyBackupProgressDialog?.dismiss()
+                historyBackupProgressDialog = null
+                historyBackupPreviewDialog?.dismiss()
+                historyBackupPreviewDialog = null
+            }
+            is com.example.testdialer.backup.HistoryBackupState.Working -> {
+                historyBackupPreviewDialog?.dismiss()
+                historyBackupPreviewDialog = null
+                if (historyBackupProgressDialog?.isShowing != true) {
+                    val message = when (state.operation) {
+                        com.example.testdialer.backup.HistoryBackupOperation.EXPORT -> "Zapisuję kopię historii…"
+                        com.example.testdialer.backup.HistoryBackupOperation.READ_IMPORT -> "Odczytuję kopię historii…"
+                        com.example.testdialer.backup.HistoryBackupOperation.RESTORE -> "Przywracam historię…"
+                    }
+                    historyBackupProgressDialog = AlertDialog.Builder(this)
+                        .setTitle("Kopia historii")
+                        .setMessage(message)
+                        .setCancelable(false)
+                        .create()
+                        .also { it.show() }
+                }
+            }
+            is com.example.testdialer.backup.HistoryBackupState.Preview -> {
+                historyBackupProgressDialog?.dismiss()
+                historyBackupProgressDialog = null
+                if (historyBackupPreviewDialog?.isShowing != true) showHistoryImportPreview(state.entries)
+            }
+            is com.example.testdialer.backup.HistoryBackupState.Success -> {
+                historyBackupProgressDialog?.dismiss()
+                historyBackupProgressDialog = null
+                if (state.refreshRegister) {
+                    registerViewModel.load()
+                    renderRegister()
+                }
+                templateTransferMessage(state.message)
+                historyBackupViewModel.acknowledge()
+            }
+            is com.example.testdialer.backup.HistoryBackupState.Failure -> {
+                historyBackupProgressDialog?.dismiss()
+                historyBackupProgressDialog = null
+                templateTransferMessage(state.message)
+                historyBackupViewModel.acknowledge()
+            }
+        }
+    }
+
     private fun showHistoryBackup() {
         AlertDialog.Builder(this).setTitle("Historia i kopia zapasowa")
             .setMessage("Kopia zawiera pełne sesje, parametry, obserwacje, notatki i osobno oznaczone ręczne oceny billingu. Może zawierać numery, treści SMS oraz identyfikatory korelacji. Import najpierw pokazuje podgląd i wymaga osobnego potwierdzenia.")
@@ -1747,38 +1776,16 @@ class MainActivity : ComponentActivity() {
         val builder = AlertDialog.Builder(this).setTitle("Podgląd kopii historii")
             .setMessage(message)
         if (entries.isEmpty()) {
-            builder.setPositiveButton("Zamknij", null).show()
+            historyBackupPreviewDialog = builder.setPositiveButton("Zamknij") { _, _ ->
+                historyBackupViewModel.discardPreview()
+            }.show()
         } else {
-            builder.setPositiveButton("Przywróć historię") { _, _ -> restoreHistory(entries) }
-                .setNegativeButton("Anuluj", null).show()
+            historyBackupPreviewDialog = builder
+                .setPositiveButton("Przywróć historię") { _, _ -> historyBackupViewModel.restorePreview() }
+                .setNegativeButton("Anuluj") { _, _ -> historyBackupViewModel.discardPreview() }
+                .show()
         }
-    }
-
-    private fun restoreHistory(entries: List<com.example.testdialer.report.HistoryArchiveEntry>) {
-        templateTransferMessage("Przywracam historię. Nie zamykaj aplikacji.")
-        reportExecutor.execute {
-            val result = runCatching {
-                (application as TestDialerApplication).annotationStore.restoreHistory(entries)
-            }
-            runOnUiThread {
-                if (!isDestroyed && !isFinishing) {
-                    result.fold({ restored ->
-                        registerViewModel.load()
-                        renderRegister()
-                        templateTransferMessage(
-                            "Historia przywrócona. Dodano sesje: ${restored.addedRuns}. " +
-                                "Już istniejące: ${restored.existingRuns}. " +
-                                "Uzupełniono notatki: ${restored.annotations.notes}, oceny: ${restored.annotations.reviews}.",
-                        )
-                    }, { error ->
-                        val detail = if (error is com.example.testdialer.persistence.SnapshotConflictException)
-                            "Kopia różni się od historii zapisanej w telefonie. Niczego nie zmieniono."
-                        else "Nie udało się przywrócić historii: ${error.message}. Niczego nie zmieniono."
-                        templateTransferMessage(detail)
-                    })
-                }
-            }
-        }
+        historyBackupPreviewDialog?.setOnDismissListener { historyBackupPreviewDialog = null }
     }
 
     private fun confirmPlanImport(items: List<com.example.testdialer.active.SavedScenarioPlan>) {
