@@ -1,5 +1,6 @@
 # Decyzje projektowe
 
+- 2026-10-27: eksport, odczyt i import kopii szablonów mają dedykowany `TemplateBackupViewModel`, zachowujący jedną operację i podgląd/wynik przez odtworzenie Activity. Wybór dokumentu pozostaje w Activity, import wymaga jawnego potwierdzenia, anulowanie nie zapisuje danych, a samo wczytanie parametrów nie wykonuje usług. Nie wprowadzono wspólnego frameworka kopii ani wznowienia po śmierci procesu.
 - 2026-10-27: eksport, odczyt i import kopii planów mają dedykowany `PlanBackupViewModel`, który zachowuje jedną operację oraz podgląd/wynik przez odtworzenie Activity. Wybór dokumentu pozostaje odpowiedzialnością Activity, import wymaga jawnego potwierdzenia, anulowanie niczego nie zapisuje, a śmierć procesu nie jest obsługiwana jako automatyczne wznowienie. Nie wprowadzamy ogólnego frameworka kopii bez osobnego uzasadnienia dla kolejnego rodzaju danych.
 - 2026-10-08: użytkownik zlecił wyłącznie analizę i zapis przyszłych aktualizacji poza Google Play. GitHub Release oznacza jawnie zatwierdzony stabilny artefakt, nie każde CI. Zachować istniejący klucz/ID/licznik, kontrolować hash i tożsamość APK, wymagać systemowej zgody instalacji. Codex Review dodatkowy i zależny od dostępności/limitów; bez nowej płatnej zależności. Implementacja odłożona za aktualne priorytety; szczegóły w UPDATES.md.
 

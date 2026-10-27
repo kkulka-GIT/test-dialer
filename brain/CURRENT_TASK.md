@@ -1,3 +1,7 @@
+# Ukończony checkpoint kopii szablonów odpornej na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: eksport, odczyt kopii, podgląd i import szablonów są teraz prowadzone przez `TemplateBackupViewModel`. Obrót/odtworzenie Activity nie przerywa operacji, nie uruchamia jej ponownie i nie gubi podglądu lub wyniku. Import pozostaje jawny, anulowanie niczego nie zapisuje, a załadowanie parametrów nie uruchamia Voice/SMS/Data. CI240 PASS: 263 testy, 0 failures/errors/skipped. Stabilny APK124001: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/template-backup-lifecycle-20261027.md`.
+
 # Ukończony checkpoint kopii planów odpornej na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: eksport, odczyt kopii, podgląd i import planów są prowadzone przez `PlanBackupViewModel`, więc obrót/odtworzenie Activity nie przerywa operacji ani nie gubi podglądu lub wyniku. Operacja nie jest uruchamiana ponownie, a import pozostaje jawny i wymaga potwierdzenia; anulowanie podglądu niczego nie zapisuje. Nie dodano wspólnego frameworka, `configChanges` ani usług telekomunikacyjnych. CI239 PASS: 260 testów, 0 failures/errors/skipped. Stabilny APK123901: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/plan-backup-lifecycle-20261027.md`.

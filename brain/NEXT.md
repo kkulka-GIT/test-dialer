@@ -1,3 +1,7 @@
+# Następny krok po domknięciu trwałości kopii — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Kopie pełnej historii, planów i szablonów zachowują teraz operację oraz jawny podgląd przy odtworzeniu Activity (CI233, CI239 i CI240). Nie twórz wspólnego frameworka tylko dla ujednolicenia; oceń nową, konkretną potrzebę testera w GUI, niezawodności lub korelacji i wybierz mniejszy checkpoint albo uzasadniony brak zmiany. Tailscale pozostaje odłożony. Fizyczny obrót, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny checkpoint po trwałości kopii planów — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Kopia planów jest ukończona na CI239 PASS / APK123901. Oceń osobno eksport/import szablonów, który nadal korzysta z executora Activity; nie przenoś go mechanicznie do wspólnego frameworka i wybierz zmianę tylko po potwierdzeniu porównywalnego ryzyka dla pracy testera. Tailscale pozostaje odłożony. Fizyczny obrót telefonu, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
