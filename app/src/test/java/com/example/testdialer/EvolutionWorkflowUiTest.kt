@@ -473,7 +473,8 @@ class EvolutionWorkflowUiTest {
 
         readPreview()
         dialog = ShadowAlertDialog.getLatestAlertDialog()
-        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        historyViewModel.restorePreview()
         await { historyViewModel.state.value !is com.example.testdialer.backup.HistoryBackupState.Working }
         assertNotNull(storedRun())
         assertEquals(4L, storedRun()?.revision)
