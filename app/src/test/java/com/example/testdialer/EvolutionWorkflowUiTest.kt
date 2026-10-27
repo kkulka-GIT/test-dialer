@@ -386,6 +386,7 @@ class EvolutionWorkflowUiTest {
         assertEquals(1, state.added)
         assertEquals("Dodaj plany", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
 
         assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
         assertEquals(com.example.testdialer.backup.PlanBackupState.Idle, viewModel.state.value)
