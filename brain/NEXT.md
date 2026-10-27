@@ -1,3 +1,7 @@
+# Następny krok po trwałości przygotowania powtórki — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Przygotowanie powtórki jest ukończone na CI246 PASS / APK124601. Nie przenoś mechanicznie kolejnych operacji z `reportExecutor`; zapisy adnotacji i mutacje szablonów wymagają odrębnego dowodu ryzyka. Wybierz mały checkpoint tylko na podstawie konkretnej korzyści GUI, niezawodności lub korelacji. Tailscale pozostaje odłożony. Fizyczny obrót, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny krok po trwałości porównania sesji — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Porównanie sesji jest ukończone na CI245 PASS / APK124501. Nie przenoś mechanicznie pozostałych użyć `reportExecutor`; operacje zapisu adnotacji, powtórki i szablonów mają inne skutki i wymagają osobnego dowodu ryzyka. Oceń konkretną potrzebę testera w GUI, niezawodności lub korelacji i wybierz mały checkpoint albo uzasadniony brak zmiany. Tailscale pozostaje odłożony. Fizyczny obrót, chooser, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.

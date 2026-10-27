@@ -1,3 +1,7 @@
+# Ukończony checkpoint przygotowania powtórki odporny na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: przygotowanie planu powtórki historycznej sesji jest prowadzone przez `SessionRepeatViewModel`. Obrót/odtworzenie Activity nie przerywa odczytu, nie uruchamia go ponownie i nie gubi jawnego podglądu. Nowa sesja nadal powstaje wyłącznie po decyzji testera; wyniki, oceny i notatki nie są kopiowane. CI246 PASS: 271 testów, 0 failures/errors; stabilny APK124601 zachowuje `com.example.testdialer`, stały certyfikat i rosnący versionCode. Raport `brain/reports/session-repeat-lifecycle-20261027.md`.
+
 # Ukończony checkpoint porównania sesji odporny na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: wczytanie porównania dwóch sesji, filtr „tylko różnice” i przygotowanie pliku TXT są prowadzone przez `RunComparisonViewModel`. Obrót/odtworzenie Activity nie przerywa pracy, nie uruchamia jej ponownie i nie gubi gotowego zestawienia. CI245 PASS: 268 testów, 0 failures/errors; stabilny APK124501: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat i rosnący versionCode. Podgląd 360×800 sprawdzony. Raport `brain/reports/run-comparison-lifecycle-20261027.md`.
