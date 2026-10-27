@@ -1,3 +1,7 @@
+# Następny checkpoint po trwałości kopii planów — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Kopia planów jest ukończona na CI239 PASS / APK123901. Oceń osobno eksport/import szablonów, który nadal korzysta z executora Activity; nie przenoś go mechanicznie do wspólnego frameworka i wybierz zmianę tylko po potwierdzeniu porównywalnego ryzyka dla pracy testera. Tailscale pozostaje odłożony. Fizyczny obrót telefonu, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny checkpoint po trwałości kopii historii — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Pełna kopia historii jest ukończona na CI233 PASS / APK123301. Oceń osobno eksport/import planów i szablonów: nadal korzystają z executora Activity, więc sprawdź, czy obrót może przerwać operację lub zgubić wynik. Nie przenoś ich mechanicznie do wspólnego frameworka; wybierz mały checkpoint tylko wtedy, gdy kod lub regresja potwierdzi porównywalne ryzyko dla pracy testera. Tailscale pozostaje odłożony. Fizyczny obrót, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją historii pozostają osobnym odbiorem.

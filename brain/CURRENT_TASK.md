@@ -1,3 +1,7 @@
+# Ukończony checkpoint kopii planów odpornej na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: eksport, odczyt kopii, podgląd i import planów są prowadzone przez `PlanBackupViewModel`, więc obrót/odtworzenie Activity nie przerywa operacji ani nie gubi podglądu lub wyniku. Operacja nie jest uruchamiana ponownie, a import pozostaje jawny i wymaga potwierdzenia; anulowanie podglądu niczego nie zapisuje. Nie dodano wspólnego frameworka, `configChanges` ani usług telekomunikacyjnych. CI239 PASS: 260 testów, 0 failures/errors/skipped. Stabilny APK123901: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/plan-backup-lifecycle-20261027.md`.
+
 # Ukończony checkpoint kopii historii odpornej na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: eksport, odczyt kopii, podgląd i atomowe przywracanie pełnej historii są teraz prowadzone przez `HistoryBackupViewModel`, a nie executor należący do pojedynczej `MainActivity`. Obrót/odtworzenie ekranu zachowuje operację i podgląd, nie uruchamia odczytu ponownie i nie gubi końcowego komunikatu. Jawne anulowanie podglądu nadal niczego nie zapisuje; nie dodano `configChanges`, automatycznego importu ani usług telekomunikacyjnych. CI233 PASS: 257 testów, 0 failures/errors/skipped. Stabilny APK123301: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/history-backup-lifecycle-20261027.md`.
