@@ -63,6 +63,8 @@ import com.example.testdialer.notes.RunNoteEditorUiState
 import com.example.testdialer.notes.RunNoteEditorViewModel
 import com.example.testdialer.review.BillingReviewEditorUiState
 import com.example.testdialer.review.BillingReviewEditorViewModel
+import com.example.testdialer.templates.TemplateSaveUiState
+import com.example.testdialer.templates.TemplateSaveViewModel
 import com.example.testdialer.domain.execution.TimelineEntryKind
 import com.example.testdialer.ui.AppSection
 import com.example.testdialer.ui.RunHomeView
@@ -157,10 +159,14 @@ class MainActivity : ComponentActivity() {
     private lateinit var reportExportViewModel: com.example.testdialer.report.ReportExportViewModel
     private lateinit var runComparisonViewModel: com.example.testdialer.report.RunComparisonViewModel
     private lateinit var sessionRepeatViewModel: com.example.testdialer.active.SessionRepeatViewModel
+    private lateinit var templateSaveViewModel: TemplateSaveViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
     private var billingReviewDialog: AlertDialog? = null
+    private var templateSaveDialog: AlertDialog? = null
+    private var templateSaveInput: NoteEditText? = null
+    private var updatingTemplateSaveInput = false
     private var billingExpectedInput: NoteEditText? = null
     private var billingActualInput: NoteEditText? = null
     private var billingVerdictChoice: android.widget.Spinner? = null
@@ -269,6 +275,10 @@ class MainActivity : ComponentActivity() {
         reportExportViewModel = ViewModelProvider(this)[com.example.testdialer.report.ReportExportViewModel::class.java]
         runComparisonViewModel = ViewModelProvider(this)[com.example.testdialer.report.RunComparisonViewModel::class.java]
         sessionRepeatViewModel = ViewModelProvider(this)[com.example.testdialer.active.SessionRepeatViewModel::class.java]
+        templateSaveViewModel = ViewModelProvider(
+            this,
+            TemplateSaveViewModel.Factory(templates),
+        )[TemplateSaveViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -412,6 +422,7 @@ class MainActivity : ComponentActivity() {
         reportExportViewModel.state.observe(this, ::renderReportExportState)
         runComparisonViewModel.state.observe(this, ::renderRunComparisonState)
         sessionRepeatViewModel.state.observe(this, ::renderSessionRepeatState)
+        templateSaveViewModel.state.observe(this, ::renderTemplateSaveEditor)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -2113,29 +2124,72 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun saveTemplate(event: TestEvent) {
-        val input = createOptionalInput("Nazwa szablonu").apply {
-            setText(eventTypeLabel(event))
+        templateSaveViewModel.open(event, eventTypeLabel(event))
+    }
+
+    private fun renderTemplateSaveEditor(state: TemplateSaveUiState) {
+        if (!state.open) {
+            templateSaveDialog?.dismiss()
+            templateSaveDialog = null
+            templateSaveInput = null
+            if (state.saved) {
+                Toast.makeText(this, "Szablon zapisany", Toast.LENGTH_SHORT).show()
+                templateSaveViewModel.acknowledgeSaved()
+            }
+            return
+        }
+        val currentDialog = templateSaveDialog
+        if (currentDialog == null || !currentDialog.isShowing) {
+            showTemplateSaveDialog(state)
+            return
+        }
+        updateTemplateSaveDialog(state)
+    }
+
+    private fun showTemplateSaveDialog(state: TemplateSaveUiState) {
+        val input = NoteEditText(this).apply {
+            setText(state.name)
+            setSelection(state.selection.coerceIn(0, state.name.length))
+            draftChanged = { text, selection ->
+                if (!updatingTemplateSaveInput) templateSaveViewModel.updateDraft(text, selection)
+            }
+            hint = "Nazwa szablonu"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            maxLines = 2
             filters = arrayOf(android.text.InputFilter.LengthFilter(80))
         }
         val dialog = AlertDialog.Builder(this).setTitle("Zapisz parametry jako szablon")
-            .setView(input).setPositiveButton("Zapisz", null).setNegativeButton("Anuluj", null).create()
+            .setView(input)
+            .setPositiveButton("Zapisz", null)
+            .setNegativeButton("Anuluj") { _, _ -> templateSaveViewModel.cancel() }
+            .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                if (input.text.isBlank()) { input.error = "Podaj nazwę"; return@setOnClickListener }
-                val name = input.text.toString()
-                val bytes = event.correlation.references.firstOrNull { it.namespace == "requestedBytes" }?.value?.toLongOrNull()
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                reportExecutor.execute {
-                    val result = runCatching { check(templates.save(name, event.action, bytes)) { "Nie udało się zapisać szablonu" } }
-                    runOnUiThread {
-                        if (isDestroyed || isFinishing) return@runOnUiThread
-                        if (result.isSuccess) { dialog.dismiss(); Toast.makeText(this, "Szablon zapisany", Toast.LENGTH_SHORT).show() }
-                        else { dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true; input.error = result.exceptionOrNull()?.message }
-                    }
-                }
+                templateSaveViewModel.updateDraft(input.text.toString(), input.selectionStart)
+                templateSaveViewModel.save()
             }
+            updateTemplateSaveDialog(state)
         }
+        dialog.setOnCancelListener { templateSaveViewModel.cancel() }
+        templateSaveDialog = dialog
+        templateSaveInput = input
         dialog.show()
+    }
+
+    private fun updateTemplateSaveDialog(state: TemplateSaveUiState) {
+        val dialog = templateSaveDialog ?: return
+        val input = templateSaveInput ?: return
+        if (input.text.toString() != state.name) {
+            updatingTemplateSaveInput = true
+            input.setText(state.name)
+            input.setSelection(state.selection.coerceIn(0, state.name.length))
+            updatingTemplateSaveInput = false
+        }
+        input.isEnabled = !state.busy
+        dialog.setCancelable(!state.busy)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = !state.busy
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.isEnabled = !state.busy
+        state.error?.let { input.error = it }
     }
 
     private fun showTemplates() {
