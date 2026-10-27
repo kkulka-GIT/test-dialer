@@ -372,11 +372,19 @@ class EvolutionWorkflowUiTest {
         val step = com.example.testdialer.domain.StepId("incoming")
         val incoming = listOf(com.example.testdialer.active.SavedScenarioPlan("file", "Plan z kopii", com.example.testdialer.active.LocalScenario("file", "Plan z kopii", listOf(
             com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij osobno", TestAction.Sms("123", "Test"))))))
-        val confirm = MainActivity::class.java.getDeclaredMethod("confirmPlanImport", List::class.java).apply { isAccessible = true }
-        confirm.invoke(activity, incoming)
+        val file = File(activity.cacheDir, "plan-import-preview.json").apply {
+            writeText(com.example.testdialer.active.ScenarioPlanArchive.encode(incoming))
+        }
+        val field = MainActivity::class.java.getDeclaredField("planBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.PlanBackupViewModel
+
+        viewModel.readImport(Uri.fromFile(file))
+        await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
         ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
         assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
-        confirm.invoke(activity, incoming)
+
+        viewModel.readImport(Uri.fromFile(file))
+        await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
         ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
         assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
