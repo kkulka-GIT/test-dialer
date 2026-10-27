@@ -53,7 +53,10 @@ class RunComparisonLifecycleTest {
 
         val restored = controller.get()
         val restoredViewModel = viewModelField.get(restored) as RunComparisonViewModel
-        val restoredDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val dialogField = MainActivity::class.java
+            .getDeclaredField("runComparisonDialog")
+            .apply { isAccessible = true }
+        val restoredDialog = dialogField.get(restored) as android.app.AlertDialog
         assertTrue(restoredViewModel === viewModel)
         assertTrue(restoredViewModel.state.value is RunComparisonState.Ready)
         assertTrue(restoredDialog.isShowing)
@@ -69,6 +72,7 @@ class RunComparisonLifecycleTest {
         )
 
         restoredDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertEquals(RunComparisonState.Idle, restoredViewModel.state.value)
         controller.pause().stop().destroy()
     }

@@ -512,7 +512,16 @@ class EvolutionWorkflowUiTest {
         val comparison = com.example.testdialer.report.RunComparison("a", "b", "Baza", "Powtórka", true, listOf(
             com.example.testdialer.report.ComparisonRow("Pole identyczne", "1", "1"),
             com.example.testdialer.report.ComparisonRow("Pole zmienione", "0 B", "100 B")))
-        MainActivity::class.java.getDeclaredMethod("showComparison", com.example.testdialer.report.RunComparison::class.java).apply { isAccessible = true; invoke(activity, comparison) }
+        val viewModel = MainActivity::class.java.getDeclaredField("runComparisonViewModel").apply {
+            isAccessible = true
+        }.get(activity) as com.example.testdialer.report.RunComparisonViewModel
+        val stateField = com.example.testdialer.report.RunComparisonViewModel::class.java
+            .getDeclaredField("_state")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val state = stateField.get(viewModel) as androidx.lifecycle.MutableLiveData<com.example.testdialer.report.RunComparisonState>
+        state.value = com.example.testdialer.report.RunComparisonState.Ready(comparison)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         val root = dialog.window!!.decorView
         fun texts() = views(root).filterIsInstance<android.widget.TextView>().map { it.text.toString() }.joinToString("\n")
