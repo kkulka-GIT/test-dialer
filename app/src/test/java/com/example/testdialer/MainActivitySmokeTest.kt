@@ -41,22 +41,16 @@ import com.example.testdialer.sms.GuidedSmsUiState
 @Config(sdk = [35])
 class MainActivitySmokeTest {
     @Test
-    fun `settings entry announces backup functions`() {
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        val settings = findButton(activity, "Ustawienia")
-
-        assertEquals(activity.getString(R.string.settings_accessibility), settings.contentDescription.toString())
-        assertTrue(settings.contentDescription.toString().contains("kopie zapasowe"))
-    }
-
-    @Test
     fun `operations home replaces separate Status and Test navigation`() {
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
         val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
         val buttons = descendants(root).filterIsInstance<Button>().toList()
         val allText = collectText(root)
+        val settings = buttons.single { it.text.toString() == "Ustawienia" }
 
         assertEquals("Operacje", activity.getString(R.string.nav_operations))
+        assertEquals(activity.getString(R.string.settings_accessibility), settings.contentDescription.toString())
+        assertTrue(settings.contentDescription.toString().contains("kopie zapasowe"))
         assertTrue(buttons.any { it.text.toString() == "Operacje" })
         assertTrue(buttons.any { it.text.toString() == activity.getString(R.string.nav_register) })
         assertFalse(buttons.any { it.text.toString() == activity.getString(R.string.nav_status) })
