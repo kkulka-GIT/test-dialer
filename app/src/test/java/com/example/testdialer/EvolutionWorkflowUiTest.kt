@@ -474,19 +474,17 @@ class EvolutionWorkflowUiTest {
         readPreview()
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
-        var terminalState: com.example.testdialer.backup.HistoryBackupState? = null
-        val terminalObserver = androidx.lifecycle.Observer<com.example.testdialer.backup.HistoryBackupState> {
-            if (it is com.example.testdialer.backup.HistoryBackupState.Success ||
-                it is com.example.testdialer.backup.HistoryBackupState.Failure) terminalState = it
-        }
-        historyViewModel.state.observeForever(terminalObserver)
+        val toastBeforeRestore = org.robolectric.shadows.ShadowToast.getTextOfLatestToast()?.toString()
         historyViewModel.restorePreview()
-        await { terminalState != null }
-        assertTrue("History restore ended with $terminalState",
-            terminalState is com.example.testdialer.backup.HistoryBackupState.Success)
+        await {
+            val message = org.robolectric.shadows.ShadowToast.getTextOfLatestToast()?.toString()
+            message != null && message != toastBeforeRestore &&
+                (message.startsWith("Historia przywrócona") || message.startsWith("Nie udało się przywrócić historii"))
+        }
+        val restoreMessage = org.robolectric.shadows.ShadowToast.getTextOfLatestToast().toString()
+        assertTrue("History restore message: $restoreMessage", restoreMessage.startsWith("Historia przywrócona"))
         assertNotNull(storedRun())
         assertEquals(4L, storedRun()?.revision)
-        historyViewModel.state.removeObserver(terminalObserver)
         reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
