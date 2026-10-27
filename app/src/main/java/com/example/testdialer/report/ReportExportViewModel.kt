@@ -69,11 +69,11 @@ class ReportExportViewModel @JvmOverloads constructor(
                         val intent = when (option) {
                             ReportExportOption.COPY -> null
                             ReportExportOption.SHARE_TEXT ->
-                                RunReportFiles.shareIntent(application, content, "txt")
+                                RunReportFiles.shareIntent(getApplication<Application>(), content, "txt")
                             ReportExportOption.SHARE_JSON ->
-                                RunReportFiles.shareIntent(application, content, "json")
+                                RunReportFiles.shareIntent(getApplication<Application>(), content, "json")
                             ReportExportOption.SHARE_CSV ->
-                                RunReportFiles.shareIntent(application, content, "csv")
+                                RunReportFiles.shareIntent(getApplication<Application>(), content, "csv")
                         }
                         ReportExportState.Ready(option, content, intent)
                     }
