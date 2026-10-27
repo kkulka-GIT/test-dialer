@@ -366,7 +366,7 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `plan import preview is cancellable and confirmation only adds parameters`() {
+    @Test fun `plan import preview is cancellable and requires explicit confirmation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         val step = com.example.testdialer.domain.StepId("incoming")
@@ -381,20 +381,14 @@ class EvolutionWorkflowUiTest {
         viewModel.readImport(Uri.fromFile(file))
         await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
         await { ShadowAlertDialog.getLatestAlertDialog()?.isShowing == true }
-        val cancelledPreview = ShadowAlertDialog.getLatestAlertDialog()
-        cancelledPreview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
+        val state = viewModel.state.value as com.example.testdialer.backup.PlanBackupState.Preview
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals(1, state.added)
+        assertEquals("Dodaj plany", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
 
-        viewModel.readImport(Uri.fromFile(file))
-        await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
-        await {
-            ShadowAlertDialog.getLatestAlertDialog()?.let { it !== cancelledPreview && it.isShowing } == true
-        }
-        val confirmedPreview = ShadowAlertDialog.getLatestAlertDialog()
-        assertEquals("Dodaj plany", confirmedPreview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
-        viewModel.importPreview()
-        await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
-        assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
+        assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
+        assertEquals(com.example.testdialer.backup.PlanBackupState.Idle, viewModel.state.value)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
