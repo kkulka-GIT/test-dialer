@@ -111,27 +111,10 @@ class MainActivity : ComponentActivity() {
         uri?.let(historyBackupViewModel::readImport)
     }
     private val exportTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                val archive = com.example.testdialer.templates.TestTemplateArchive.encode(templates.list())
-                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
-                    ?: error("Nie można otworzyć pliku do zapisu.")
-            }
-            templateTransferMessage(if (result.isSuccess) "Kopia szablonów zapisana" else "Nie udało się zapisać kopii: ${result.exceptionOrNull()?.message}")
-        }
+        uri?.let(templateBackupViewModel::export)
     }
     private val importTemplatesLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                contentResolver.openInputStream(uri)?.use(com.example.testdialer.templates.TestTemplateArchive::read)
-                    ?: error("Nie można otworzyć pliku.")
-            }
-            runOnUiThread {
-                if (!isDestroyed && !isFinishing) result.fold(::confirmTemplateImport) {
-                    templateTransferMessage("Nie udało się wczytać szablonów: ${it.message}")
-                }
-            }
-        }
+        uri?.let(templateBackupViewModel::readImport)
     }
     private val billingReviews by lazy { com.example.testdialer.review.BillingReviewStore(applicationContext, (application as TestDialerApplication).annotationStore) }
     private var pendingTemplateId: String? = null
@@ -172,6 +155,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var billingReviewEditorViewModel: BillingReviewEditorViewModel
     private lateinit var historyBackupViewModel: com.example.testdialer.backup.HistoryBackupViewModel
     private lateinit var planBackupViewModel: com.example.testdialer.backup.PlanBackupViewModel
+    private lateinit var templateBackupViewModel: com.example.testdialer.backup.TemplateBackupViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -184,6 +168,8 @@ class MainActivity : ComponentActivity() {
     private var historyBackupPreviewDialog: AlertDialog? = null
     private var planBackupProgressDialog: AlertDialog? = null
     private var planBackupPreviewDialog: AlertDialog? = null
+    private var templateBackupProgressDialog: AlertDialog? = null
+    private var templateBackupPreviewDialog: AlertDialog? = null
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -271,6 +257,7 @@ class MainActivity : ComponentActivity() {
         )[BillingReviewEditorViewModel::class.java]
         historyBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.HistoryBackupViewModel::class.java]
         planBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.PlanBackupViewModel::class.java]
+        templateBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.TemplateBackupViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -410,6 +397,7 @@ class MainActivity : ComponentActivity() {
         }
         historyBackupViewModel.state.observe(this, ::renderHistoryBackupState)
         planBackupViewModel.state.observe(this, ::renderPlanBackupState)
+        templateBackupViewModel.state.observe(this, ::renderTemplateBackupState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -2060,19 +2048,70 @@ class MainActivity : ComponentActivity() {
             .setNegativeButton("Zamknij", null).show()
     }
 
-    private fun confirmTemplateImport(items: List<com.example.testdialer.templates.TestTemplate>) {
-        val preview = runCatching { templates.previewImport(items) }
-        if (preview.isFailure) { templateTransferMessage(preview.exceptionOrNull()?.message ?: "Nieprawidłowy plik"); return }
-        val counts = preview.getOrThrow()
-        if (counts.added == 0) { templateTransferMessage("Brak nowych szablonów. Pominięto powtórzenia: ${counts.skipped}."); return }
-        val descriptions = items.take(10).joinToString("\n") { it.name }
-        AlertDialog.Builder(this).setTitle("Podgląd importu")
-            .setMessage("Nowych: ${counts.added}. Powtórzenia pominięte: ${counts.skipped}.\n\n$descriptions" +
-                (if (items.size > 10) "\n… i pozostałe ${items.size - 10}" else "") + "\n\nIstniejące szablony i historia pozostaną zachowane.")
-            .setPositiveButton("Dodaj szablony") { _, _ -> reportExecutor.execute {
-                val result = runCatching { templates.importItems(items) }
-                templateTransferMessage(result.fold({ "Dodano: ${it.added}. Pominięto powtórzenia: ${it.skipped}." }, { "Import nie powiódł się: ${it.message}" }))
-            } }.setNegativeButton("Anuluj", null).show()
+    private fun renderTemplateBackupState(state: com.example.testdialer.backup.TemplateBackupState) {
+        when (state) {
+            com.example.testdialer.backup.TemplateBackupState.Idle -> {
+                templateBackupProgressDialog?.dismiss()
+                templateBackupProgressDialog = null
+                templateBackupPreviewDialog?.dismiss()
+                templateBackupPreviewDialog = null
+            }
+            is com.example.testdialer.backup.TemplateBackupState.Working -> {
+                templateBackupPreviewDialog?.dismiss()
+                templateBackupPreviewDialog = null
+                if (templateBackupProgressDialog?.isShowing != true) {
+                    val message = when (state.operation) {
+                        com.example.testdialer.backup.TemplateBackupOperation.EXPORT -> "Zapisuję kopię szablonów…"
+                        com.example.testdialer.backup.TemplateBackupOperation.READ_IMPORT -> "Odczytuję kopię szablonów…"
+                        com.example.testdialer.backup.TemplateBackupOperation.IMPORT -> "Dodaję szablony…"
+                    }
+                    templateBackupProgressDialog = AlertDialog.Builder(this)
+                        .setTitle("Kopia szablonów")
+                        .setMessage(message)
+                        .setCancelable(false)
+                        .create()
+                        .also { it.show() }
+                }
+            }
+            is com.example.testdialer.backup.TemplateBackupState.Preview -> {
+                templateBackupProgressDialog?.dismiss()
+                templateBackupProgressDialog = null
+                if (templateBackupPreviewDialog?.isShowing != true) showTemplateImportPreview(state)
+            }
+            is com.example.testdialer.backup.TemplateBackupState.Success -> {
+                templateBackupProgressDialog?.dismiss()
+                templateBackupProgressDialog = null
+                templateTransferMessage(state.message)
+                templateBackupViewModel.acknowledge()
+            }
+            is com.example.testdialer.backup.TemplateBackupState.Failure -> {
+                templateBackupProgressDialog?.dismiss()
+                templateBackupProgressDialog = null
+                templateTransferMessage(state.message)
+                templateBackupViewModel.acknowledge()
+            }
+        }
+    }
+
+    private fun showTemplateImportPreview(state: com.example.testdialer.backup.TemplateBackupState.Preview) {
+        val descriptions = state.items.take(10).joinToString("\n") { it.name }
+        val message = "Nowych: ${state.added}. Powtórzenia pominięte: ${state.skipped}." +
+            (if (descriptions.isBlank()) "\n\nPlik nie zawiera szablonów." else "\n\n$descriptions" +
+                if (state.items.size > 10) "\n… i pozostałe ${state.items.size - 10}" else "") +
+            "\n\nIstniejące szablony i historia pozostaną zachowane. Import nie uruchomi usług."
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Podgląd importu szablonów")
+            .setMessage(message)
+            .setCancelable(false)
+        templateBackupPreviewDialog = if (state.added == 0) {
+            builder.setPositiveButton("Zamknij") { _, _ -> templateBackupViewModel.discardPreview() }.show()
+        } else {
+            builder
+                .setPositiveButton("Dodaj szablony") { _, _ -> templateBackupViewModel.importPreview() }
+                .setNegativeButton("Anuluj") { _, _ -> templateBackupViewModel.discardPreview() }
+                .show()
+        }
+        templateBackupPreviewDialog?.setOnDismissListener { templateBackupPreviewDialog = null }
     }
 
     private fun templateTransferMessage(message: String) {

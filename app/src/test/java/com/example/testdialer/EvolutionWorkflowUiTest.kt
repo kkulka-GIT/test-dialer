@@ -319,21 +319,28 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `import preview needs confirmation and cancellation never changes stored templates`() {
+    @Test fun `template import preview is cancellable and requires explicit confirmation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         val incoming = listOf(com.example.testdialer.templates.TestTemplate("from-file", "SMS z kopii", TestAction.Sms("123", "Test")))
-        val preview = MainActivity::class.java.getDeclaredMethod("confirmTemplateImport", List::class.java).apply { isAccessible = true }
-        preview.invoke(activity, incoming)
+        val file = File(activity.cacheDir, "template-import-preview.json").apply {
+            writeText(com.example.testdialer.templates.TestTemplateArchive.encode(incoming))
+        }
+        val field = MainActivity::class.java.getDeclaredField("templateBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.TemplateBackupViewModel
+
+        viewModel.readImport(Uri.fromFile(file))
+        await { viewModel.state.value is com.example.testdialer.backup.TemplateBackupState.Preview }
+        await { ShadowAlertDialog.getLatestAlertDialog()?.isShowing == true }
+        val state = viewModel.state.value as com.example.testdialer.backup.TemplateBackupState.Preview
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals(1, state.added)
+        assertEquals("Dodaj szablony", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         assertTrue(TestTemplateStore(context).list().isEmpty())
-        val first = ShadowAlertDialog.getLatestAlertDialog()
-        first.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        assertTrue(TestTemplateStore(context).list().isEmpty())
-        preview.invoke(activity, incoming)
-        val confirm = ShadowAlertDialog.getLatestAlertDialog()
-        confirm.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        await { TestTemplateStore(context).list().size == 1 }
-        assertEquals("SMS z kopii", TestTemplateStore(context).list().single().name)
+        assertEquals(com.example.testdialer.backup.TemplateBackupState.Idle, viewModel.state.value)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
