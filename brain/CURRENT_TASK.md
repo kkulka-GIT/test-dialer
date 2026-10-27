@@ -1,3 +1,7 @@
+# Ukończony checkpoint eksportu raportu odporny na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: przygotowanie kopii raportu oraz plików TXT/JSON/CSV jest teraz prowadzone przez `ReportExportViewModel`. Obrót/odtworzenie Activity nie przerywa generowania, nie uruchamia go ponownie i nie gubi gotowego wyniku; schowek i systemowy wybór aplikacji pozostają działaniem bieżącego ekranu. CI243 PASS: 265 testów, 0 failures/errors; stabilny APK124301: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat i rosnący versionCode. Raport `brain/reports/report-export-lifecycle-20261027.md`.
+
 # Ukończony checkpoint kopii szablonów odpornej na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: eksport, odczyt kopii, podgląd i import szablonów są teraz prowadzone przez `TemplateBackupViewModel`. Obrót/odtworzenie Activity nie przerywa operacji, nie uruchamia jej ponownie i nie gubi podglądu lub wyniku. Import pozostaje jawny, anulowanie niczego nie zapisuje, a załadowanie parametrów nie uruchamia Voice/SMS/Data. CI240 PASS: 263 testy, 0 failures/errors/skipped. Stabilny APK124001: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/template-backup-lifecycle-20261027.md`.

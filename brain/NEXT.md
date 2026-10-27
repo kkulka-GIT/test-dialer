@@ -1,3 +1,7 @@
+# Następny krok po trwałości eksportu raportu — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Eksport raportu jest ukończony na CI243 PASS / APK124301. Nie przenoś mechanicznie wszystkich pozostałych operacji z `reportExecutor`; najpierw wykaż konkretną możliwość utraty danych, wyniku lub czasu testera i wybierz mały checkpoint GUI, niezawodności albo korelacji. Tailscale pozostaje odłożony. Fizyczny obrót, systemowy chooser/schowek, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny krok po domknięciu trwałości kopii — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Kopie pełnej historii, planów i szablonów zachowują teraz operację oraz jawny podgląd przy odtworzeniu Activity (CI233, CI239 i CI240). Nie twórz wspólnego frameworka tylko dla ujednolicenia; oceń nową, konkretną potrzebę testera w GUI, niezawodności lub korelacji i wybierz mniejszy checkpoint albo uzasadniony brak zmiany. Tailscale pozostaje odłożony. Fizyczny obrót, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
