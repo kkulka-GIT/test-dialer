@@ -156,6 +156,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var historyBackupViewModel: com.example.testdialer.backup.HistoryBackupViewModel
     private lateinit var planBackupViewModel: com.example.testdialer.backup.PlanBackupViewModel
     private lateinit var templateBackupViewModel: com.example.testdialer.backup.TemplateBackupViewModel
+    private lateinit var reportExportViewModel: com.example.testdialer.report.ReportExportViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -170,6 +171,7 @@ class MainActivity : ComponentActivity() {
     private var planBackupPreviewDialog: AlertDialog? = null
     private var templateBackupProgressDialog: AlertDialog? = null
     private var templateBackupPreviewDialog: AlertDialog? = null
+    private var reportExportProgressDialog: AlertDialog? = null
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -258,6 +260,7 @@ class MainActivity : ComponentActivity() {
         historyBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.HistoryBackupViewModel::class.java]
         planBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.PlanBackupViewModel::class.java]
         templateBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.TemplateBackupViewModel::class.java]
+        reportExportViewModel = ViewModelProvider(this)[com.example.testdialer.report.ReportExportViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -398,6 +401,7 @@ class MainActivity : ComponentActivity() {
         historyBackupViewModel.state.observe(this, ::renderHistoryBackupState)
         planBackupViewModel.state.observe(this, ::renderPlanBackupState)
         templateBackupViewModel.state.observe(this, ::renderTemplateBackupState)
+        reportExportViewModel.state.observe(this, ::renderReportExportState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -2277,44 +2281,56 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun exportReport(stored: StoredTestRun, option: Int) {
-        if (reportBusy) return
-        reportBusy = true
-        Toast.makeText(this, R.string.report_preparing, Toast.LENGTH_SHORT).show()
-        val appContext = applicationContext
-        reportExecutor.execute {
-            val note = runNotes.get(stored.run.id)
-            val reviews = stored.run.events.associate { it.id.value to billingReviews.get(it.id) }.filterValues { it.reviewedAtMillis > 0 }
-            val interruptedAt = billingReviews.interruptedAt(stored.run.id)
-            val result = runCatching {
-                val content = when (option) {
-                    2 -> RunReportFormatter.json(stored, note, reviews, interruptedAt)
-                    3 -> RunReportFormatter.csv(stored, note, reviews, interruptedAt)
-                    else -> RunReportFormatter.text(stored, note, reviews, interruptedAt)
-                }
-                if (option == 0) {
-                    require(content.toByteArray(Charsets.UTF_8).size <= 100_000) { "clipboard_limit" }
-                    content to null
-                } else content to RunReportFiles.shareIntent(appContext, content, when (option) { 2 -> "json"; 3 -> "csv"; else -> "txt" })
+        val selected = com.example.testdialer.report.ReportExportOption.entries.getOrNull(option) ?: return
+        reportExportViewModel.prepare(stored, selected)
+    }
+
+    private fun renderReportExportState(state: com.example.testdialer.report.ReportExportState) {
+        when (state) {
+            com.example.testdialer.report.ReportExportState.Idle -> {
+                reportExportProgressDialog?.dismiss()
+                reportExportProgressDialog = null
             }
-            runOnUiThread {
-                reportBusy = false
-                if (isDestroyed || isFinishing) return@runOnUiThread
-                result.fold(onSuccess = { (content, intent) ->
-                    runCatching {
-                        if (intent == null) {
-                            val clip = ClipData.newPlainText("Test Dialer", content)
-                            if (android.os.Build.VERSION.SDK_INT >= 33) {
-                                clip.description.extras = android.os.PersistableBundle().apply {
-                                    putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
-                                }
+            is com.example.testdialer.report.ReportExportState.Working -> {
+                if (reportExportProgressDialog?.isShowing != true) {
+                    reportExportProgressDialog = AlertDialog.Builder(this)
+                        .setTitle(R.string.report_export)
+                        .setMessage(R.string.report_preparing)
+                        .setCancelable(false)
+                        .create()
+                        .also { it.show() }
+                }
+            }
+            is com.example.testdialer.report.ReportExportState.Ready -> {
+                reportExportProgressDialog?.dismiss()
+                reportExportProgressDialog = null
+                runCatching {
+                    if (state.shareIntent == null) {
+                        val clip = ClipData.newPlainText("Test Dialer", state.content)
+                        if (android.os.Build.VERSION.SDK_INT >= 33) {
+                            clip.description.extras = android.os.PersistableBundle().apply {
+                                putBoolean(android.content.ClipDescription.EXTRA_IS_SENSITIVE, true)
                             }
-                            getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
-                            Toast.makeText(this, R.string.report_copied, Toast.LENGTH_SHORT).show()
-                        } else startActivity(Intent.createChooser(intent, getString(R.string.report_export)))
-                    }.onFailure { Toast.makeText(this, R.string.report_failed, Toast.LENGTH_LONG).show() }
-                }, onFailure = {
-                    Toast.makeText(this, if (it.message == "clipboard_limit") R.string.report_too_large else R.string.report_failed, Toast.LENGTH_LONG).show()
-                })
+                        }
+                        getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+                        Toast.makeText(this, R.string.report_copied, Toast.LENGTH_SHORT).show()
+                    } else {
+                        startActivity(Intent.createChooser(state.shareIntent, getString(R.string.report_export)))
+                    }
+                }.onFailure {
+                    Toast.makeText(this, R.string.report_failed, Toast.LENGTH_LONG).show()
+                }
+                reportExportViewModel.acknowledge()
+            }
+            is com.example.testdialer.report.ReportExportState.Failure -> {
+                reportExportProgressDialog?.dismiss()
+                reportExportProgressDialog = null
+                Toast.makeText(
+                    this,
+                    if (state.clipboardTooLarge) R.string.report_too_large else R.string.report_failed,
+                    Toast.LENGTH_LONG,
+                ).show()
+                reportExportViewModel.acknowledge()
             }
         }
     }
