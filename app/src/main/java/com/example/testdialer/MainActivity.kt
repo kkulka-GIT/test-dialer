@@ -7,8 +7,6 @@ import android.content.Intent
 import android.content.res.ColorStateList
 import android.widget.ProgressBar
 import androidx.core.view.WindowInsetsCompat
-import com.example.testdialer.report.RunReportFormatter
-import com.example.testdialer.report.RunReportFiles
 import java.util.concurrent.Executors
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -157,6 +155,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var planBackupViewModel: com.example.testdialer.backup.PlanBackupViewModel
     private lateinit var templateBackupViewModel: com.example.testdialer.backup.TemplateBackupViewModel
     private lateinit var reportExportViewModel: com.example.testdialer.report.ReportExportViewModel
+    private lateinit var runComparisonViewModel: com.example.testdialer.report.RunComparisonViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -172,6 +171,10 @@ class MainActivity : ComponentActivity() {
     private var templateBackupProgressDialog: AlertDialog? = null
     private var templateBackupPreviewDialog: AlertDialog? = null
     private var reportExportProgressDialog: AlertDialog? = null
+    private var runComparisonProgressDialog: AlertDialog? = null
+    private var runComparisonDialog: AlertDialog? = null
+    private var runComparisonText: TextView? = null
+    private var runComparisonToggle: Button? = null
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -261,6 +264,7 @@ class MainActivity : ComponentActivity() {
         planBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.PlanBackupViewModel::class.java]
         templateBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.TemplateBackupViewModel::class.java]
         reportExportViewModel = ViewModelProvider(this)[com.example.testdialer.report.ReportExportViewModel::class.java]
+        runComparisonViewModel = ViewModelProvider(this)[com.example.testdialer.report.RunComparisonViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -402,6 +406,7 @@ class MainActivity : ComponentActivity() {
         planBackupViewModel.state.observe(this, ::renderPlanBackupState)
         templateBackupViewModel.state.observe(this, ::renderTemplateBackupState)
         reportExportViewModel.state.observe(this, ::renderReportExportState)
+        runComparisonViewModel.state.observe(this, ::renderRunComparisonState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -1839,61 +1844,142 @@ class MainActivity : ComponentActivity() {
 
     private fun chooseComparison(baselineId: RunId) {
         val candidates = registerState.runs.filter { it.runId != baselineId }
-        if (candidates.isEmpty()) { templateTransferMessage("Zapisz co najmniej dwie sesje, aby porównać wyniki."); return }
+        if (candidates.isEmpty()) {
+            templateTransferMessage("Zapisz co najmniej dwie sesje, aby porównać wyniki.")
+            return
+        }
         AlertDialog.Builder(this).setTitle("Wybierz sesję do porównania")
-            .setItems(candidates.map { "${it.scenarioName} · ${formatDateWithMillis(it.startedAtMillis)} · ${it.eventCount} zdarzeń" }.toTypedArray()) { _, index ->
-                if (reportBusy) return@setItems
-                reportBusy = true
-                templateTransferMessage("Wczytuję porównanie sesji")
-                reportExecutor.execute {
-                    val result = runCatching {
-                        val repository = (application as TestDialerApplication).testRunRepository
-                        val a = repository.get(baselineId) ?: error("Sesja bazowa jest niedostępna.")
-                        val b = repository.get(candidates[index].runId) ?: error("Wybrana sesja jest niedostępna.")
-                        val reviews = (a.run.events + b.run.events).associate { it.id.value to billingReviews.get(it.id) }
-                        com.example.testdialer.report.RunComparisonFormatter.compare(a, b, reviews)
-                    }
-                    runOnUiThread {
-                        reportBusy = false
-                        if (!isDestroyed && !isFinishing) result.fold(::showComparison) { templateTransferMessage("Nie udało się porównać: ${it.message}") }
-                    }
-                }
+            .setItems(candidates.map {
+                "${it.scenarioName} · ${formatDateWithMillis(it.startedAtMillis)} · ${it.eventCount} zdarzeń"
+            }.toTypedArray()) { _, index ->
+                runComparisonViewModel.load(baselineId, candidates[index].runId)
             }.setNegativeButton("Anuluj", null).show()
     }
 
-    private fun showComparison(comparison: com.example.testdialer.report.RunComparison) {
-        var onlyDifferences = false
-        val comparisonText = createBodyText(comparison.text()).apply { setTextIsSelectable(true) }
+    private fun renderRunComparisonState(state: com.example.testdialer.report.RunComparisonState) {
+        when (state) {
+            com.example.testdialer.report.RunComparisonState.Idle -> {
+                runComparisonProgressDialog?.dismiss()
+                runComparisonProgressDialog = null
+                runComparisonDialog?.dismiss()
+                runComparisonDialog = null
+                runComparisonText = null
+                runComparisonToggle = null
+            }
+            is com.example.testdialer.report.RunComparisonState.Loading,
+            is com.example.testdialer.report.RunComparisonState.Sharing -> {
+                runComparisonDialog?.dismiss()
+                runComparisonDialog = null
+                runComparisonText = null
+                runComparisonToggle = null
+                if (runComparisonProgressDialog?.isShowing != true) {
+                    runComparisonProgressDialog = AlertDialog.Builder(this)
+                        .setMessage(
+                            if (state is com.example.testdialer.report.RunComparisonState.Loading)
+                                "Wczytuję porównanie sesji…"
+                            else "Przygotowuję plik porównania…",
+                        )
+                        .setCancelable(false)
+                        .show()
+                }
+            }
+            is com.example.testdialer.report.RunComparisonState.Ready -> {
+                runComparisonProgressDialog?.dismiss()
+                runComparisonProgressDialog = null
+                if (runComparisonDialog?.isShowing == true) {
+                    updateComparisonDialog(state)
+                } else {
+                    showComparison(state)
+                }
+            }
+            is com.example.testdialer.report.RunComparisonState.ShareReady -> {
+                runComparisonProgressDialog?.dismiss()
+                runComparisonProgressDialog = null
+                runCatching {
+                    startActivity(Intent.createChooser(state.intent, "Porównanie sesji"))
+                }.onFailure {
+                    templateTransferMessage("Nie udało się otworzyć udostępniania.")
+                }
+                runComparisonViewModel.acknowledgeShare()
+            }
+            is com.example.testdialer.report.RunComparisonState.Failure -> {
+                runComparisonProgressDialog?.dismiss()
+                runComparisonProgressDialog = null
+                templateTransferMessage(
+                    if (state.comparison == null) "Nie udało się przygotować porównania."
+                    else "Nie udało się przygotować pliku porównania.",
+                )
+                runComparisonViewModel.acknowledgeFailure()
+            }
+        }
+    }
+
+    private fun showComparison(state: com.example.testdialer.report.RunComparisonState.Ready) {
+        val comparison = state.comparison
+        runComparisonText = createBodyText(comparison.text(state.onlyDifferences)).apply {
+            setTextIsSelectable(true)
+        }
+        runComparisonToggle = Button(this).apply {
+            isAllCaps = false
+            minHeight = dimen(48)
+            setOnClickListener {
+                runComparisonViewModel.toggleDifferences()
+                announceForAccessibility(
+                    if (!state.onlyDifferences)
+                        "Wyświetlono różnice: ${comparison.differences.size}"
+                    else "Wyświetlono wszystkie pola",
+                )
+            }
+        }
         val fields = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dimen(20), dimen(8), dimen(20), dimen(16))
+            addView(runComparisonToggle)
             addView(Button(this@MainActivity).apply {
-                text = "Pokaż tylko różnice"; isAllCaps = false; minHeight = dimen(48)
+                text = "Odczytaj podsumowanie"
+                isAllCaps = false
+                minHeight = dimen(48)
                 setOnClickListener {
-                    onlyDifferences = !onlyDifferences
-                    this.text = if (onlyDifferences) "Pokaż wszystkie pola" else "Pokaż tylko różnice"
-                    comparisonText.text = comparison.text(onlyDifferences)
-                    announceForAccessibility(if (onlyDifferences) "Wyświetlono różnice: ${comparison.differences.size}" else "Wyświetlono wszystkie pola")
+                    if (!getSharedPreferences("ui-settings", MODE_PRIVATE)
+                            .getBoolean("speech", false)
+                    ) {
+                        templateTransferMessage("Najpierw włącz komunikaty głosowe w Ustawieniach")
+                    } else {
+                        speech.say(
+                            "Porównanie sesji. Różnice w ${comparison.differences.size} polach. " +
+                                when (comparison.parametersMatch) {
+                                    true -> "Zapisane parametry usług zgodne. Oceny rozliczenia są ręcznymi ocenami testera."
+                                    false -> "Parametry usług są różne. Różnice wyników nie oznaczają automatycznie regresji."
+                                    null -> "Brak pełnych parametrów do sprawdzenia zgodności."
+                                },
+                        )
+                    }
                 }
             })
-            addView(Button(this@MainActivity).apply {
-                this.text = "Odczytaj podsumowanie"; isAllCaps = false; minHeight = dimen(48)
-                setOnClickListener {
-                    if (!getSharedPreferences("ui-settings", MODE_PRIVATE).getBoolean("speech", false)) templateTransferMessage("Najpierw włącz komunikaty głosowe w Ustawieniach")
-                    else speech.say("Porównanie sesji. Różnice w ${comparison.differences.size} polach. " + when (comparison.parametersMatch) { true -> "Zapisane parametry usług zgodne. Oceny rozliczenia są ręcznymi ocenami testera."; false -> "Parametry usług są różne. Różnice wyników nie oznaczają automatycznie regresji."; null -> "Brak pełnych parametrów do sprawdzenia zgodności." })
-                }
-            })
-            addView(comparisonText)
+            addView(runComparisonText)
         }
-        AlertDialog.Builder(this).setTitle("Porównanie sesji")
+        runComparisonDialog = AlertDialog.Builder(this)
+            .setTitle("Porównanie sesji")
             .setView(ScrollView(this).apply { addView(fields) })
-            .setPositiveButton("Udostępnij TXT") { _, _ ->
-                val snapshot = comparison.text(onlyDifferences)
-                reportExecutor.execute {
-                    val result = runCatching { RunReportFiles.shareIntent(this, snapshot, "txt") }
-                    runOnUiThread { if (!isDestroyed && !isFinishing) result.fold({ startActivity(Intent.createChooser(it, "Porównanie sesji")) }, { templateTransferMessage("Nie udało się udostępnić: ${it.message}") }) }
+            .setPositiveButton("Udostępnij TXT", null)
+            .setNegativeButton("Zamknij") { _, _ -> runComparisonViewModel.dismiss() }
+            .create()
+            .also { dialog ->
+                dialog.setOnCancelListener { runComparisonViewModel.dismiss() }
+                dialog.setOnShowListener {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                        runComparisonViewModel.prepareShare()
+                    }
+                    updateComparisonDialog(state)
                 }
-            }.setNegativeButton("Zamknij", null).show()
+                dialog.show()
+            }
+    }
+
+    private fun updateComparisonDialog(state: com.example.testdialer.report.RunComparisonState.Ready) {
+        runComparisonToggle?.text =
+            if (state.onlyDifferences) "Pokaż wszystkie pola" else "Pokaż tylko różnice"
+        runComparisonText?.text = state.comparison.text(state.onlyDifferences)
     }
 
     private fun dataBytes(run: com.example.testdialer.domain.TestRun): String = run.events
