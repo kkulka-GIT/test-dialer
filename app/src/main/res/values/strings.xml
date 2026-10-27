@@ -4,6 +4,7 @@
     <string name="nav_test">Test</string>
     <string name="nav_operations">Operacje</string>
     <string name="nav_register">Rejestr</string>
+    <string name="settings_accessibility">Ustawienia i kopie zapasowe</string>
     <string name="status_title">Status</string>
     <string name="status_description">Lekki podgląd gotowości do testów i miejsca na przyszłe podsumowania.</string>
     <string name="status_dashboard_title">Dashboard</string>
