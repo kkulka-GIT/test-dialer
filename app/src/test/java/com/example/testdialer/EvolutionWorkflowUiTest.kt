@@ -390,7 +390,9 @@ class EvolutionWorkflowUiTest {
         await {
             ShadowAlertDialog.getLatestAlertDialog()?.let { it !== cancelledPreview && it.isShowing } == true
         }
-        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        val confirmedPreview = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals("Dodaj plany", confirmedPreview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        viewModel.importPreview()
         await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
         assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)

@@ -46,6 +46,56 @@ class PlanBackupViewModelTest {
         assertEquals(PlanBackupState.Idle, viewModel.state.value)
     }
 
+    @Test
+    fun `confirmed preview imports parameters without executing a service`() {
+        val application = ApplicationProvider.getApplicationContext<TestDialerApplication>()
+        application.getSharedPreferences(
+            com.example.testdialer.active.ScenarioPlanStore.PREFERENCES,
+            android.content.Context.MODE_PRIVATE,
+        ).edit().clear().commit()
+        val step = com.example.testdialer.domain.StepId("import-step")
+        val incoming = listOf(
+            com.example.testdialer.active.SavedScenarioPlan(
+                "archive-id",
+                "Plan z kopii",
+                com.example.testdialer.active.LocalScenario(
+                    "archive",
+                    "Plan z kopii",
+                    listOf(
+                        com.example.testdialer.domain.ScenarioStepDefinition(
+                            step,
+                            0,
+                            "SMS",
+                            "Wyślij osobno",
+                            com.example.testdialer.domain.TestAction.Sms("123", "Test"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val file = File(application.cacheDir, "plan-view-model-import.json").apply {
+            writeText(ScenarioPlanArchive.encode(incoming))
+        }
+        val executor = QueuedExecutor()
+        val viewModel = PlanBackupViewModel(application, executor)
+
+        viewModel.readImport(Uri.fromFile(file))
+        executor.runNext()
+        assertEquals(1, (viewModel.state.value as PlanBackupState.Preview).added)
+
+        viewModel.importPreview()
+        assertEquals(PlanBackupOperation.IMPORT, (viewModel.state.value as PlanBackupState.Working).operation)
+        executor.runNext()
+
+        assertTrue(viewModel.state.value is PlanBackupState.Success)
+        val stored = com.example.testdialer.active.ScenarioPlanStore(application).list()
+        assertEquals(listOf("Plan z kopii"), stored.map { it.name })
+        application.getSharedPreferences(
+            com.example.testdialer.active.ScenarioPlanStore.PREFERENCES,
+            android.content.Context.MODE_PRIVATE,
+        ).edit().clear().commit()
+    }
+
     private class QueuedExecutor : AbstractExecutorService() {
         private val tasks = ArrayDeque<Runnable>()
         private var shutdown = false
