@@ -1,3 +1,7 @@
+# Następny checkpoint: kopie odporne na odtworzenie ekranu — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Dodaj regresję odtworzenia Activity podczas eksportu/importu lub przywracania historii, a następnie przenieś stan i wykonanie operacji poza executor należący do MainActivity. Po obrocie tester ma otrzymać ten sam postęp albo końcowy wynik; operacja nie może uruchomić się drugi raz. Nie używaj configChanges, nie osłabiaj atomowego importu i nie uruchamiaj usług telekomunikacyjnych. Dopiero zmiana kodu wymaga CI PASS i nowego stabilnego APK. Tailscale pozostaje odłożony.
+
 # Następny krok po checkpointcie dostępnego wejścia — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Checkpoint opisu „Ustawienia i kopie zapasowe” jest ukończony na CI226 PASS / APK122601. Następnie oceń konkretną potrzebę GUI lub niezawodności na podstawie pracy testera; nie rozszerzaj opisów dla samej aktywności. Przy zapisie dużych plików przez API nigdy nie używaj przyciętego tekstu prezentacyjnego: bazuj na pełnym payloadzie, sprawdzaj liczbę linii i pozwól CI wykryć różnicę. Tailscale pozostaje odłożony. Fizyczny TalkBack/TTS i upgrade z retencją pozostają osobnym odbiorem.

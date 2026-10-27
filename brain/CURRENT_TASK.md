@@ -1,3 +1,7 @@
+# Ukończony przegląd cyklu życia kopii zapasowych — 2026-10-27
+
+2026-10-27: statyczny przegląd zdalnego kodu wykazał, że eksport, odczyt importu i przywracanie historii korzystają z executora należącego do MainActivity, a onDestroy zawsze wywołuje shutdownNow. Obrót/odtworzenie Activity może więc przerwać operację lub zgubić jej podgląd/wynik. To konkretne ryzyko dla ochrony danych testera, ale nie zostało jeszcze potwierdzone testem ani naprawione. Następny checkpoint powinien przenieść stan operacji poza pojedynczą Activity, zachować jawny postęp/wynik po recreation i nie używać configChanges jako obejścia. Bez zmian kodu, CI i APK. Raport brain/reports/backup-lifecycle-review-20261027.md.
+
 # Ukończony checkpoint dostępnego wejścia do ustawień i kopii — 2026-10-27
 
 2026-10-27: przycisk „Ustawienia” w nagłówku zachowuje krótki napis, ale TalkBack ogłasza teraz „Ustawienia i kopie zapasowe”. Opis obejmuje wspólne wejście do wyglądu, głosu, planów, szablonów oraz kopii historii i nie ukrywa najważniejszej funkcji ochrony danych testera. CI226 PASS: 255 testów, stabilny APK122601, stały certyfikat i applicationId. CI223–225 wykryły skrócenie MainActivity podczas zapisu przez API; pełne źródło odtworzono z ostatniego zielonego checkpointu, a pipeline zachowuje teraz log Gradle jako artefakt także przy wczesnej awarii. Raport brain/reports/settings-backup-accessibility-20261027.md.
