@@ -1,5 +1,7 @@
 # Decyzje projektowe
 
+- 2026-10-27: porównanie sesji ma dedykowany `RunComparisonViewModel`, ponieważ odczyt dwóch snapshotów, ręcznych ocen i przygotowanie TXT na executorze Activity mogły zostać przerwane albo zgubić wynik przy recreation. ViewModel zachowuje jedną operację, gotowe porównanie i stan filtra „tylko różnice”; duplikaty są odrzucane. Activity odpowiada za dialog, komunikat głosowy i uruchomienie choosera. Nie zmieniono algorytmu porównania ani nie uznano różnic za automatyczną regresję lub dowód naliczenia.
+
 - 2026-10-27: generowanie eksportu raportu tekstowego/JSON/CSV ma dedykowany `ReportExportViewModel`, ponieważ executor pojedynczej Activity był zatrzymywany w `onDestroy` i mógł zgubić wynik potrzebny do korelacji. ViewModel zachowuje jedną operację oraz gotowy wynik przez recreation Activity; ponowne kliknięcie nie dubluje pracy. Clipboard i uruchomienie systemowego choosera należą do aktualnej Activity, nie są wykonywane automatycznie po odtworzeniu. Śmierć procesu i fizyczny odbiór pozostają poza zakresem; nie wprowadzono wspólnego frameworka ani zmian Voice/SMS/Data.
 
 - 2026-10-27: eksport, odczyt i import kopii szablonów mają dedykowany `TemplateBackupViewModel`, zachowujący jedną operację i podgląd/wynik przez odtworzenie Activity. Wybór dokumentu pozostaje w Activity, import wymaga jawnego potwierdzenia, anulowanie nie zapisuje danych, a samo wczytanie parametrów nie wykonuje usług. Nie wprowadzono wspólnego frameworka kopii ani wznowienia po śmierci procesu.

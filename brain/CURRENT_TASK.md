@@ -1,3 +1,7 @@
+# Ukończony checkpoint porównania sesji odporny na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: wczytanie porównania dwóch sesji, filtr „tylko różnice” i przygotowanie pliku TXT są prowadzone przez `RunComparisonViewModel`. Obrót/odtworzenie Activity nie przerywa pracy, nie uruchamia jej ponownie i nie gubi gotowego zestawienia. CI245 PASS: 268 testów, 0 failures/errors; stabilny APK124501: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat i rosnący versionCode. Podgląd 360×800 sprawdzony. Raport `brain/reports/run-comparison-lifecycle-20261027.md`.
+
 # Ukończony checkpoint eksportu raportu odporny na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: przygotowanie kopii raportu oraz plików TXT/JSON/CSV jest teraz prowadzone przez `ReportExportViewModel`. Obrót/odtworzenie Activity nie przerywa generowania, nie uruchamia go ponownie i nie gubi gotowego wyniku; schowek i systemowy wybór aplikacji pozostają działaniem bieżącego ekranu. CI243 PASS: 265 testów, 0 failures/errors; stabilny APK124301: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat i rosnący versionCode. Raport `brain/reports/report-export-lifecycle-20261027.md`.
