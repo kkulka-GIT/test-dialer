@@ -40,7 +40,11 @@ jobs:
         run: python3 scripts/android_version.py
 
       - name: Run debug unit tests
-        run: ./gradlew testDebugUnitTest
+        shell: bash
+        run: |
+          mkdir -p app/build/diagnostics
+          set -o pipefail
+          ./gradlew --console=plain testDebugUnitTest 2>&1 | tee app/build/diagnostics/gradle-test.log
 
       - name: Upload test reports and UI previews
         if: always()
@@ -51,6 +55,7 @@ jobs:
             app/build/reports/tests
             app/build/reports/screenshots
             app/build/test-results
+            app/build/diagnostics/gradle-test.log
           if-no-files-found: warn
 
       - name: Upload Room schemas
