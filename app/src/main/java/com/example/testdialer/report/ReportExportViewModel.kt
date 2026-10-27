@@ -30,6 +30,8 @@ sealed interface ReportExportState {
 class ReportExportViewModel @JvmOverloads constructor(
     application: Application,
     private val executor: ExecutorService = Executors.newSingleThreadExecutor(),
+    private val shareIntentFactory: (Application, String, String) -> Intent =
+        { app, content, extension -> RunReportFiles.shareIntent(app, content, extension) },
 ) : AndroidViewModel(application) {
     private val app = application as TestDialerApplication
     private val notes = RunNotesStore(application, app.annotationStore)
@@ -69,11 +71,11 @@ class ReportExportViewModel @JvmOverloads constructor(
                         val intent = when (option) {
                             ReportExportOption.COPY -> null
                             ReportExportOption.SHARE_TEXT ->
-                                RunReportFiles.shareIntent(getApplication<Application>(), content, "txt")
+                                shareIntentFactory(getApplication(), content, "txt")
                             ReportExportOption.SHARE_JSON ->
-                                RunReportFiles.shareIntent(getApplication<Application>(), content, "json")
+                                shareIntentFactory(getApplication(), content, "json")
                             ReportExportOption.SHARE_CSV ->
-                                RunReportFiles.shareIntent(getApplication<Application>(), content, "csv")
+                                shareIntentFactory(getApplication(), content, "csv")
                         }
                         ReportExportState.Ready(option, content, intent)
                     }

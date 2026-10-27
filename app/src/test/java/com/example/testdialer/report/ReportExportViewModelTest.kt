@@ -63,7 +63,12 @@ class ReportExportViewModelTest {
     fun `json share result contains a read only content intent`() {
         val application = ApplicationProvider.getApplicationContext<TestDialerApplication>()
         val executor = QueuedExecutor()
-        val viewModel = ReportExportViewModel(application, executor)
+        val viewModel = ReportExportViewModel(application, executor) { _, _, extension ->
+            Intent(Intent.ACTION_SEND).apply {
+                type = if (extension == "json") "application/json" else "text/plain"
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
 
         viewModel.prepare(snapshot(), ReportExportOption.SHARE_JSON)
         executor.runNext()
