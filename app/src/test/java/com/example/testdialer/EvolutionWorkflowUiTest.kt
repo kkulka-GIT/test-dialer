@@ -451,9 +451,17 @@ class EvolutionWorkflowUiTest {
             ),
             "Notatka", emptyMap(), 0,
         )
-        val preview = MainActivity::class.java.getDeclaredMethod("showHistoryImportPreview", List::class.java)
-            .apply { isAccessible = true }
-        preview.invoke(activity, listOf(entry))
+        val historyField = MainActivity::class.java.getDeclaredField("historyBackupViewModel").apply { isAccessible = true }
+        val historyViewModel = historyField.get(activity) as com.example.testdialer.backup.HistoryBackupViewModel
+        val file = File(activity.cacheDir, "history-restore-$suffix.json").apply {
+            writeText(com.example.testdialer.report.HistoryArchive.encode(listOf(entry), 2_000))
+        }
+        fun readPreview() {
+            historyViewModel.readImport(Uri.fromFile(file))
+            await { historyViewModel.state.value is com.example.testdialer.backup.HistoryBackupState.Preview }
+        }
+
+        readPreview()
         var dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
@@ -463,7 +471,7 @@ class EvolutionWorkflowUiTest {
         }.get(5, java.util.concurrent.TimeUnit.SECONDS)
         assertNull(storedRun())
 
-        preview.invoke(activity, listOf(entry))
+        readPreview()
         dialog = ShadowAlertDialog.getLatestAlertDialog()
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         await { storedRun() != null }
