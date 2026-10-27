@@ -99,25 +99,10 @@ class MainActivity : ComponentActivity() {
     private val templates by lazy { com.example.testdialer.templates.TestTemplateStore(applicationContext) }
     private val scenarioPlans by lazy { com.example.testdialer.active.ScenarioPlanStore(applicationContext) }
     private val exportPlansLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                val archive = com.example.testdialer.active.ScenarioPlanArchive.encode(scenarioPlans.list())
-                contentResolver.openOutputStream(uri, "wt")?.use { it.write(archive.toByteArray(Charsets.UTF_8)) }
-                    ?: error("Nie można otworzyć pliku do zapisu.")
-            }
-            templateTransferMessage(if (result.isSuccess) "Kopia planów zapisana" else "Nie udało się zapisać kopii planów: ${result.exceptionOrNull()?.message}")
-        }
+        uri?.let(planBackupViewModel::export)
     }
     private val importPlansLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) reportExecutor.execute {
-            val result = runCatching {
-                contentResolver.openInputStream(uri)?.use(com.example.testdialer.active.ScenarioPlanArchive::read)
-                    ?: error("Nie można otworzyć pliku.")
-            }
-            runOnUiThread { if (!isDestroyed && !isFinishing) result.fold(::confirmPlanImport) {
-                templateTransferMessage("Nie udało się wczytać planów: ${it.message}")
-            } }
-        }
+        uri?.let(planBackupViewModel::readImport)
     }
     private val exportHistoryLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
         uri?.let(historyBackupViewModel::export)
@@ -186,6 +171,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var runNoteEditorViewModel: RunNoteEditorViewModel
     private lateinit var billingReviewEditorViewModel: BillingReviewEditorViewModel
     private lateinit var historyBackupViewModel: com.example.testdialer.backup.HistoryBackupViewModel
+    private lateinit var planBackupViewModel: com.example.testdialer.backup.PlanBackupViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -196,6 +182,8 @@ class MainActivity : ComponentActivity() {
     private var updatingBillingReviewInput = false
     private var historyBackupProgressDialog: AlertDialog? = null
     private var historyBackupPreviewDialog: AlertDialog? = null
+    private var planBackupProgressDialog: AlertDialog? = null
+    private var planBackupPreviewDialog: AlertDialog? = null
     private var manualSessionState = ManualSessionUiState()
     private var guidedSmsState = GuidedSmsUiState()
     private var cellularDataState = CellularDataUiState()
@@ -282,6 +270,7 @@ class MainActivity : ComponentActivity() {
             BillingReviewEditorViewModel.Factory(billingReviews),
         )[BillingReviewEditorViewModel::class.java]
         historyBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.HistoryBackupViewModel::class.java]
+        planBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.PlanBackupViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -420,6 +409,7 @@ class MainActivity : ComponentActivity() {
             renderRegister()
         }
         historyBackupViewModel.state.observe(this, ::renderHistoryBackupState)
+        planBackupViewModel.state.observe(this, ::renderPlanBackupState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -1788,20 +1778,71 @@ class MainActivity : ComponentActivity() {
         historyBackupPreviewDialog?.setOnDismissListener { historyBackupPreviewDialog = null }
     }
 
-    private fun confirmPlanImport(items: List<com.example.testdialer.active.SavedScenarioPlan>) {
-        val preview = runCatching { scenarioPlans.previewImport(items) }
-        if (preview.isFailure) { templateTransferMessage(preview.exceptionOrNull()?.message ?: "Nieprawidłowy plik"); return }
-        val counts = preview.getOrThrow()
-        if (counts.added == 0) { templateTransferMessage("Brak nowych planów. Pominięto powtórzenia: ${counts.skipped}."); return }
+    private fun renderPlanBackupState(state: com.example.testdialer.backup.PlanBackupState) {
+        when (state) {
+            com.example.testdialer.backup.PlanBackupState.Idle -> {
+                planBackupProgressDialog?.dismiss()
+                planBackupProgressDialog = null
+                planBackupPreviewDialog?.dismiss()
+                planBackupPreviewDialog = null
+            }
+            is com.example.testdialer.backup.PlanBackupState.Working -> {
+                planBackupPreviewDialog?.dismiss()
+                planBackupPreviewDialog = null
+                if (planBackupProgressDialog?.isShowing != true) {
+                    val message = when (state.operation) {
+                        com.example.testdialer.backup.PlanBackupOperation.EXPORT -> "Zapisuję kopię planów…"
+                        com.example.testdialer.backup.PlanBackupOperation.READ_IMPORT -> "Odczytuję kopię planów…"
+                        com.example.testdialer.backup.PlanBackupOperation.IMPORT -> "Dodaję plany…"
+                    }
+                    planBackupProgressDialog = AlertDialog.Builder(this)
+                        .setTitle("Kopia planów")
+                        .setMessage(message)
+                        .setCancelable(false)
+                        .create()
+                        .also { it.show() }
+                }
+            }
+            is com.example.testdialer.backup.PlanBackupState.Preview -> {
+                planBackupProgressDialog?.dismiss()
+                planBackupProgressDialog = null
+                if (planBackupPreviewDialog?.isShowing != true) showPlanImportPreview(state)
+            }
+            is com.example.testdialer.backup.PlanBackupState.Success -> {
+                planBackupProgressDialog?.dismiss()
+                planBackupProgressDialog = null
+                templateTransferMessage(state.message)
+                planBackupViewModel.acknowledge()
+            }
+            is com.example.testdialer.backup.PlanBackupState.Failure -> {
+                planBackupProgressDialog?.dismiss()
+                planBackupProgressDialog = null
+                templateTransferMessage(state.message)
+                planBackupViewModel.acknowledge()
+            }
+        }
+    }
+
+    private fun showPlanImportPreview(state: com.example.testdialer.backup.PlanBackupState.Preview) {
+        val items = state.items
         val descriptions = items.take(8).joinToString("\n") { "${it.name} · ${it.scenario.steps.size} kroków" }
-        AlertDialog.Builder(this).setTitle("Podgląd importu planów")
-            .setMessage("Nowych: ${counts.added}. Powtórzenia pominięte: ${counts.skipped}.\n\n$descriptions" +
-                (if (items.size > 8) "\n… i pozostałe ${items.size - 8}" else "") +
-                "\n\nIstniejące plany i historia pozostaną zachowane. Import nie uruchomi usług.")
-            .setPositiveButton("Dodaj plany") { _, _ -> reportExecutor.execute {
-                val result = runCatching { scenarioPlans.importItems(items) }
-                templateTransferMessage(result.fold({ "Dodano plany: ${it.added}. Pominięto powtórzenia: ${it.skipped}." }, { "Import planów nie powiódł się: ${it.message}" }))
-            } }.setNegativeButton("Anuluj", null).show()
+        val message = "Nowych: ${state.added}. Powtórzenia pominięte: ${state.skipped}." +
+            (if (descriptions.isBlank()) "\n\nPlik nie zawiera planów." else "\n\n$descriptions" +
+                if (items.size > 8) "\n… i pozostałe ${items.size - 8}" else "") +
+            "\n\nIstniejące plany i historia pozostaną zachowane. Import nie uruchomi usług."
+        val builder = AlertDialog.Builder(this)
+            .setTitle("Podgląd importu planów")
+            .setMessage(message)
+            .setCancelable(false)
+        planBackupPreviewDialog = if (state.added == 0) {
+            builder.setPositiveButton("Zamknij") { _, _ -> planBackupViewModel.discardPreview() }.show()
+        } else {
+            builder
+                .setPositiveButton("Dodaj plany") { _, _ -> planBackupViewModel.importPreview() }
+                .setNegativeButton("Anuluj") { _, _ -> planBackupViewModel.discardPreview() }
+                .show()
+        }
+        planBackupPreviewDialog?.setOnDismissListener { planBackupPreviewDialog = null }
     }
 
     private fun chooseComparison(baselineId: RunId) {
