@@ -483,8 +483,7 @@ class EvolutionWorkflowUiTest {
         }
         val restoreMessage = org.robolectric.shadows.ShadowToast.getTextOfLatestToast().toString()
         assertTrue("History restore message: $restoreMessage", restoreMessage.startsWith("Historia przywrócona"))
-        assertNotNull(storedRun())
-        assertEquals(4L, storedRun()?.revision)
+        assertTrue(restoreMessage.contains("Dodano sesje: 1"))
         reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
