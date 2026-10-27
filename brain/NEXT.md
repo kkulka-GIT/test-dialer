@@ -1,3 +1,7 @@
+# Następny checkpoint po trwałości kopii historii — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Pełna kopia historii jest ukończona na CI233 PASS / APK123301. Oceń osobno eksport/import planów i szablonów: nadal korzystają z executora Activity, więc sprawdź, czy obrót może przerwać operację lub zgubić wynik. Nie przenoś ich mechanicznie do wspólnego frameworka; wybierz mały checkpoint tylko wtedy, gdy kod lub regresja potwierdzi porównywalne ryzyko dla pracy testera. Tailscale pozostaje odłożony. Fizyczny obrót, systemowy dostawca dokumentów, TalkBack/TTS, śmierć procesu i aktualizacja z retencją historii pozostają osobnym odbiorem.
+
 # Następny checkpoint: kopie odporne na odtworzenie ekranu — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Dodaj regresję odtworzenia Activity podczas eksportu/importu lub przywracania historii, a następnie przenieś stan i wykonanie operacji poza executor należący do MainActivity. Po obrocie tester ma otrzymać ten sam postęp albo końcowy wynik; operacja nie może uruchomić się drugi raz. Nie używaj configChanges, nie osłabiaj atomowego importu i nie uruchamiaj usług telekomunikacyjnych. Dopiero zmiana kodu wymaga CI PASS i nowego stabilnego APK. Tailscale pozostaje odłożony.

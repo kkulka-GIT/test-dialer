@@ -1,3 +1,7 @@
+# Ukończony checkpoint kopii historii odpornej na odtworzenie ekranu — 2026-10-27
+
+2026-10-27: eksport, odczyt kopii, podgląd i atomowe przywracanie pełnej historii są teraz prowadzone przez `HistoryBackupViewModel`, a nie executor należący do pojedynczej `MainActivity`. Obrót/odtworzenie ekranu zachowuje operację i podgląd, nie uruchamia odczytu ponownie i nie gubi końcowego komunikatu. Jawne anulowanie podglądu nadal niczego nie zapisuje; nie dodano `configChanges`, automatycznego importu ani usług telekomunikacyjnych. CI233 PASS: 257 testów, 0 failures/errors/skipped. Stabilny APK123301: `com.example.testdialer`, niedebugowalny, podpis zweryfikowany, stały certyfikat, rosnący versionCode. Raport `brain/reports/history-backup-lifecycle-20261027.md`.
+
 # Ukończony przegląd cyklu życia kopii zapasowych — 2026-10-27
 
 2026-10-27: statyczny przegląd zdalnego kodu wykazał, że eksport, odczyt importu i przywracanie historii korzystają z executora należącego do MainActivity, a onDestroy zawsze wywołuje shutdownNow. Obrót/odtworzenie Activity może więc przerwać operację lub zgubić jej podgląd/wynik. To konkretne ryzyko dla ochrony danych testera, ale nie zostało jeszcze potwierdzone testem ani naprawione. Następny checkpoint powinien przenieść stan operacji poza pojedynczą Activity, zachować jawny postęp/wynik po recreation i nie używać configChanges jako obejścia. Bez zmian kodu, CI i APK. Raport brain/reports/backup-lifecycle-review-20261027.md.
