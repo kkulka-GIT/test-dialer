@@ -1,5 +1,7 @@
 # Decyzje projektowe
 
+- 2026-10-28: zapis nowego szablonu ma dedykowany `TemplateSaveViewModel`, ponieważ każdy retry tworzy nowy UUID, a Activity-local dialog mógł po recreation zgubić nazwę lub zakończenie operacji i skłonić testera do ponowienia zapisu. ViewModel zachowuje draft, kursor, busy, błąd i sukces; busy odrzuca duplikat. Zapis pozostaje jawny i nie uruchamia usług. Nie rozszerzamy wzorca mechanicznie na usunięcie szablonu lub inicjalizację adnotacji bez osobnego dowodu ryzyka. Śmierć procesu i fizyczny obrót pozostają NOT TESTED.
+
 - 2026-10-27: przygotowanie powtórki historycznej sesji ma dedykowany `SessionRepeatViewModel`, ponieważ odczyt sesji i budowa planu na executorze Activity mogły zostać przerwane albo zgubić podgląd przy recreation. ViewModel zachowuje jedną operację i gotowy `LocalScenario`; duplikaty są odrzucane. Activity nadal wymaga jawnego wyboru „Przygotuj nową sesję” albo „Zapisz plan”. Nie kopiujemy wyników, ocen ani notatek i nie uruchamiamy usług automatycznie. Śmierć procesu pozostaje poza zakresem.
 
 - 2026-10-27: porównanie sesji ma dedykowany `RunComparisonViewModel`, ponieważ odczyt dwóch snapshotów, ręcznych ocen i przygotowanie TXT na executorze Activity mogły zostać przerwane albo zgubić wynik przy recreation. ViewModel zachowuje jedną operację, gotowe porównanie i stan filtra „tylko różnice”; duplikaty są odrzucane. Activity odpowiada za dialog, komunikat głosowy i uruchomienie choosera. Nie zmieniono algorytmu porównania ani nie uznano różnic za automatyczną regresję lub dowód naliczenia.

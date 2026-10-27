@@ -1,3 +1,7 @@
+# Następny krok po trwałości zapisu szablonu — 2026-10-28
+
+Najpierw odśwież zdalny SHA, PR i CI. Zapis szablonu jest ukończony na CI248 PASS / APK124801. Nie przenoś mechanicznie usuwania szablonu ani inicjalizacji adnotacji do kolejnych ViewModeli: nie wykazano tam porównywalnego ryzyka utworzenia duplikatu. Wybierz kolejny mały checkpoint tylko po potwierdzeniu konkretnej korzyści dla GUI, niezawodności lub korelacji. Tailscale pozostaje odłożony zgodnie z późniejszym priorytetem użytkownika. Fizyczny obrót, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny krok po trwałości przygotowania powtórki — 2026-10-27
 
 Najpierw odśwież zdalny SHA, PR i CI. Przygotowanie powtórki jest ukończone na CI246 PASS / APK124601. Nie przenoś mechanicznie kolejnych operacji z `reportExecutor`; zapisy adnotacji i mutacje szablonów wymagają odrębnego dowodu ryzyka. Wybierz mały checkpoint tylko na podstawie konkretnej korzyści GUI, niezawodności lub korelacji. Tailscale pozostaje odłożony. Fizyczny obrót, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.

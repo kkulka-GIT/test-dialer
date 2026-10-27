@@ -1,3 +1,7 @@
+# Ukończony checkpoint zapisu szablonu odporny na odtworzenie ekranu — 2026-10-28
+
+2026-10-28: nazwa, pozycja kursora, stan operacji i wynik zapisu szablonu są prowadzone przez `TemplateSaveViewModel`. Obrót/odtworzenie Activity nie przerywa zapisu i nie ukrywa powodzenia, więc tester nie musi ponawiać operacji i nie tworzy przypadkiem drugiego szablonu z nowym UUID. Zapis nadal wymaga jawnej decyzji i nie uruchamia Voice/SMS/Data. CI247 zatrzymał się na brakującym imporcie `assertFalse` wyłącznie w nowym teście; po poprawce CI248 PASS: 274 testy, 0 failures/errors/skipped. Stabilny APK124801 zachowuje `com.example.testdialer`, stały certyfikat, jest niedebugowalny i ma wyższy versionCode. Raport `brain/reports/template-save-lifecycle-20261028.md`.
+
 # Ukończony checkpoint przygotowania powtórki odporny na odtworzenie ekranu — 2026-10-27
 
 2026-10-27: przygotowanie planu powtórki historycznej sesji jest prowadzone przez `SessionRepeatViewModel`. Obrót/odtworzenie Activity nie przerywa odczytu, nie uruchamia go ponownie i nie gubi jawnego podglądu. Nowa sesja nadal powstaje wyłącznie po decyzji testera; wyniki, oceny i notatki nie są kopiowane. CI246 PASS: 271 testów, 0 failures/errors; stabilny APK124601 zachowuje `com.example.testdialer`, stały certyfikat i rosnący versionCode. Raport `brain/reports/session-repeat-lifecycle-20261027.md`.
