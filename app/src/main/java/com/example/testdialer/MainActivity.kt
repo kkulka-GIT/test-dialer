@@ -156,6 +156,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var templateBackupViewModel: com.example.testdialer.backup.TemplateBackupViewModel
     private lateinit var reportExportViewModel: com.example.testdialer.report.ReportExportViewModel
     private lateinit var runComparisonViewModel: com.example.testdialer.report.RunComparisonViewModel
+    private lateinit var sessionRepeatViewModel: com.example.testdialer.active.SessionRepeatViewModel
     private var runNoteDialog: AlertDialog? = null
     private var runNoteInput: NoteEditText? = null
     private var updatingRunNoteInput = false
@@ -173,6 +174,8 @@ class MainActivity : ComponentActivity() {
     private var reportExportProgressDialog: AlertDialog? = null
     private var runComparisonProgressDialog: AlertDialog? = null
     private var runComparisonDialog: AlertDialog? = null
+    private var sessionRepeatProgressDialog: AlertDialog? = null
+    private var sessionRepeatDialog: AlertDialog? = null
     private var runComparisonText: TextView? = null
     private var runComparisonToggle: Button? = null
     private var manualSessionState = ManualSessionUiState()
@@ -265,6 +268,7 @@ class MainActivity : ComponentActivity() {
         templateBackupViewModel = ViewModelProvider(this)[com.example.testdialer.backup.TemplateBackupViewModel::class.java]
         reportExportViewModel = ViewModelProvider(this)[com.example.testdialer.report.ReportExportViewModel::class.java]
         runComparisonViewModel = ViewModelProvider(this)[com.example.testdialer.report.RunComparisonViewModel::class.java]
+        sessionRepeatViewModel = ViewModelProvider(this)[com.example.testdialer.active.SessionRepeatViewModel::class.java]
         executionFocused = savedInstanceState?.getBoolean("executionFocused") ?: false
         lastSpokenKey = savedInstanceState?.getString("lastSpokenKey")
         registerPage = savedInstanceState?.getInt("registerPage", 0)?.coerceAtLeast(0) ?: 0
@@ -407,6 +411,7 @@ class MainActivity : ComponentActivity() {
         templateBackupViewModel.state.observe(this, ::renderTemplateBackupState)
         reportExportViewModel.state.observe(this, ::renderReportExportState)
         runComparisonViewModel.state.observe(this, ::renderRunComparisonState)
+        sessionRepeatViewModel.state.observe(this, ::renderSessionRepeatState)
         runNoteEditorViewModel.state.observe(this, ::renderRunNoteEditor)
         billingReviewEditorViewModel.state.observe(this, ::renderBillingReviewEditor)
         onBackPressedDispatcher.addCallback(this) {
@@ -1609,17 +1614,43 @@ class MainActivity : ComponentActivity() {
         activeRunViewModel.executionInProgress() || manualSessionState.active != null || manualSessionState.busy || isTestTypeSwitchLocked()
 
     private fun prepareSessionRepeat(sourceId: RunId) {
-        if (repeatPreparationBlocked()) { templateTransferMessage("Najpierw zakończ bieżącą sesję lub test."); return }
-        if (reportBusy) return
-        reportBusy = true
-        reportExecutor.execute {
-            val result = runCatching {
-                val stored = (application as TestDialerApplication).testRunRepository.get(sourceId) ?: error("Sesja jest niedostępna.")
-                com.example.testdialer.active.SessionRepeatPlan.from(stored)
+        if (repeatPreparationBlocked()) {
+            templateTransferMessage("Najpierw zakończ bieżącą sesję lub test.")
+            return
+        }
+        sessionRepeatViewModel.load(sourceId)
+    }
+
+    private fun renderSessionRepeatState(state: com.example.testdialer.active.SessionRepeatState) {
+        when (state) {
+            com.example.testdialer.active.SessionRepeatState.Idle -> {
+                sessionRepeatProgressDialog?.dismiss()
+                sessionRepeatProgressDialog = null
+                sessionRepeatDialog?.dismiss()
+                sessionRepeatDialog = null
             }
-            runOnUiThread {
-                reportBusy = false
-                if (!isDestroyed && !isFinishing) result.fold(::showRepeatPlanPreview) { templateTransferMessage(it.message ?: "Nie udało się przygotować powtórki") }
+            is com.example.testdialer.active.SessionRepeatState.Loading -> {
+                sessionRepeatDialog?.dismiss()
+                sessionRepeatDialog = null
+                if (sessionRepeatProgressDialog?.isShowing != true) {
+                    sessionRepeatProgressDialog = AlertDialog.Builder(this)
+                        .setTitle("Powtórka sesji")
+                        .setMessage("Przygotowuję plan powtórki…")
+                        .setCancelable(false)
+                        .create()
+                        .also { it.show() }
+                }
+            }
+            is com.example.testdialer.active.SessionRepeatState.Ready -> {
+                sessionRepeatProgressDialog?.dismiss()
+                sessionRepeatProgressDialog = null
+                if (sessionRepeatDialog?.isShowing != true) showRepeatPlanPreview(state.plan)
+            }
+            is com.example.testdialer.active.SessionRepeatState.Failure -> {
+                sessionRepeatProgressDialog?.dismiss()
+                sessionRepeatProgressDialog = null
+                templateTransferMessage(state.message)
+                sessionRepeatViewModel.acknowledgeFailure()
             }
         }
     }
@@ -1628,17 +1659,24 @@ class MainActivity : ComponentActivity() {
         val summary = plan.steps.joinToString("\n") { step -> step.title + if (step.action is TestAction.Data) {
             plan.dataAmounts[step.id]?.let { " · $it B" } ?: " · ilość do podania"
         } else "" }
-        AlertDialog.Builder(this).setTitle("Plan powtórki")
+        sessionRepeatDialog = AlertDialog.Builder(this).setTitle("Plan powtórki")
             .setMessage("${plan.name}\n\n$summary\n\nNowa sesja zachowa parametry zapisanych zdarzeń. Wyniki, oceny i notatki pozostają w poprzedniej sesji. Każdą usługę uruchamiasz osobno z formularza.")
             .setPositiveButton("Przygotuj nową sesję") { _, _ ->
+                sessionRepeatViewModel.dismiss()
                 if (repeatPreparationBlocked()) templateTransferMessage("Najpierw zakończ bieżącą sesję lub test.")
                 else {
                     setExecutionFocus(false)
                     activeRunViewModel.startScenario(plan)
                     showSection(AppSection.TEST)
                 }
-            }.setNeutralButton("Zapisz plan") { _, _ -> saveScenarioPlan(plan) }
-            .setNegativeButton("Anuluj", null).show()
+            }.setNeutralButton("Zapisz plan") { _, _ ->
+                sessionRepeatViewModel.dismiss()
+                saveScenarioPlan(plan)
+            }
+            .setNegativeButton("Anuluj") { _, _ -> sessionRepeatViewModel.dismiss() }
+            .setOnCancelListener { sessionRepeatViewModel.dismiss() }
+            .create()
+            .also { it.show() }
     }
 
     private fun saveScenarioPlan(plan: com.example.testdialer.active.LocalScenario) {
