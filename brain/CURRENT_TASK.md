@@ -1,3 +1,7 @@
+# Ukończony checkpoint dostępnego wejścia do ustawień i kopii — 2026-10-27
+
+2026-10-27: przycisk „Ustawienia” w nagłówku zachowuje krótki napis, ale TalkBack ogłasza teraz „Ustawienia i kopie zapasowe”. Opis obejmuje wspólne wejście do wyglądu, głosu, planów, szablonów oraz kopii historii i nie ukrywa najważniejszej funkcji ochrony danych testera. CI226 PASS: 255 testów, stabilny APK122601, stały certyfikat i applicationId. CI223–225 wykryły skrócenie MainActivity podczas zapisu przez API; pełne źródło odtworzono z ostatniego zielonego checkpointu, a pipeline zachowuje teraz log Gradle jako artefakt także przy wczesnej awarii. Raport brain/reports/settings-backup-accessibility-20261027.md.
+
 # Ukończony audyt aktualności decyzji — 2026-10-26
 
 2026-10-26: oznaczono jako historyczne trzy nieaktualne decyzje, które mogły skierować kolejną sesję na debug APK albo dawną ścieżkę Data opartą wyłącznie na `activeNetwork`. Obowiązuje stabilny release ze stałym podpisem oraz późniejsza decyzja o kontrolowanym `requestNetwork(CELLULAR, INTERNET, NOT_VPN)`. To zmiana wyłącznie dokumentacyjna: bez kodu, CI i nowego APK. Raport brain/reports/decision-freshness-audit-20261026.md.

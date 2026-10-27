@@ -1,3 +1,7 @@
+# Następny krok po checkpointcie dostępnego wejścia — 2026-10-27
+
+Najpierw odśwież zdalny SHA, PR i CI. Checkpoint opisu „Ustawienia i kopie zapasowe” jest ukończony na CI226 PASS / APK122601. Następnie oceń konkretną potrzebę GUI lub niezawodności na podstawie pracy testera; nie rozszerzaj opisów dla samej aktywności. Przy zapisie dużych plików przez API nigdy nie używaj przyciętego tekstu prezentacyjnego: bazuj na pełnym payloadzie, sprawdzaj liczbę linii i pozwól CI wykryć różnicę. Tailscale pozostaje odłożony. Fizyczny TalkBack/TTS i upgrade z retencją pozostają osobnym odbiorem.
+
 # Następne wartościowe kroki
 
 Audyt decyzji z 2026-10-26 oznaczył jako historyczne dawne zapisy o debug APK i `activeNetwork`; obowiązują stabilny release oraz późniejsza decyzja o kontrolowanym `requestNetwork`. Raport: reports/decision-freshness-audit-20261026.md. Następna tura nadal zaczyna się od odświeżenia PR/CI i oceny konkretnej potrzeby GUI lub niezawodności; nie tworzyć zmiany wyłącznie dla aktywności.
