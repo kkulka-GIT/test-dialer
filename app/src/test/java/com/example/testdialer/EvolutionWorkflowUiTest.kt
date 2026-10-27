@@ -380,11 +380,16 @@ class EvolutionWorkflowUiTest {
 
         viewModel.readImport(Uri.fromFile(file))
         await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
-        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        await { ShadowAlertDialog.getLatestAlertDialog()?.isShowing == true }
+        val cancelledPreview = ShadowAlertDialog.getLatestAlertDialog()
+        cancelledPreview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
         assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
 
         viewModel.readImport(Uri.fromFile(file))
         await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
+        await {
+            ShadowAlertDialog.getLatestAlertDialog()?.let { it !== cancelledPreview && it.isShowing } == true
+        }
         ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
         assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
