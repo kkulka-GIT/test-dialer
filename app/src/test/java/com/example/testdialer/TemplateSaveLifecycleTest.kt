@@ -8,6 +8,7 @@ import com.example.testdialer.domain.TestAction
 import com.example.testdialer.templates.TemplateSaveUiState
 import com.example.testdialer.templates.TemplateSaveViewModel
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
