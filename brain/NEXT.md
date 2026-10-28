@@ -1,3 +1,7 @@
+# Następny krok po trwałości kursora formularzy wykonania — 2026-10-28
+
+Najpierw odśwież zdalny SHA, PR i CI. Pozycje kursora Voice/SMS/Data są ukończone na CI251 PASS / APK125101. Nie zmieniaj bez osobnego uzasadnienia istniejącej semantyki selektora usług: wybór innego typu otwiera jego świeży formularz. Wybierz kolejny mały checkpoint tylko na podstawie konkretnej korzyści GUI, niezawodności lub korelacji; godzinna tura nie wymaga commitu. Tailscale pozostaje odłożony. Fizyczny obrót, klawiatura ekranowa, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
+
 # Następny krok po trwałości zapisu szablonu — 2026-10-28
 
 Najpierw odśwież zdalny SHA, PR i CI. Zapis szablonu jest ukończony na CI248 PASS / APK124801. Nie przenoś mechanicznie usuwania szablonu ani inicjalizacji adnotacji do kolejnych ViewModeli: nie wykazano tam porównywalnego ryzyka utworzenia duplikatu. Wybierz kolejny mały checkpoint tylko po potwierdzeniu konkretnej korzyści dla GUI, niezawodności lub korelacji. Tailscale pozostaje odłożony zgodnie z późniejszym priorytetem użytkownika. Fizyczny obrót, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.
