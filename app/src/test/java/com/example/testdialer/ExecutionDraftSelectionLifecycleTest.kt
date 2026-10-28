@@ -45,6 +45,25 @@ class ExecutionDraftSelectionLifecycleTest {
         )
     }
 
+    @Test
+    fun `switching service tabs keeps unfinished SMS draft and cursor`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        findButton(activity, activity.getString(R.string.sms_type)).performClick()
+        findInput(activity, activity.getString(R.string.sms_message_hint)).apply {
+            setText("Wiadomość do poprawienia")
+            setSelection(9)
+        }
+
+        findButton(activity, activity.getString(R.string.data_type)).performClick()
+        findButton(activity, activity.getString(R.string.sms_type)).performClick()
+
+        val restored = findInput(activity, activity.getString(R.string.sms_message_hint))
+        assertEquals("Wiadomość do poprawienia", restored.text.toString())
+        assertEquals(9, restored.selectionStart)
+        controller.pause().stop().destroy()
+    }
+
     private fun assertCursorSurvives(typeLabel: Int, inputHint: Int, value: String, selection: Int) {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()

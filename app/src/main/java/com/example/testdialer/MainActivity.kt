@@ -2740,7 +2740,6 @@ class MainActivity : ComponentActivity() {
             setOnClickListener {
                 if (isTestTypeSwitchLocked()) return@setOnClickListener
                 selectedActiveTaskId = null
-                clearDraft(type)
                 currentTestType = type
                 updateTestTypeChips()
                 renderScenario(type)
