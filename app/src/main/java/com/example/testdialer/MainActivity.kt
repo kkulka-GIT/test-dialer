@@ -129,6 +129,10 @@ class MainActivity : ComponentActivity() {
     private var dataAmountDraft = "1"
     private var dataUnitDraft = "MB"
     private var runNameDraft = ""
+    private var manualSessionNameDraft = ""
+    private var manualSessionTargetDraft = ""
+    private var manualSessionNameSelection = Int.MAX_VALUE
+    private var manualSessionTargetSelection = Int.MAX_VALUE
     private val sectionButtons = mutableMapOf<AppSection, Button>()
     private val testTypeButtons = mutableMapOf<TestType, Button>()
     private lateinit var contentHost: FrameLayout
@@ -301,6 +305,12 @@ class MainActivity : ComponentActivity() {
         dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
         dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
         runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
+        manualSessionNameDraft = savedInstanceState?.getString(STATE_MANUAL_SESSION_NAME_DRAFT).orEmpty()
+        manualSessionTargetDraft = savedInstanceState?.getString(STATE_MANUAL_SESSION_TARGET_DRAFT).orEmpty()
+        manualSessionNameSelection =
+            savedInstanceState?.getInt(STATE_MANUAL_SESSION_NAME_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        manualSessionTargetSelection =
+            savedInstanceState?.getInt(STATE_MANUAL_SESSION_TARGET_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
         pendingPhoneNumber = savedInstanceState?.getString(STATE_PENDING_PHONE)
         pendingTestName = savedInstanceState?.getString(STATE_PENDING_NAME)
         dialerWasOpened = savedInstanceState?.getBoolean(STATE_DIALER_OPENED) ?: false
@@ -523,6 +533,10 @@ class MainActivity : ComponentActivity() {
         outState.putString("dataAmountDraft", dataAmountDraft)
         outState.putString("dataUnitDraft", dataUnitDraft)
         outState.putString("runNameDraft", runNameDraft)
+        outState.putString(STATE_MANUAL_SESSION_NAME_DRAFT, manualSessionNameDraft)
+        outState.putString(STATE_MANUAL_SESSION_TARGET_DRAFT, manualSessionTargetDraft)
+        outState.putInt(STATE_MANUAL_SESSION_NAME_SELECTION, manualSessionNameSelection)
+        outState.putInt(STATE_MANUAL_SESSION_TARGET_SELECTION, manualSessionTargetSelection)
         outState.putString(STATE_PENDING_PHONE, pendingPhoneNumber)
         outState.putString(STATE_PENDING_NAME, pendingTestName)
         outState.putBoolean(STATE_DIALER_OPENED, dialerWasOpened)
@@ -1087,8 +1101,22 @@ class MainActivity : ComponentActivity() {
 
             val active = state.active
             if (active == null) {
-                val nameInput = createOptionalInput(getString(R.string.manual_session_name_hint))
-                val targetInput = createOptionalInput(getString(R.string.manual_session_target_hint))
+                val nameInput = createOptionalInput(getString(R.string.manual_session_name_hint)).apply {
+                    setText(manualSessionNameDraft)
+                    setSelection(manualSessionNameSelection.coerceIn(0, text.length))
+                    trackDraft { value, selection ->
+                        manualSessionNameDraft = value
+                        manualSessionNameSelection = selection
+                    }
+                }
+                val targetInput = createOptionalInput(getString(R.string.manual_session_target_hint)).apply {
+                    setText(manualSessionTargetDraft)
+                    setSelection(manualSessionTargetSelection.coerceIn(0, text.length))
+                    trackDraft { value, selection ->
+                        manualSessionTargetDraft = value
+                        manualSessionTargetSelection = selection
+                    }
+                }
                 addView(nameInput)
                 addView(spaceVertical(dimen(10)))
                 addView(targetInput)
@@ -1116,6 +1144,7 @@ class MainActivity : ComponentActivity() {
                     }
                 })
             } else {
+                clearManualSessionDraft()
                 val run = active.stored.run
                 addView(createBodyText(getString(R.string.manual_session_active, active.stored.scenario.name)))
                 addView(spaceVertical(dimen(6)))
@@ -1158,6 +1187,13 @@ class MainActivity : ComponentActivity() {
                 })
             }
         })
+    }
+
+    private fun clearManualSessionDraft() {
+        manualSessionNameDraft = ""
+        manualSessionTargetDraft = ""
+        manualSessionNameSelection = Int.MAX_VALUE
+        manualSessionTargetSelection = Int.MAX_VALUE
     }
 
     private fun TestType.toServiceType(): ServiceType = when (this) {
@@ -3581,6 +3617,10 @@ class MainActivity : ComponentActivity() {
     private fun dimen(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val STATE_MANUAL_SESSION_NAME_DRAFT = "manualSessionNameDraft"
+        const val STATE_MANUAL_SESSION_TARGET_DRAFT = "manualSessionTargetDraft"
+        const val STATE_MANUAL_SESSION_NAME_SELECTION = "manualSessionNameSelection"
+        const val STATE_MANUAL_SESSION_TARGET_SELECTION = "manualSessionTargetSelection"
         const val STATE_PENDING_PHONE = "pendingPhone"
         const val STATE_PENDING_NAME = "pendingName"
         const val STATE_DIALER_OPENED = "dialerOpened"
