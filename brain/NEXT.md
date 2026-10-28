@@ -1,3 +1,12 @@
+# Następny krok po ochronie draftu ręcznej sesji — 2026-10-28
+
+1. Najpierw odświeżyć zdalny head PR #21 i stan CI; nie dublować checkpointu zakończonego w CI #253.
+2. Nie utrwalać niewysłanego szkicu ręcznej sesji w bazie ani po śmierci procesu bez osobnej decyzji o prywatności i znaczeniu produktu. Brak kliknięcia „Rozpocznij” nadal oznacza brak sesji.
+3. Wybrać kolejny mały checkpoint na podstawie konkretnego ryzyka błędu lub straty czasu testera; nie rozbudowywać mechanizmu draftów w ogólny framework.
+4. Odbiór zbiorczy na telefonie powinien objąć ręczną sesję z otwartą klawiaturą, obrót, TalkBack/TTS, śmierć procesu oraz aktualizację z zachowaniem historii. Tailscale pozostaje odłożony.
+
+---
+
 # Następny krok po zachowaniu draftów między usługami — 2026-10-28
 
 1. Najpierw odświeżyć zdalny head PR #21 i stan CI; nie dublować checkpointu zakończonego w CI #252.

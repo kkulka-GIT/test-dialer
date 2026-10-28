@@ -1,3 +1,15 @@
+# Ukończony checkpoint draftu ręcznej sesji — 2026-10-28
+
+2026-10-28: nazwa i cel przygotowywanej ręcznej sesji oraz pozycje kursora przeżywają odtworzenie Activity. Obrót ekranu przed kliknięciem „Rozpocznij” nie wymusza ponownego wpisywania danych. Szkic nie uruchamia sesji ani nie zapisuje faktu; po poprawnym rozpoczęciu aktywnej sesji jest czyszczony.
+
+Implementacja: stan czterech wartości jest zapisywany wyłącznie w saved instance state Activity i odtwarzany w istniejącym formularzu. Dodano regresję z obrotem dla nazwy, celu i obu kursorów. Nie zmieniono repozytorium, modelu sesji, Voice/SMS/Data ani historii.
+
+Weryfikacja: commit `f45fa47764d70dbed0edd27312bf7e270aba237c`; CI #253 / run 40636764091 PASS; 279 testów, 0 failures/errors/skipped. Stabilny APK125301: `com.example.testdialer`, `versionName 1.0.125301`, `debuggable=false`, podpis zweryfikowany, certyfikat SHA-256 `64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11`; pobrany APK ma zgodny SHA-256 `cf0e01fb8dea5003c8d99eeff158c828459514ab214dc110a408a7d31ac2e292`.
+
+Nie zweryfikowano fizycznego obrotu, klawiatury ekranowej, TalkBack/TTS, śmierci procesu ani aktualizacji z zachowaniem danych. Nie uruchomiono rzeczywistych usług. Szczegóły: `brain/reports/manual-session-draft-lifecycle-20261028.md`.
+
+---
+
 # Ukończony checkpoint zachowania draftów przy przełączaniu usług — 2026-10-28
 
 2026-10-28: zwykłe zakładki Voice, SMS i Data zachowują niedokończony formularz oraz pozycję kursora właściwą dla każdej usługi. Tester może zajrzeć do innej usługi i wrócić bez ponownego wpisywania numeru, treści SMS albo adresu Data. Jawna akcja „Dodaj test” nadal otwiera świeży formularz, a istniejące reguły zakończenia lub anulowania wykonania pozostają bez zmian.

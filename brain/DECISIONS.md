@@ -1,5 +1,10 @@
 # Decyzje projektowe
 
+## Niewysłany draft ręcznej sesji przeżywa tylko odtworzenie Activity — 2026-10-28
+
+Nazwa i cel formularza ręcznej sesji oraz pozycje kursora są stanem roboczym interfejsu. Android saved instance state zachowuje je podczas recreation Activity, aby obrót nie wymuszał ponownego wpisywania. Sam szkic nie tworzy sesji, zdarzenia ani historii. Po pojawieniu się poprawnie rozpoczętej aktywnej sesji jest czyszczony. Nie zapisujemy go w Room ani SharedPreferences i nie obiecujemy retencji po śmierci procesu; szersze utrwalanie wymaga osobnej decyzji o prywatności i oczekiwanym znaczeniu.
+
+
 ## Nawigacja między usługami zachowuje niedokończone formularze — 2026-10-28
 
 Zwykłe chipy Voice/SMS/Data są nawigacją między formularzami, a nie poleceniem rozpoczęcia nowego testu. Zachowują osobny niedokończony draft i pozycję kursora każdej usługi, aby chwilowe sprawdzenie innego formularza nie wymuszało ponownego wpisywania danych. Jawne „Dodaj test” nadal czyści docelowy draft i otwiera świeży formularz. Aktywne lub oczekujące na obserwację wykonanie zachowuje istniejące blokady; zmiana niczego automatycznie nie uruchamia i nie zmienia historii.
