@@ -1,3 +1,12 @@
+# Następny krok po ochronie nazwy nowego Runu — 2026-10-28
+
+1. Najpierw odświeżyć zdalny head PR #21 i stan CI; nie dublować checkpointu zakończonego w CI #254.
+2. Nie utrwalać niewysłanej nazwy w Room ani po śmierci procesu bez osobnej decyzji o prywatności i znaczeniu produktu. Brak udanego startu nadal oznacza brak nowej sesji.
+3. Nie rozbudowywać pojedynczych draftów w ogólny framework. Wybrać następny mały checkpoint wyłącznie na podstawie konkretnego ryzyka błędu, straty czasu lub jakości korelacji.
+4. Odbiór zbiorczy na telefonie powinien objąć nazwę Runu z otwartą klawiaturą, obrót, nieudany i udany start, TalkBack/TTS, śmierć procesu oraz aktualizację z zachowaniem historii. Tailscale pozostaje odłożony.
+
+---
+
 # Następny krok po ochronie draftu ręcznej sesji — 2026-10-28
 
 1. Najpierw odświeżyć zdalny head PR #21 i stan CI; nie dublować checkpointu zakończonego w CI #253.

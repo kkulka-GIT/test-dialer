@@ -1,3 +1,15 @@
+# Ukończony checkpoint nazwy nowej sesji — 2026-10-28
+
+2026-10-28: nazwa przygotowywanego nowego Runu oraz dokładna pozycja kursora przeżywają odtworzenie Activity. Po potwierdzonym utworzeniu sesji szkic jest czyszczony, więc stara nazwa nie wraca przypadkiem przy następnym Runie. Nieudany start nie czyści wpisu i nie wymusza ponownego pisania.
+
+Implementacja: dodano saved instance state dla pozycji kursora pola nazwy oraz czyszczenie szkicu wyłącznie przy przejściu stanu z braku aktywnego Runu do poprawnie utworzonego Runu. Dodano dwie regresje: recreation z kursorem oraz czyszczenie po udanym starcie. Nie zmieniono modelu historii, parametrów Voice/SMS/Data, routingu ani znaczenia zapisanych faktów.
+
+Weryfikacja: commit `805f614d7ea4984e67fe07102d73cd734ed25540`; CI #254 / run 40642416286 PASS, wszystkie kroki testów, release, podpisu/tożsamości, cleanup i uploadu zakończone powodzeniem. Zestaw ma 281 testów (279 z CI253 oraz 2 nowe regresje), bez błędu pipeline. Stabilny APK125401: `com.example.testdialer`, `versionCode 125401`, `debuggable=false`, certyfikat SHA-256 `64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11`, APK SHA-256 `5055a0a7b6f955946964c09655f626236f9790415bcdd7c206d5b7cffce22ba7`. Artefakt GitHub: 12796411217.
+
+Nie zweryfikowano fizycznego obrotu z klawiaturą, TalkBack/TTS, śmierci procesu ani aktualizacji z zachowaniem danych. Nie uruchomiono rzeczywistych usług. Lokalne pobranie ZIP artefaktu było chwilowo niedostępne z błędem 503; wartości APK pochodzą z zakończonego powodzeniem kroku weryfikacji CI. Szczegóły: `brain/reports/run-name-draft-lifecycle-20261028.md`.
+
+---
+
 # Ukończony checkpoint draftu ręcznej sesji — 2026-10-28
 
 2026-10-28: nazwa i cel przygotowywanej ręcznej sesji oraz pozycje kursora przeżywają odtworzenie Activity. Obrót ekranu przed kliknięciem „Rozpocznij” nie wymusza ponownego wpisywania danych. Szkic nie uruchamia sesji ani nie zapisuje faktu; po poprawnym rozpoczęciu aktywnej sesji jest czyszczony.

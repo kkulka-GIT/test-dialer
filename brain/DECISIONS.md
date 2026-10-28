@@ -1,5 +1,9 @@
 # Decyzje projektowe
 
+## Nazwa nowego Runu jest czyszczona dopiero po potwierdzonym starcie — 2026-10-28
+
+Nazwa i pozycja kursora są roboczym stanem formularza. Saved instance state chroni je podczas recreation Activity, ale szkic nie jest faktem wykonania i nie trafia do Room ani historii. Czyścimy go tylko przy przejściu do poprawnie utworzonego aktywnego Runu. Błąd startu zachowuje wpis, a sukces usuwa starą nazwę, aby następna sesja nie odziedziczyła jej przypadkiem. Nie obiecujemy retencji po śmierci procesu i nie tworzymy ogólnego frameworka draftów.
+
 ## Niewysłany draft ręcznej sesji przeżywa tylko odtworzenie Activity — 2026-10-28
 
 Nazwa i cel formularza ręcznej sesji oraz pozycje kursora są stanem roboczym interfejsu. Android saved instance state zachowuje je podczas recreation Activity, aby obrót nie wymuszał ponownego wpisywania. Sam szkic nie tworzy sesji, zdarzenia ani historii. Po pojawieniu się poprawnie rozpoczętej aktywnej sesji jest czyszczony. Nie zapisujemy go w Room ani SharedPreferences i nie obiecujemy retencji po śmierci procesu; szersze utrwalanie wymaga osobnej decyzji o prywatności i oczekiwanym znaczeniu.
