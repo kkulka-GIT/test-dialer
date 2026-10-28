@@ -140,8 +140,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var runHomeView: RunHomeView
     private lateinit var testScenarioHost: LinearLayout
     private lateinit var voiceStatusText: TextView
-    private lateinit var voicePhoneInput: EditText
-    private lateinit var voiceNameInput: EditText
+    private lateinit var voicePhoneInput: NoteEditText
+    private lateinit var voiceNameInput: NoteEditText
     private var networkCallbackRegistered = false
     private var currentSection = AppSection.TEST
     private var currentTestType = TestType.VOICE
@@ -202,6 +202,14 @@ class MainActivity : ComponentActivity() {
     private var smsMessageDraft: String? = null
     private var dataLabelDraft: String? = null
     private var dataUrlDraft: String? = null
+    private var voiceNameSelection = Int.MAX_VALUE
+    private var voicePhoneSelection = Int.MAX_VALUE
+    private var smsLabelSelection = Int.MAX_VALUE
+    private var smsDestinationSelection = Int.MAX_VALUE
+    private var smsMessageSelection = Int.MAX_VALUE
+    private var dataLabelSelection = Int.MAX_VALUE
+    private var dataUrlSelection = Int.MAX_VALUE
+    private var dataAmountSelection = Int.MAX_VALUE
 
     private val connectivityManager by lazy {
         getSystemService(ConnectivityManager::class.java)
@@ -305,6 +313,14 @@ class MainActivity : ComponentActivity() {
         smsMessageDraft = savedInstanceState?.getString(STATE_SMS_MESSAGE_DRAFT)
         dataLabelDraft = savedInstanceState?.getString(STATE_DATA_LABEL_DRAFT)
         dataUrlDraft = savedInstanceState?.getString(STATE_DATA_URL_DRAFT)
+        voiceNameSelection = savedInstanceState?.getInt(STATE_VOICE_NAME_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        voicePhoneSelection = savedInstanceState?.getInt(STATE_VOICE_PHONE_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        smsLabelSelection = savedInstanceState?.getInt(STATE_SMS_LABEL_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        smsDestinationSelection = savedInstanceState?.getInt(STATE_SMS_DESTINATION_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        smsMessageSelection = savedInstanceState?.getInt(STATE_SMS_MESSAGE_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        dataLabelSelection = savedInstanceState?.getInt(STATE_DATA_LABEL_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        dataUrlSelection = savedInstanceState?.getInt(STATE_DATA_URL_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
+        dataAmountSelection = savedInstanceState?.getInt(STATE_DATA_AMOUNT_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
         selectedActiveTaskId = savedInstanceState?.getString(STATE_ACTIVE_TASK_ID)?.let(::StepId)
         currentSection = savedInstanceState?.getString(STATE_CURRENT_SECTION)
             ?.let { saved -> AppSection.entries.firstOrNull { it.name == saved } }
@@ -519,6 +535,14 @@ class MainActivity : ComponentActivity() {
         outState.putString(STATE_SMS_MESSAGE_DRAFT, smsMessageDraft)
         outState.putString(STATE_DATA_LABEL_DRAFT, dataLabelDraft)
         outState.putString(STATE_DATA_URL_DRAFT, dataUrlDraft)
+        outState.putInt(STATE_VOICE_NAME_SELECTION, voiceNameSelection)
+        outState.putInt(STATE_VOICE_PHONE_SELECTION, voicePhoneSelection)
+        outState.putInt(STATE_SMS_LABEL_SELECTION, smsLabelSelection)
+        outState.putInt(STATE_SMS_DESTINATION_SELECTION, smsDestinationSelection)
+        outState.putInt(STATE_SMS_MESSAGE_SELECTION, smsMessageSelection)
+        outState.putInt(STATE_DATA_LABEL_SELECTION, dataLabelSelection)
+        outState.putInt(STATE_DATA_URL_SELECTION, dataUrlSelection)
+        outState.putInt(STATE_DATA_AMOUNT_SELECTION, dataAmountSelection)
         outState.putString(STATE_CURRENT_SECTION, currentSection.name)
         outState.putString(STATE_CURRENT_TEST_TYPE, currentTestType.name)
         outState.putString(STATE_ACTIVE_TASK_ID, selectedActiveTaskId?.value)
@@ -902,17 +926,25 @@ class MainActivity : ComponentActivity() {
                 pendingTestName = null
                 voiceNameDraft = null
                 voicePhoneDraft = action.destination
+                voiceNameSelection = Int.MAX_VALUE
+                voicePhoneSelection = Int.MAX_VALUE
             }
             is TestAction.Sms -> {
                 guidedSmsViewModel.startAnother()
                 smsLabelDraft = null
                 smsDestinationDraft = action.destination
                 smsMessageDraft = action.message.orEmpty()
+                smsLabelSelection = Int.MAX_VALUE
+                smsDestinationSelection = Int.MAX_VALUE
+                smsMessageSelection = Int.MAX_VALUE
             }
             is TestAction.Data -> {
                 cellularDataViewModel.startAnother()
                 dataLabelDraft = null
                 dataUrlDraft = action.target
+                dataLabelSelection = Int.MAX_VALUE
+                dataUrlSelection = Int.MAX_VALUE
+                dataAmountSelection = Int.MAX_VALUE
                 activeRunState.active?.tasks?.firstOrNull { it.step.id == stepId }?.let { task ->
                     if (task.requestedBytes != null) { dataAmountDraft = task.requestedBytes.toString(); dataUnitDraft = "B" }
                     else if (task.requireDataAmountSelection) { dataAmountDraft = ""; dataUnitDraft = "MB" }
@@ -2306,6 +2338,7 @@ class MainActivity : ComponentActivity() {
     private fun applyTemplate(template: com.example.testdialer.templates.TestTemplate) {
         if (template.action is TestAction.Data) {
             dataAmountDraft = (template.requestedBytes ?: 1_000_000L).toString()
+            dataAmountSelection = Int.MAX_VALUE
             dataUnitDraft = "B"
         }
         openActiveTask(null, template.action)
@@ -2779,19 +2812,23 @@ class MainActivity : ComponentActivity() {
 
     private fun clearDraft(type: TestType) {
         when (type) {
-            TestType.VOICE -> { voiceNameDraft = null; voicePhoneDraft = null }
-            TestType.SMS -> { smsLabelDraft = null; smsDestinationDraft = null; smsMessageDraft = null }
-            TestType.DATA -> { dataLabelDraft = null; dataUrlDraft = null }
+            TestType.VOICE -> {
+                voiceNameDraft = null; voicePhoneDraft = null
+                voiceNameSelection = Int.MAX_VALUE; voicePhoneSelection = Int.MAX_VALUE
+            }
+            TestType.SMS -> {
+                smsLabelDraft = null; smsDestinationDraft = null; smsMessageDraft = null
+                smsLabelSelection = Int.MAX_VALUE; smsDestinationSelection = Int.MAX_VALUE; smsMessageSelection = Int.MAX_VALUE
+            }
+            TestType.DATA -> {
+                dataLabelDraft = null; dataUrlDraft = null
+                dataLabelSelection = Int.MAX_VALUE; dataUrlSelection = Int.MAX_VALUE; dataAmountSelection = Int.MAX_VALUE
+            }
         }
     }
 
-    private fun EditText.trackDraft(onChanged: (String) -> Unit) {
-        addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) =
-                onChanged(s?.toString().orEmpty())
-            override fun afterTextChanged(s: Editable?) = Unit
-        })
+    private fun NoteEditText.trackDraft(onChanged: (String, Int) -> Unit) {
+        draftChanged = onChanged
     }
 
     private fun optionalFields(label: String, content: LinearLayout.() -> Unit): View =
@@ -2883,17 +2920,20 @@ class MainActivity : ComponentActivity() {
             addView(spaceVertical(dimen(14)))
             val label = createOptionalInput(getString(R.string.data_label_hint)).apply {
                 setText(dataLabelDraft.orEmpty())
-                trackDraft { dataLabelDraft = it }
+                setSelection(dataLabelSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> dataLabelDraft = value; dataLabelSelection = selection }
             }
             val url = createOptionalInput(getString(R.string.data_url_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
                 setText(dataUrlDraft ?: (selectedTaskAction() as? TestAction.Data)?.target ?: com.example.testdialer.data.DataVolume.DEFAULT_URL)
-                trackDraft { dataUrlDraft = it }
+                setSelection(dataUrlSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> dataUrlDraft = value; dataUrlSelection = selection }
             }
             val amount = createOptionalInput(getString(R.string.data_amount_hint)).apply {
                 inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
                 setText(dataAmountDraft)
-                trackDraft { dataAmountDraft = it }
+                setSelection(dataAmountSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> dataAmountDraft = value; dataAmountSelection = selection }
             }
             val presets = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
             listOf(1, 100, 500).forEach { megabytes ->
@@ -2994,18 +3034,21 @@ class MainActivity : ComponentActivity() {
             val initialMessage = smsMessageDraft ?: taskAction?.message.orEmpty()
             val labelInput = createOptionalInput(getString(R.string.sms_label_hint)).apply {
                 setText(smsLabelDraft.orEmpty())
-                trackDraft { smsLabelDraft = it }
+                setSelection(smsLabelSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> smsLabelDraft = value; smsLabelSelection = selection }
             }
             val destinationInput = createPhoneInput(getString(R.string.sms_destination_hint)).apply {
                 setText(initialDestination)
-                trackDraft { smsDestinationDraft = it }
+                setSelection(smsDestinationSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> smsDestinationDraft = value; smsDestinationSelection = selection }
             }
             val messageInput = createOptionalInput(getString(R.string.sms_message_hint)).apply {
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
                 minLines = 2
                 gravity = Gravity.TOP
                 setText(initialMessage)
-                trackDraft { smsMessageDraft = it }
+                setSelection(smsMessageSelection.coerceIn(0, text.length))
+                trackDraft { value, selection -> smsMessageDraft = value; smsMessageSelection = selection }
             }
             addView(createInputLabel(destinationInput))
             addView(spaceVertical(dimen(6)))
@@ -3146,10 +3189,12 @@ class MainActivity : ComponentActivity() {
             addView(spaceVertical(dimen(14)))
             voiceNameInput = createOptionalInput(getString(R.string.voice_name_hint))
             voiceNameInput.setText(voiceNameDraft.orEmpty())
-            voiceNameInput.trackDraft { voiceNameDraft = it }
+            voiceNameInput.setSelection(voiceNameSelection.coerceIn(0, voiceNameInput.text.length))
+            voiceNameInput.trackDraft { value, selection -> voiceNameDraft = value; voiceNameSelection = selection }
             voicePhoneInput = createPhoneInput(getString(R.string.voice_number_hint))
             voicePhoneInput.setText(voicePhoneDraft ?: (selectedTaskAction() as? TestAction.Voice)?.destination.orEmpty())
-            voicePhoneInput.trackDraft { voicePhoneDraft = it }
+            voicePhoneInput.setSelection(voicePhoneSelection.coerceIn(0, voicePhoneInput.text.length))
+            voicePhoneInput.trackDraft { value, selection -> voicePhoneDraft = value; voicePhoneSelection = selection }
             addView(createInputLabel(voicePhoneInput))
             addView(spaceVertical(dimen(6)))
             addView(voicePhoneInput)
@@ -3328,8 +3373,8 @@ class MainActivity : ComponentActivity() {
         return createBodyText(input.hint.toString()).apply { labelFor = input.id }
     }
 
-    private fun createOptionalInput(hint: String): EditText {
-        return EditText(this).apply {
+    private fun createOptionalInput(hint: String): NoteEditText {
+        return NoteEditText(this).apply {
             this.hint = hint
             inputType = InputType.TYPE_CLASS_TEXT
             textSize = 16f
@@ -3342,8 +3387,8 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun createPhoneInput(hint: String): EditText {
-        return EditText(this).apply {
+    private fun createPhoneInput(hint: String): NoteEditText {
+        return NoteEditText(this).apply {
             this.hint = hint
             inputType = InputType.TYPE_CLASS_PHONE
             textSize = 18f
@@ -3543,6 +3588,14 @@ class MainActivity : ComponentActivity() {
         const val STATE_SMS_MESSAGE_DRAFT = "smsMessageDraft"
         const val STATE_DATA_LABEL_DRAFT = "dataLabelDraft"
         const val STATE_DATA_URL_DRAFT = "dataUrlDraft"
+        const val STATE_VOICE_NAME_SELECTION = "voiceNameSelection"
+        const val STATE_VOICE_PHONE_SELECTION = "voicePhoneSelection"
+        const val STATE_SMS_LABEL_SELECTION = "smsLabelSelection"
+        const val STATE_SMS_DESTINATION_SELECTION = "smsDestinationSelection"
+        const val STATE_SMS_MESSAGE_SELECTION = "smsMessageSelection"
+        const val STATE_DATA_LABEL_SELECTION = "dataLabelSelection"
+        const val STATE_DATA_URL_SELECTION = "dataUrlSelection"
+        const val STATE_DATA_AMOUNT_SELECTION = "dataAmountSelection"
     }
 
     private val ColorPalette get() = com.example.testdialer.ui.UiPalette(this)
