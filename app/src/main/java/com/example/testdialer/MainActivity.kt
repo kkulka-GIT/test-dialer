@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
     private var dataAmountDraft = "1"
     private var dataUnitDraft = "MB"
     private var runNameDraft = ""
+    private var runNameSelection = Int.MAX_VALUE
     private var manualSessionNameDraft = ""
     private var manualSessionTargetDraft = ""
     private var manualSessionNameSelection = Int.MAX_VALUE
@@ -305,6 +306,7 @@ class MainActivity : ComponentActivity() {
         dataAmountDraft = savedInstanceState?.getString("dataAmountDraft") ?: "1"
         dataUnitDraft = savedInstanceState?.getString("dataUnitDraft") ?: "MB"
         runNameDraft = savedInstanceState?.getString("runNameDraft").orEmpty()
+        runNameSelection = savedInstanceState?.getInt(STATE_RUN_NAME_SELECTION, Int.MAX_VALUE) ?: Int.MAX_VALUE
         manualSessionNameDraft = savedInstanceState?.getString(STATE_MANUAL_SESSION_NAME_DRAFT).orEmpty()
         manualSessionTargetDraft = savedInstanceState?.getString(STATE_MANUAL_SESSION_TARGET_DRAFT).orEmpty()
         manualSessionNameSelection =
@@ -422,6 +424,7 @@ class MainActivity : ComponentActivity() {
         }
         activeRunViewModel.state.observe(this) { state ->
             if (activeRunState.active != null && state.active == null) executionFocused = false
+            if (activeRunState.active == null && state.active != null) clearRunNameDraft()
             activeRunState = state
             renderActiveRun()
             if (state.active != null && !state.busy) {
@@ -533,6 +536,7 @@ class MainActivity : ComponentActivity() {
         outState.putString("dataAmountDraft", dataAmountDraft)
         outState.putString("dataUnitDraft", dataUnitDraft)
         outState.putString("runNameDraft", runNameDraft)
+        outState.putInt(STATE_RUN_NAME_SELECTION, runNameSelection)
         outState.putString(STATE_MANUAL_SESSION_NAME_DRAFT, manualSessionNameDraft)
         outState.putString(STATE_MANUAL_SESSION_TARGET_DRAFT, manualSessionTargetDraft)
         outState.putInt(STATE_MANUAL_SESSION_NAME_SELECTION, manualSessionNameSelection)
@@ -764,7 +768,11 @@ class MainActivity : ComponentActivity() {
                 addView(spaceVertical(dimen(12)))
                 val name = createOptionalInput(getString(R.string.run_name_hint)).apply {
                     setText(runNameDraft)
-                    trackDraft { runNameDraft = it }
+                    setSelection(runNameSelection.coerceIn(0, text.length))
+                    trackDraft { value, selection ->
+                        runNameDraft = value
+                        runNameSelection = selection
+                    }
                 }
                 addView(name)
                 addView(spaceVertical(dimen(10)))
@@ -1187,6 +1195,11 @@ class MainActivity : ComponentActivity() {
                 })
             }
         })
+    }
+
+    private fun clearRunNameDraft() {
+        runNameDraft = ""
+        runNameSelection = Int.MAX_VALUE
     }
 
     private fun clearManualSessionDraft() {
@@ -3617,6 +3630,7 @@ class MainActivity : ComponentActivity() {
     private fun dimen(dp: Int): Int = (dp * resources.displayMetrics.density).toInt()
 
     private companion object {
+        const val STATE_RUN_NAME_SELECTION = "runNameSelection"
         const val STATE_MANUAL_SESSION_NAME_DRAFT = "manualSessionNameDraft"
         const val STATE_MANUAL_SESSION_TARGET_DRAFT = "manualSessionTargetDraft"
         const val STATE_MANUAL_SESSION_NAME_SELECTION = "manualSessionNameSelection"
