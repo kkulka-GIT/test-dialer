@@ -16,37 +16,52 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 class ExecutionDraftSelectionLifecycleTest {
     @Test
-    fun `Voice SMS and Data draft cursors survive activity recreation`() {
+    fun `Voice draft cursor survives activity recreation`() {
+        assertCursorSurvives(
+            typeLabel = R.string.voice_type,
+            inputHint = R.string.voice_number_hint,
+            value = "+48123456789",
+            selection = 4,
+        )
+    }
+
+    @Test
+    fun `SMS draft cursor survives activity recreation`() {
+        assertCursorSurvives(
+            typeLabel = R.string.sms_type,
+            inputHint = R.string.sms_message_hint,
+            value = "Wiadomość kontrolna",
+            selection = 7,
+        )
+    }
+
+    @Test
+    fun `Data draft cursor survives activity recreation`() {
+        assertCursorSurvives(
+            typeLabel = R.string.data_type,
+            inputHint = R.string.data_url_hint,
+            value = "https://example.com/test.bin",
+            selection = 12,
+        )
+    }
+
+    private fun assertCursorSurvives(typeLabel: Int, inputHint: Int, value: String, selection: Int) {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
-
-        findButton(activity, activity.getString(R.string.voice_type)).performClick()
-        val voice = findInput(activity, activity.getString(R.string.voice_number_hint))
-        voice.setText("+48123456789")
-        voice.setSelection(4)
-
-        findButton(activity, activity.getString(R.string.sms_type)).performClick()
-        val sms = findInput(activity, activity.getString(R.string.sms_message_hint))
-        sms.setText("Wiadomość kontrolna")
-        sms.setSelection(7)
-
-        findButton(activity, activity.getString(R.string.data_type)).performClick()
-        val data = findInput(activity, activity.getString(R.string.data_url_hint))
-        data.setText("https://example.com/test.bin")
-        data.setSelection(12)
+        findButton(activity, activity.getString(typeLabel)).performClick()
+        findInput(activity, activity.getString(inputHint)).apply {
+            setText(value)
+            setSelection(selection)
+        }
 
         controller.configurationChange(Configuration(activity.resources.configuration).apply {
             orientation = Configuration.ORIENTATION_LANDSCAPE
         })
 
         val restored = controller.get()
-        assertEquals(12, findInput(restored, restored.getString(R.string.data_url_hint)).selectionStart)
-
-        findButton(restored, restored.getString(R.string.sms_type)).performClick()
-        assertEquals(7, findInput(restored, restored.getString(R.string.sms_message_hint)).selectionStart)
-
-        findButton(restored, restored.getString(R.string.voice_type)).performClick()
-        assertEquals(4, findInput(restored, restored.getString(R.string.voice_number_hint)).selectionStart)
+        val input = findInput(restored, restored.getString(inputHint))
+        assertEquals(value, input.text.toString())
+        assertEquals(selection, input.selectionStart)
         controller.pause().stop().destroy()
     }
 
