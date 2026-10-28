@@ -1,5 +1,12 @@
 # Decyzje projektowe
 
+## Nawigacja między usługami zachowuje niedokończone formularze — 2026-10-28
+
+Zwykłe chipy Voice/SMS/Data są nawigacją między formularzami, a nie poleceniem rozpoczęcia nowego testu. Zachowują osobny niedokończony draft i pozycję kursora każdej usługi, aby chwilowe sprawdzenie innego formularza nie wymuszało ponownego wpisywania danych. Jawne „Dodaj test” nadal czyści docelowy draft i otwiera świeży formularz. Aktywne lub oczekujące na obserwację wykonanie zachowuje istniejące blokady; zmiana niczego automatycznie nie uruchamia i nie zmienia historii.
+
+Ta decyzja zastępuje wcześniejsze założenie, że każde przełączenie zakładki powinno zawsze otwierać pusty formularz.
+
+
 - 2026-10-28: pozycje kursora roboczych pól Voice/SMS/Data są częścią stanu odtwarzanego przez Activity, tak jak sam tekst draftu. Uzasadnienie: utrata miejsca edycji szczególnie w dłuższym SMS lub URL spowalnia testera i zwiększa ryzyko poprawienia niewłaściwego fragmentu. Wspólny `NoteEditText` raportuje tekst oraz zaznaczenie, natomiast pola wyszukiwania/nazwy Runu zachowują dotychczasowy text-only listener, aby ruch kursora nie uruchamiał renderowania. Nie zmieniamy semantyki przełączania typów usług ani nie uruchamiamy usług automatycznie. Śmierć procesu pozostaje NOT TESTED.
 
 - 2026-10-28: zapis nowego szablonu ma dedykowany `TemplateSaveViewModel`, ponieważ każdy retry tworzy nowy UUID, a Activity-local dialog mógł po recreation zgubić nazwę lub zakończenie operacji i skłonić testera do ponowienia zapisu. ViewModel zachowuje draft, kursor, busy, błąd i sukces; busy odrzuca duplikat. Zapis pozostaje jawny i nie uruchamia usług. Nie rozszerzamy wzorca mechanicznie na usunięcie szablonu lub inicjalizację adnotacji bez osobnego dowodu ryzyka. Śmierć procesu i fizyczny obrót pozostają NOT TESTED.

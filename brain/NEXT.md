@@ -1,3 +1,12 @@
+# Następny krok po zachowaniu draftów między usługami — 2026-10-28
+
+1. Najpierw odświeżyć zdalny head PR #21 i stan CI; nie dublować checkpointu zakończonego w CI #252.
+2. Nie rozszerzać zachowania draftu na zakończone lub aktywne wykonanie bez osobnego dowodu. Blokady aktywnego Voice/SMS/Data oraz jawne znaczenie „Dodaj test” pozostają bez zmian.
+3. Wybrać kolejny mały checkpoint na podstawie konkretnej straty czasu lub ryzyka błędu testera. Tailscale pozostaje odłożony zgodnie z priorytetem użytkownika.
+4. Odbiór zbiorczy na telefonie nadal powinien objąć przełączanie Voice/SMS/Data z otwartą klawiaturą, obrót, TalkBack/TTS, śmierć procesu i instalację aktualizacji z zachowaniem danych.
+
+---
+
 # Następny krok po trwałości kursora formularzy wykonania — 2026-10-28
 
 Najpierw odśwież zdalny SHA, PR i CI. Pozycje kursora Voice/SMS/Data są ukończone na CI251 PASS / APK125101. Nie zmieniaj bez osobnego uzasadnienia istniejącej semantyki selektora usług: wybór innego typu otwiera jego świeży formularz. Wybierz kolejny mały checkpoint tylko na podstawie konkretnej korzyści GUI, niezawodności lub korelacji; godzinna tura nie wymaga commitu. Tailscale pozostaje odłożony. Fizyczny obrót, klawiatura ekranowa, TalkBack/TTS, śmierć procesu i aktualizacja z retencją danych pozostają osobnym odbiorem.

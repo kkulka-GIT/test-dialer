@@ -1,3 +1,15 @@
+# Ukończony checkpoint zachowania draftów przy przełączaniu usług — 2026-10-28
+
+2026-10-28: zwykłe zakładki Voice, SMS i Data zachowują niedokończony formularz oraz pozycję kursora właściwą dla każdej usługi. Tester może zajrzeć do innej usługi i wrócić bez ponownego wpisywania numeru, treści SMS albo adresu Data. Jawna akcja „Dodaj test” nadal otwiera świeży formularz, a istniejące reguły zakończenia lub anulowania wykonania pozostają bez zmian.
+
+Implementacja: usunięto czyszczenie draftu z nawigacyjnych chipów usług; osobna ścieżka rozpoczęcia nowego testu nadal jawnie czyści stan. Regresja przełącza SMS → Data → SMS i potwierdza zachowanie tekstu oraz kursora.
+
+Weryfikacja: commit `3f557d9b840b73408ce432f3f5da7e57909849c2`; CI #252 / run 40614295379 PASS; 278 testów, 0 failures/errors/skipped. Stabilny APK125201: `com.example.testdialer`, `versionName 1.0.125201`, `debuggable=false`, podpis zweryfikowany, certyfikat SHA-256 `64bc66da1e9b868019b014a8a13ffb36e8a5f8ad565bef684e3e8d1d839baa11`; pobrany APK ma zgodny SHA-256 `f5d81dc0097630a7430e4084e84faf677bbd7d88f8bdebd39b6755ac5d8daf1d`.
+
+Nie zweryfikowano fizycznego przełączania zakładek i klawiatury na telefonie, TalkBack/TTS, śmierci procesu ani aktualizacji z zachowaniem danych. Nie uruchomiono Voice, SMS ani transferu Data. Szczegóły: `brain/reports/execution-draft-tab-retention-20261028.md`.
+
+---
+
 # Ukończony checkpoint pozycji kursora w formularzach wykonania — 2026-10-28
 
 2026-10-28: formularze Voice, SMS i Data zachowują po odtworzeniu Activity nie tylko wpisany draft, ale też pozycję kursora w nazwie, numerze, etykiecie, adresacie, treści SMS, URL i ilości danych. Tester może po obrocie kontynuować poprawianie dokładnie tego miejsca, zamiast wracać na początek lub koniec dłuższego tekstu. Przełączanie na inny typ usługi nadal jawnie otwiera świeży formularz. CI249 wykrył dwa stare wywołania jednoargumentowego helpera, CI250 błędne założenie testu o przełączaniu usług; finalne CI251 PASS: 277 testów, 0 failures/errors/skipped. Stabilny APK125101 zachowuje `com.example.testdialer`, stały certyfikat, jest niedebugowalny i ma wyższy versionCode. Raport `brain/reports/execution-draft-cursor-lifecycle-20261028.md`.
