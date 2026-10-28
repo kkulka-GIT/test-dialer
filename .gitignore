@@ -4,3 +4,11 @@ app/build/
 local.properties
 *.apk
 *.aab
+
+*.jks
+*.keystore
+*.p12
+*.der
+
+__pycache__/
+*.pyc

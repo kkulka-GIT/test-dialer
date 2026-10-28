@@ -1,5 +1,7 @@
 # Test Dialer
 
+Bieżące podpisywanie i dystrybucja APK: SIGNING.md, CURRENT_TASK.md oraz reports/2026-10-06-stable-signing.md. Opisy debug/preview poniżej dokumentują wcześniejsze checkpointy; nie są instrukcją instalacji nowych buildów.
+
 ## Aktualny stan aplikacji
 
 Test Dialer to lekka aplikacja Android rozwijana jako mobilny asystent testów end-to-end systemów ratingowych i billingowych. W obecnym interfejsie działają przepływy Voice, Guided SMS i kontrolowanego Data osadzone w jawnym Active Runie z listą Tasków.

@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
+import android.net.Uri
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -36,6 +37,177 @@ class EvolutionWorkflowUiTest {
         context.getSharedPreferences(com.example.testdialer.active.ScenarioPlanStore.PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit()
     }
     @After fun cleanup() { clear() }
+
+    @Test fun `failed note save preserves draft and allows retry`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        val id = "note-retry-" + java.util.UUID.randomUUID()
+        val scenario = com.example.testdialer.domain.ScenarioDefinition(
+            com.example.testdialer.domain.ScenarioId(id), 1, "Notatka kontrolna", null,
+            listOf(com.example.testdialer.domain.ScenarioStepDefinition(
+                com.example.testdialer.domain.StepId(id), 0, "SMS", "Ręcznie", TestAction.Sms("123", "Test"))),
+        )
+        val writer = java.util.concurrent.Executors.newSingleThreadExecutor()
+        try {
+            writer.submit {
+                (activity.application as TestDialerApplication).testRunRepository.saveSnapshot(
+                    scenario, com.example.testdialer.domain.TestRun(com.example.testdialer.domain.RunId(id),
+                        scenario.id, 1, com.example.testdialer.domain.TestRunStatus.CREATED, 1_000),
+                )
+            }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        } finally { writer.shutdownNow() }
+        method.invoke(activity, id)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val dialog = ShadowAlertDialog.getLatestAlertDialog()
+        val input = views(dialog.window!!.decorView).filterIsInstance<EditText>().single()
+        // Bypass the UI length filter to force a deterministic store rejection.
+        input.filters = emptyArray()
+        val draft = "x".repeat(com.example.testdialer.notes.RunNotesStore.MAX_LENGTH + 1)
+        input.setText(draft)
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { input.error != null }
+        assertTrue(dialog.isShowing)
+        assertEquals(draft, input.text.toString())
+        assertTrue(input.isEnabled)
+        assertTrue(dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).isEnabled)
+        input.setText("Dowód do korelacji")
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        await { !dialog.isShowing }
+        val store = com.example.testdialer.notes.RunNotesStore(activity, (activity.application as TestDialerApplication).annotationStore)
+        assertEquals("Dowód do korelacji", store.get(com.example.testdialer.domain.RunId(id)))
+        assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `note draft and cursor survive activity recreation without saving`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showRunNoteEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        method.invoke(controller.get(), "note-recreation")
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val firstDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val firstInput = views(firstDialog.window!!.decorView).filterIsInstance<EditText>().single()
+        firstInput.setText("Szkic przed obrotem")
+        firstInput.setSelection(6)
+
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val restoredDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val restoredInput = views(restoredDialog.window!!.decorView).filterIsInstance<EditText>().single()
+        assertTrue(restoredDialog.isShowing)
+        assertEquals("Szkic przed obrotem", restoredInput.text.toString())
+        assertEquals(6, restoredInput.selectionStart)
+        restoredDialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(restoredDialog.isShowing)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `billing editor keeps expected and actual labels when filled`() {
+        for (scale in listOf(1f, 1.6f)) {
+            val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+            controller.configurationChange(Configuration(controller.get().resources.configuration).apply { fontScale = scale })
+            val activity = controller.get()
+            val method = MainActivity::class.java.declaredMethods.single {
+                it.name.startsWith("showBillingReviewEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+            }
+                .apply { isAccessible = true }
+            method.invoke(activity, "billing-label-review")
+            val dialog = ShadowAlertDialog.getLatestAlertDialog()
+            val root = dialog.window!!.decorView
+            val all = views(root).toList()
+            val fields = all.filterIsInstance<EditText>()
+            assertEquals(2, fields.size)
+            fields[0].setText("0,79 PLN")
+            fields[1].setText("CDR: 0,79 PLN")
+            fields.forEach { field ->
+                val label = all.filterIsInstance<android.widget.TextView>()
+                    .single { field.id != View.NO_ID && it.labelFor == field.id }
+                assertEquals(field.hint.toString(), label.text.toString())
+                assertEquals(View.VISIBLE, label.visibility)
+                assertNull(field.contentDescription)
+            }
+            captureRoot(root, if (scale == 1f) "billing-labels" else "billing-labels-large")
+            dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            assertFalse(dialog.isShowing)
+            assertNull(Shadows.shadowOf(activity).nextStartedActivity)
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun `billing draft verdict and cursors survive activity recreation without saving`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val method = MainActivity::class.java.declaredMethods.single {
+            it.name.startsWith("showBillingReviewEditor-") && it.parameterTypes.contentEquals(arrayOf(String::class.java))
+        }.apply { isAccessible = true }
+        method.invoke(controller.get(), "billing-recreation")
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val firstDialog = ShadowAlertDialog.getLatestAlertDialog()
+        val fields = views(firstDialog.window!!.decorView).filterIsInstance<EditText>().toList()
+        val spinner = views(firstDialog.window!!.decorView).filterIsInstance<android.widget.Spinner>().single()
+        fields[0].setText("0,79 PLN")
+        fields[0].setSelection(4)
+        fields[1].setText("CDR 0,79 PLN")
+        fields[1].setSelection(3)
+        spinner.setSelection(com.example.testdialer.review.BillingVerdict.entries.indexOf(com.example.testdialer.review.BillingVerdict.PASS))
+
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+        val restored = ShadowAlertDialog.getLatestAlertDialog()
+        val restoredFields = views(restored.window!!.decorView).filterIsInstance<EditText>().toList()
+        val restoredSpinner = views(restored.window!!.decorView).filterIsInstance<android.widget.Spinner>().single()
+        assertTrue(restored.isShowing)
+        assertEquals("0,79 PLN", restoredFields[0].text.toString())
+        assertEquals(4, restoredFields[0].selectionStart)
+        assertEquals("CDR 0,79 PLN", restoredFields[1].text.toString())
+        assertEquals(3, restoredFields[1].selectionStart)
+        assertEquals(com.example.testdialer.review.BillingVerdict.PASS.ordinal, restoredSpinner.selectedItemPosition)
+        restored.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertFalse(restored.isShowing)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun `history import preview survives activity recreation without restarting read`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        val field = MainActivity::class.java.getDeclaredField("historyBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.HistoryBackupViewModel
+        val file = File(activity.cacheDir, "history-recreation.json").apply {
+            writeText(com.example.testdialer.report.HistoryArchive.encode(emptyList(), 2_000))
+        }
+
+        viewModel.readImport(Uri.fromFile(file))
+        controller.configurationChange(Configuration(controller.get().resources.configuration).apply {
+            orientation = Configuration.ORIENTATION_LANDSCAPE
+        })
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        val rotated = controller.get()
+
+        assertSame(viewModel, field.get(rotated))
+        await {
+            val latest = ShadowAlertDialog.getLatestAlertDialog() ?: return@await false
+            views(latest.window!!.decorView).filterIsInstance<android.widget.TextView>()
+                .any { it.text.toString() == "Podgląd kopii historii" }
+        }
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertTrue(preview.isShowing)
+        preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(com.example.testdialer.backup.HistoryBackupState.Idle, viewModel.state.value)
+        controller.pause().stop().destroy()
+    }
 
     @Test fun `saved template opens a new editable SMS test without sending`() {
         TestTemplateStore(context).save("SMS kontrolny", TestAction.Sms("+48123456789", "Treść kontrolna"))
@@ -147,21 +319,28 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `import preview needs confirmation and cancellation never changes stored templates`() {
+    @Test fun `template import preview is cancellable and requires explicit confirmation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         val incoming = listOf(com.example.testdialer.templates.TestTemplate("from-file", "SMS z kopii", TestAction.Sms("123", "Test")))
-        val preview = MainActivity::class.java.getDeclaredMethod("confirmTemplateImport", List::class.java).apply { isAccessible = true }
-        preview.invoke(activity, incoming)
+        val file = File(activity.cacheDir, "template-import-preview.json").apply {
+            writeText(com.example.testdialer.templates.TestTemplateArchive.encode(incoming))
+        }
+        val field = MainActivity::class.java.getDeclaredField("templateBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.TemplateBackupViewModel
+
+        viewModel.readImport(Uri.fromFile(file))
+        await { viewModel.state.value is com.example.testdialer.backup.TemplateBackupState.Preview }
+        await { ShadowAlertDialog.getLatestAlertDialog()?.isShowing == true }
+        val state = viewModel.state.value as com.example.testdialer.backup.TemplateBackupState.Preview
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals(1, state.added)
+        assertEquals("Dodaj szablony", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         assertTrue(TestTemplateStore(context).list().isEmpty())
-        val first = ShadowAlertDialog.getLatestAlertDialog()
-        first.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        assertTrue(TestTemplateStore(context).list().isEmpty())
-        preview.invoke(activity, incoming)
-        val confirm = ShadowAlertDialog.getLatestAlertDialog()
-        confirm.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        await { TestTemplateStore(context).list().size == 1 }
-        assertEquals("SMS z kopii", TestTemplateStore(context).list().single().name)
+        assertEquals(com.example.testdialer.backup.TemplateBackupState.Idle, viewModel.state.value)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -194,20 +373,30 @@ class EvolutionWorkflowUiTest {
         controller.pause().stop().destroy()
     }
 
-    @Test fun `plan import preview is cancellable and confirmation only adds parameters`() {
+    @Test fun `plan import preview is cancellable and requires explicit confirmation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
         val step = com.example.testdialer.domain.StepId("incoming")
         val incoming = listOf(com.example.testdialer.active.SavedScenarioPlan("file", "Plan z kopii", com.example.testdialer.active.LocalScenario("file", "Plan z kopii", listOf(
             com.example.testdialer.domain.ScenarioStepDefinition(step, 0, "SMS", "Wyślij osobno", TestAction.Sms("123", "Test"))))))
-        val confirm = MainActivity::class.java.getDeclaredMethod("confirmPlanImport", List::class.java).apply { isAccessible = true }
-        confirm.invoke(activity, incoming)
-        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        val file = File(activity.cacheDir, "plan-import-preview.json").apply {
+            writeText(com.example.testdialer.active.ScenarioPlanArchive.encode(incoming))
+        }
+        val field = MainActivity::class.java.getDeclaredField("planBackupViewModel").apply { isAccessible = true }
+        val viewModel = field.get(activity) as com.example.testdialer.backup.PlanBackupViewModel
+
+        viewModel.readImport(Uri.fromFile(file))
+        await { viewModel.state.value is com.example.testdialer.backup.PlanBackupState.Preview }
+        await { ShadowAlertDialog.getLatestAlertDialog()?.isShowing == true }
+        val state = viewModel.state.value as com.example.testdialer.backup.PlanBackupState.Preview
+        val preview = ShadowAlertDialog.getLatestAlertDialog()
+        assertEquals(1, state.added)
+        assertEquals("Dodaj plany", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         assertTrue(com.example.testdialer.active.ScenarioPlanStore(context).list().isEmpty())
-        confirm.invoke(activity, incoming)
-        ShadowAlertDialog.getLatestAlertDialog().getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        await { com.example.testdialer.active.ScenarioPlanStore(context).list().size == 1 }
-        assertEquals("Plan z kopii", com.example.testdialer.active.ScenarioPlanStore(context).list().single().name)
+        assertEquals(com.example.testdialer.backup.PlanBackupState.Idle, viewModel.state.value)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -244,7 +433,7 @@ class EvolutionWorkflowUiTest {
         assertTrue(text.contains("Import nie uruchamia połączeń, SMS ani transferu danych"))
         assertTrue(text.contains("Sesje: 0"))
         assertEquals("Zamknij", preview.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
-        assertNull(preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE))
+        assertEquals(View.GONE, preview.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).visibility)
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -279,29 +468,40 @@ class EvolutionWorkflowUiTest {
             ),
             "Notatka", emptyMap(), 0,
         )
-        val preview = MainActivity::class.java.getDeclaredMethod("showHistoryImportPreview", List::class.java)
-            .apply { isAccessible = true }
-        preview.invoke(activity, listOf(entry))
+        val historyField = MainActivity::class.java.getDeclaredField("historyBackupViewModel").apply { isAccessible = true }
+        val historyViewModel = historyField.get(activity) as com.example.testdialer.backup.HistoryBackupViewModel
+        val file = File(activity.cacheDir, "history-restore-$suffix.json").apply {
+            writeText(com.example.testdialer.report.HistoryArchive.encode(listOf(entry), 2_000))
+        }
+        fun readPreview() {
+            historyViewModel.readImport(Uri.fromFile(file))
+            await { historyViewModel.state.value is com.example.testdialer.backup.HistoryBackupState.Preview }
+        }
+
+        readPreview()
         var dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
         dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE).performClick()
-        val repository = (activity.application as TestDialerApplication).testRunRepository
-        fun stored() = java.util.concurrent.Executors.newSingleThreadExecutor().let { worker ->
-            try { worker.submit<com.example.testdialer.persistence.StoredTestRun?> { repository.get(runId) }.get() }
-            finally { worker.shutdownNow() }
-        }
-        assertNull(stored())
+        val reader = java.util.concurrent.Executors.newSingleThreadExecutor()
+        fun storedRun() = reader.submit<com.example.testdialer.persistence.StoredTestRun?> {
+            (activity.application as TestDialerApplication).testRunRepository.get(runId)
+        }.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        assertNull(storedRun())
 
-        preview.invoke(activity, listOf(entry))
+        readPreview()
         dialog = ShadowAlertDialog.getLatestAlertDialog()
-        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
-        var restored: com.example.testdialer.persistence.StoredTestRun? = null
-        var attempts = 0
-        while (restored == null && attempts++ < 200) {
-            restored = stored()
-            if (restored == null) Thread.sleep(5)
+        assertEquals("Przywróć historię", dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).text.toString())
+        val toastBeforeRestore = org.robolectric.shadows.ShadowToast.getTextOfLatestToast()?.toString()
+        historyViewModel.restorePreview()
+        await {
+            val message = org.robolectric.shadows.ShadowToast.getTextOfLatestToast()?.toString()
+            message != null && message != toastBeforeRestore &&
+                (message.startsWith("Historia przywrócona") || message.startsWith("Nie udało się przywrócić historii"))
         }
-        assertEquals(4, restored?.revision)
+        val restoreMessage = org.robolectric.shadows.ShadowToast.getTextOfLatestToast().toString()
+        assertTrue("History restore message: $restoreMessage", restoreMessage.startsWith("Historia przywrócona"))
+        assertTrue(restoreMessage.contains("Dodano sesje: 1"))
+        reader.shutdownNow()
         assertNull(Shadows.shadowOf(activity).nextStartedActivity)
         controller.pause().stop().destroy()
     }
@@ -312,7 +512,16 @@ class EvolutionWorkflowUiTest {
         val comparison = com.example.testdialer.report.RunComparison("a", "b", "Baza", "Powtórka", true, listOf(
             com.example.testdialer.report.ComparisonRow("Pole identyczne", "1", "1"),
             com.example.testdialer.report.ComparisonRow("Pole zmienione", "0 B", "100 B")))
-        MainActivity::class.java.getDeclaredMethod("showComparison", com.example.testdialer.report.RunComparison::class.java).apply { isAccessible = true; invoke(activity, comparison) }
+        val viewModel = MainActivity::class.java.getDeclaredField("runComparisonViewModel").apply {
+            isAccessible = true
+        }.get(activity) as com.example.testdialer.report.RunComparisonViewModel
+        val stateField = com.example.testdialer.report.RunComparisonViewModel::class.java
+            .getDeclaredField("_state")
+            .apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        val state = stateField.get(viewModel) as androidx.lifecycle.MutableLiveData<com.example.testdialer.report.RunComparisonState>
+        state.value = com.example.testdialer.report.RunComparisonState.Ready(comparison)
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         val root = dialog.window!!.decorView
         fun texts() = views(root).filterIsInstance<android.widget.TextView>().map { it.text.toString() }.joinToString("\n")

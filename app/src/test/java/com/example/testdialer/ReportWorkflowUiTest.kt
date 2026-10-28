@@ -26,6 +26,28 @@ import java.io.File
 @Config(sdk = [35], qualifiers = "w360dp-h800dp-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ReportWorkflowUiTest {
+    @Test fun `execution fields retain labels after values are entered`() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = controller.get()
+        for (method in listOf("createVoiceScenario", "createGuidedSmsScenario", "createCellularDataScenario")) {
+            val factory = MainActivity::class.java.declaredMethods.firstOrNull { it.name == method && it.parameterCount == 0 }
+                ?: error("Missing form $method")
+            val card = factory.apply { isAccessible = true }.invoke(activity) as View
+            val all = views(card).toList()
+            val fields = all.filterIsInstance<EditText>()
+            assertTrue("No fields in $method", fields.isNotEmpty())
+            fields.forEach { field ->
+                field.setText("123")
+                val label = all.filterIsInstance<android.widget.TextView>()
+                    .single { it.labelFor == field.id && field.id != View.NO_ID }
+                assertEquals(field.hint.toString(), label.text.toString())
+                assertEquals(View.VISIBLE, label.visibility)
+                assertNull(field.contentDescription)
+            }
+        }
+        controller.pause().stop().destroy()
+    }
+
     @Test fun `run name draft survives recreation`() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity = controller.get()
@@ -110,6 +132,8 @@ class ReportWorkflowUiTest {
         assertEquals("200", views(rotated.findViewById(android.R.id.content)).filterIsInstance<EditText>()
             .first { it.hint == rotated.getString(R.string.data_amount_hint) }.text.toString())
         captureDataCard(rotated, "05-data-volume")
+        controller.configurationChange(Configuration(rotated.resources.configuration).apply { fontScale = 1.6f })
+        captureDataCard(controller.get(), "05-data-volume-large-font")
         controller.pause().stop().destroy()
     }
 
